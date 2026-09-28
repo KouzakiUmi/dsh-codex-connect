@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-09-28",
+  "version": "0.1.0-alpha.4.51",
+  "channels": {
+    "latest": "0.1.0-alpha.4.50",
+    "alpha": "0.1.0-alpha.4.51"
+  },
+  "tagCommit": "2ac612385ea3c3fcfc1078dc18619d7b1dc49b9a",
+  "release": {
+    "isDraft": false,
+    "isPrerelease": true,
+    "publishedAt": "2026-09-28T00:46:17Z",
+    "tagName": "v0.1.0-alpha.4.51",
+    "targetCommitish": "2ac612385ea3c3fcfc1078dc18619d7b1dc49b9a",
+    "url": "https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.1.0-alpha.4.51"
+  },
+  "originalRun": "36363043413",
+  "originalRunConclusion": "failure after npm publication, at public readback",
+  "recovery": {
+    "status": "recovered",
+    "version": "0.1.0-alpha.4.51",
+    "runId": "36363043413",
+    "sha": "2ac612385ea3c3fcfc1078dc18619d7b1dc49b9a",
+    "sha256": "6d8ffe3b9335e0f874592f6d5f67d2fe872e809a24a4ae4e2c1d8f14e29857e6",
+    "npmRepublished": false,
+    "tagsPromoted": false,
+    "releaseId": 397876473
+  },
+  "finalReadOnlyVerification": {
+    "status": "already-complete",
+    "version": "0.1.0-alpha.4.51",
+    "runId": "36363043413",
+    "sha": "2ac612385ea3c3fcfc1078dc18619d7b1dc49b9a",
+    "sha256": "6d8ffe3b9335e0f874592f6d5f67d2fe872e809a24a4ae4e2c1d8f14e29857e6",
+    "npmRepublished": false,
+    "tagsPromoted": false,
+    "releaseId": 397876473
+  },
+  "dailyServicesChanged": false
+}
