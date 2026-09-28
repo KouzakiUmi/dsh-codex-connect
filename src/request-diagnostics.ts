@@ -172,11 +172,12 @@ export function withCodexDiagnosticFetch(
   const scope = requestScope.getStore()
   const fetch = options?.fetch ?? globalThis.fetch
   if (scope === undefined) return requests === undefined ? options : {
-    ...options, fetch: requests.wrapFetch({ lane: 'model', identity: 'preserve', fetch }),
+    ...options, fetch: requests.wrapFetch({ lane: 'model', responseFormat: 'sse', identity: 'preserve', fetch }),
   }
   if (requests !== undefined) {
     const governed = requests.wrapFetch({
       lane: 'model',
+      responseFormat: 'sse',
       identity: 'preserve',
       fetch,
       onAttempt(meta) { scope.current = { clientRequestId: meta.clientRequestId } },

@@ -43,6 +43,7 @@ import { OpenAICodexTransport } from './transport.ts'
 import type { OpenAICodexTransportV1 } from './transport.ts'
 import { OpenAICodexProxyManager } from './provider-proxy.ts'
 import { OpenAICodexBackendRequests } from './backend-request.ts'
+import { RequestMetrics } from './request-metrics.ts'
 import { AdaptiveTaskControlRuntime } from './adaptive-task-control-runtime.ts'
 import { TaskDelegationArtifacts } from './adaptive-task-artifacts.ts'
 import { taskIdentity } from './adaptive-task-store.ts'
@@ -245,6 +246,10 @@ export const OPENAI_CODEX_SETTINGS_NS = OPENAI_CODEX_SETTINGS_NAMESPACE
 
 /** Plain configuration accepted by direct Cordis composition and unit tests. */
 export interface Config {
+  /** Opt-in absolute owner-only directory for local request evidence; never uploads telemetry. Restart to change. */
+  requestMetricsDirectory?: string | undefined
+  /** Per-process journal limit; reaching it stops recording with a warning, not model execution. */
+  requestMetricsMaxBytes?: number
   /** Complete interactive OAuth deadline in milliseconds; applies when the plugin loads. */
   oauthTimeoutMs?: number
   /** Model ids advertised in selectors; omitted to advertise the full catalog. */
@@ -307,6 +312,8 @@ function parseSettingsContextWindowOverrides(
 }
 
 const configSchema = z.object({
+  requestMetricsDirectory: z.union([z.const(undefined), z.string()]),
+  requestMetricsMaxBytes: z.number().step(1).min(4096).max(64 * 1024 * 1024).default(16 * 1024 * 1024),
   oauthTimeoutMs: z.number().step(1).min(1_000).max(1_800_000).default(OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS),
   models: z.union([z.const(undefined), z.array(z.string())]).volatile(),
   enableProxy: z.boolean().default(false).volatile(),
@@ -333,6 +340,8 @@ const configSchema = z.object({
 
 /** Runtime configuration exposes each editable field through Cordis's public Volatile type. */
 export interface VolatileConfig {
+  requestMetricsDirectory?: string | undefined
+  requestMetricsMaxBytes: number
   oauthTimeoutMs: number
   models: Volatile<string[] | undefined>
   enableProxy: Volatile<boolean>
@@ -385,7 +394,10 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
   const resolveProviderProxyUrl = (): string | undefined => resolveOpenAICodexProxyUrl(resolveOpenAICodexSettings(current()))
   let taskRuntime: AdaptiveTaskControlRuntime | undefined
   const backendRequests = new OpenAICodexBackendRequests(proxyManager, resolveProviderProxyUrl, undefined,
-    async () => { await taskRuntime?.reserveAuxiliary() })
+    async () => { await taskRuntime?.reserveAuxiliary() },
+    config.requestMetricsDirectory === undefined ? undefined : new RequestMetrics(config.requestMetricsDirectory, config.requestMetricsMaxBytes))
+  // Also release the journal if a later registration fails before the full teardown is installed.
+  ctx.effect(() => () => backendRequests.dispose())
   let proxyWasActive = resolveProviderProxyUrl() !== undefined
   const credentials = new OpenAICodexCredentialStore()
   const imageAssets = new OpenAICodexImageAssetStore()

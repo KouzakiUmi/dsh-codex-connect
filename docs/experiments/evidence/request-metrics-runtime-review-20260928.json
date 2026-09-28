@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-09-28",
+  "scope": "M1 opt-in local request metrics only",
+  "base": "2ac612385ea3c3fcfc1078dc18619d7b1dc49b9a",
+  "reviewerModel": "gpt-6-astra",
+  "ephemeralIndependentProcess": true,
+  "inputSha256": "042bc8e326ace2364ce0272ee24b9d9a7a6d17f27871f7cc23fedddd2eb31ff5",
+  "reportSha256": "ae64ddccd26a24568f79e90314311f7ef061f3ceab41e17e14e021692dfa06bc",
+  "reviewedSourceDigests": {
+    "src/request-metrics.ts": "b54d634b5a8cdd6fd563126da6bab30d66f92fa14c2dcacc62986bb871613531",
+    "src/request-metrics-report.ts": "654e16dff53e265315d63364a08276835b99a56d9a43f7452b173a24dd3b8781",
+    "src/request-metrics-cli.ts": "58f8e282a4c879da41b63b3761bf0c2a335284d1796a711d12ba266f52cb6af6",
+    "src/backend-request.ts": "ed1183c9129f17c50cac07ff3e0708441e795f40e79f9de169ca57748bf4c010",
+    "src/request-diagnostics.ts": "48d2b83f2ef0166296c3ca9d817c0f784c913579c1f872e3e4a984f10bb5f768",
+    "tests/metrics-pending-cancel.spec.ts": "c936380765d73dfb18a5d2f849e1f0081042bdfe8e687a1b0c87d59d9221e641",
+    "tests/metrics-response-lifecycle.spec.ts": "bd00752aebfd8400e843d931f165cd702aa04f59af5ab811f70e11b7c7c4b8db",
+    "tests/request-metrics-review.spec.ts": "c479d1da7cbeafe5c01c129699c61c16725c4807b456adbbf135dcb5ad916886",
+    "docs/request-metrics.md": "4ac1cae37431c67c5637d2d6acce54421511cc71ed27a931793872a021533f2b"
+  },
+  "review": {
+    "verdict": "PASS",
+    "findings": [],
+    "residual_limits": [
+      "结论仅覆盖所提供代码、集成差异、文档和基线；未调用工具、访问网络或执行测试。测试源码不构成通过证据。",
+      "所示解析与聚合逻辑检查字段类型、重复记录、同文件先 start 后 finish 配对及 collection 生命周期；允许未完成请求和明确披露的部分尾行。日志不是经过认证的完整消费凭证。",
+      "响应观察未发现新增的字节改写或取消分类回归；真实传输、宿主集成及运行时行为仍未经执行验证。",
+      "所示持久化路径未发现直接写入请求体、响应内容或凭据的代码；未提供的 backend-request-policy.ts 中 clientRequestId 的生成与保留规则不在本次核验范围内。会话哈希不是匿名化，Windows ACL 也未校验。"
+    ],
+    "prior_finding_disposition": {
+      "status": "non-blocking",
+      "description": "接受维护者的处置。信号 abort 和响应 hook 失败后请求取消、随即释放逻辑 admission 的行为已存在于所提供基线。当前 backend-request.ts:85-90、252-256 保留该政策，与 docs/request-metrics.md:54-58 明确声明的逻辑请求契约一致；未发现其新增物理连接清理保证或构成指标回归。",
+      "explicit_consumer_cancel": "backend-request.ts:102、110-115 使用 cancelling 标记抑制取消产生的 pending-read 合成 EOF，并在清理结束后记录一次 cancelled；若期间发生信号 abort，则按文档提前结束逻辑请求。此前观察到的 provider terminal 仍按 request-metrics.ts:236-239 保持优先。",
+      "validation_needed": "执行所提供的取消和生命周期测试以验证运行时行为；本次静态审查不声称这些测试已通过。"
+    }
+  },
+  "runtimeFilesMatchReviewedSources": true,
+  "candidateValidation": {
+    "fullCheck": {
+      "files": 131,
+      "tests": 1529,
+      "passed": true
+    },
+    "chromium": {
+      "files": 13,
+      "tests": 73,
+      "passed": true
+    },
+    "matrix": {
+      "sameArtifact": true,
+      "hosts": [
+        "0.1.7-rc.1",
+        "0.1.7-rc.2"
+      ],
+      "artifactSha256": "43d87c178d16792d674ce3878dc8ab3b9f98541145a91aaae6e16fe61d6f1a9d",
+      "defaultsUnchanged": true,
+      "scope": "standalone draft candidate, not the published base package; archive before final evidence-note updates"
+    }
+  },
+  "releaseStatus": "unpublished draft; package version follows base, not release identity",
+  "realAcceptanceRequests": 0
+}

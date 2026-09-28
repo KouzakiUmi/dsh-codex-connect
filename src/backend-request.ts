@@ -2,6 +2,7 @@
 import type { OpenAICodexProxyManager } from './provider-proxy.ts'
 import { readRetryAfterMs } from './request-backoff.ts'
 import { reserveAdaptiveTaskAttempt } from './adaptive-task-scope.ts'
+import type { MetricAttempt, RequestMetrics } from './request-metrics.ts'
 import {
   prepareOpenAICodexBackendRequest,
   openAICodexBackendResponseMeta,
@@ -38,6 +39,8 @@ export interface OpenAICodexBackendRunOptions {
 
 export interface OpenAICodexBackendFetchOptions {
   readonly lane: OpenAICodexBackendLane
+  /** Known successful protocol when the upstream omits its media type; observation only. */
+  readonly responseFormat?: 'sse'
   readonly identity?: OpenAICodexBackendIdentity
   readonly fetch?: BackendFetch
   readonly onAttempt?: (meta: Pick<OpenAICodexBackendResponseMeta, 'clientRequestId'>) => void
@@ -65,14 +68,16 @@ async function waitUntil(deadline: number, signal: AbortSignal): Promise<void> {
   })
 }
 
-function wrapResponseLifecycle(response: Response, release: () => void, signal: AbortSignal): Response {
-  if (response.body === null) { release(); return response }
+function wrapResponseLifecycle(response: Response, release: () => void, signal: AbortSignal, metric?: MetricAttempt): Response {
+  if (response.body === null) { metric?.finish('eof'); release(); return response }
   const reader = response.body.getReader()
   let finished = false
+  let cancelling = false
   let output: ReadableStreamDefaultController<Uint8Array>
-  const finish = (): void => {
+  const finish = (outcome: 'eof' | 'cancelled' | 'network-error'): void => {
     if (finished) return
     finished = true
+    metric?.finish(outcome)
     signal.removeEventListener('abort', onAbort)
     try { reader.releaseLock() } catch { /* pending read cleanup is completed by cancel */ }
     release()
@@ -82,7 +87,7 @@ function wrapResponseLifecycle(response: Response, release: () => void, signal: 
     const error = abortError(signal)
     output.error(error)
     void reader.cancel(error).catch(() => undefined)
-    finish()
+    finish('cancelled')
   }
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -94,27 +99,31 @@ function wrapResponseLifecycle(response: Response, release: () => void, signal: 
       if (finished) return
       try {
         const { done, value } = await reader.read()
-        if (finished) return
-        if (done) { finish(); controller.close(); return }
+        if (finished || cancelling) return
+        if (done) { finish('eof'); controller.close(); return }
+        metric?.feed(value)
         controller.enqueue(value)
       } catch (error: unknown) {
-        if (!finished) { controller.error(error); finish() }
+        if (!finished) { controller.error(error); finish('network-error') }
       }
     },
     async cancel(reason: unknown) {
-      if (finished) return
-      try { await reader.cancel(reason) } finally { finish() }
+      if (finished || cancelling) return
+      // reader.cancel resolves a pending read before asynchronous source cleanup.
+      // Suppress that synthetic EOF, while retaining admission until cleanup ends.
+      cancelling = true
+      try { await reader.cancel(reason) } finally { finish('cancelled') }
     },
   }, { highWaterMark: 0 })
   // A paused consumer may never issue another read after a network failure.
-  void reader.closed.catch(error => { if (!finished) { output.error(error); finish() } })
+  void reader.closed.catch(error => { if (!finished) { output.error(error); finish('network-error') } })
   try {
     const wrapped = new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
     for (const key of ['url', 'redirected', 'type'] as const) Object.defineProperty(wrapped, key, { value: response[key] })
     return wrapped
   } catch (error: unknown) {
     void reader.cancel(error).catch(() => undefined)
-    finish()
+    finish('network-error')
     throw error
   }
 }
@@ -132,6 +141,7 @@ export class OpenAICodexBackendRequests {
     private readonly resolveProxyUrl: () => string | undefined = () => undefined,
     private readonly maxConcurrent = OPENAI_CODEX_BACKEND_MAX_CONCURRENT_REQUESTS,
     private readonly beforeAuxiliaryAttempt?: () => Promise<void>,
+    readonly metrics?: RequestMetrics,
   ) {
     if (!Number.isSafeInteger(maxConcurrent) || maxConcurrent < 1) throw new TypeError('maxConcurrent must be a positive safe integer')
   }
@@ -212,7 +222,7 @@ export class OpenAICodexBackendRequests {
     input: string | URL | Request,
     init: RequestInit | undefined,
     options: Omit<OpenAICodexBackendFetchOptions, 'lane'> = {},
-  ): Promise<Response> {
+  ): Promise<{ response: Response; metric: MetricAttempt | undefined }> {
     signal.throwIfAborted()
     const { headers, clientRequestId } = prepareOpenAICodexBackendHeaders(
       init?.headers ?? (input instanceof Request ? input.headers : undefined),
@@ -223,17 +233,26 @@ export class OpenAICodexBackendRequests {
     await reserveAdaptiveTaskAttempt()
     await this.beforeAuxiliaryAttempt?.()
     signal.throwIfAborted()
-    const response = await (options.fetch ?? globalThis.fetch)(input, { ...init, headers, signal })
+    const metric = this.metrics?.begin(lane, clientRequestId)
+    let response: Response
+    try {
+      response = await (options.fetch ?? globalThis.fetch)(input, { ...init, headers, signal })
+      metric?.headers(response, options.responseFormat)
+    } catch (error: unknown) {
+      metric?.finish(signal.aborted ? 'cancelled' : 'network-error')
+      throw error
+    }
     try {
       signal.throwIfAborted()
       const meta = openAICodexBackendResponseMeta(response, clientRequestId)
       this.recordResponse(lane, response)
       await options.onResponse?.(meta)
       signal.throwIfAborted()
-      return response
+      return { response, metric }
     } catch (error: unknown) {
       // Hook/cancellation failures must not orphan an undispatched response body.
       void response.body?.cancel(error).catch(() => undefined)
+      metric?.finish(signal.aborted ? 'cancelled' : 'network-error')
       throw error
     }
   }
@@ -288,8 +307,8 @@ export class OpenAICodexBackendRequests {
         release = await this.admit(options.lane, signal)
       }
       try {
-        const response = await this.fetchAttempt(options.lane, signal, prepared.input, prepared.init, options)
-        return wrapResponseLifecycle(response, release, signal)
+        const { response, metric } = await this.fetchAttempt(options.lane, signal, prepared.input, prepared.init, options)
+        return wrapResponseLifecycle(response, release, signal, metric)
       } catch (error: unknown) {
         release()
         throw error
@@ -311,5 +330,6 @@ export class OpenAICodexBackendRequests {
       waiter.signal.removeEventListener('abort', waiter.onAbort)
       waiter.reject(abortError(this.lifecycle.signal))
     }
+    this.metrics?.close()
   }
 }

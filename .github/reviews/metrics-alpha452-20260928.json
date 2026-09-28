@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-28",
+  "candidateVersion": "0.1.0-alpha.4.52",
+  "priorHead": "d79a31a0f0cdb9c104b4b8e316a67235ae9be6e6",
+  "baseMain": "42303bc817b27caa479f1e46e9af303abdbea4d2",
+  "reviewerModel": "gpt-6-astra",
+  "separateEphemeralProcess": true,
+  "reviewerToolsExecuted": [],
+  "inputSha256": "777774545a795da8c2b374ba17ce8dab0b38ddb55ce5121ab54e082e251d4b0d",
+  "reportSha256": "d4ab44fca5415e772cfd1cc528f805eae8368b39db80d30255d50cbeaba1e18d",
+  "reviewedDigests": {
+    "src/request-metrics.ts": "b54d634b5a8cdd6fd563126da6bab30d66f92fa14c2dcacc62986bb871613531",
+    "src/request-metrics-report.ts": "654e16dff53e265315d63364a08276835b99a56d9a43f7452b173a24dd3b8781",
+    "src/request-metrics-cli.ts": "58f8e282a4c879da41b63b3761bf0c2a335284d1796a711d12ba266f52cb6af6",
+    "src/backend-request.ts": "ed1183c9129f17c50cac07ff3e0708441e795f40e79f9de169ca57748bf4c010",
+    "src/backend-request-policy.ts": "897c0ded8c9cceeeaf939c1630dcce360f95e25fbbc7cc84eb73207485e888fa",
+    "src/request-diagnostics.ts": "48d2b83f2ef0166296c3ca9d817c0f784c913579c1f872e3e4a984f10bb5f768",
+    "src/bin.ts": "be68c4398aad1bd43c2c5b67fcd5b9105cbfed6a192cf47e5139f0feafa7b2aa",
+    "scripts/check-installed-metrics.mjs": "2a635e0d40a84f207d59019da98cbe3b881a28db9fb94ef26b04e8af766deccd",
+    "scripts/check-request-metrics.mjs": "3c22651c3044864fc8bc74438dd958dafd3a8634ebc052a8b18f1e086d5b5b92",
+    "tests/request-metrics.spec.ts": "dff25972d756e4bb8bc618eed3100bb81040bf68245ba8b731a6dd48036212fa",
+    "tests/request-metrics-review.spec.ts": "c479d1da7cbeafe5c01c129699c61c16725c4807b456adbbf135dcb5ad916886",
+    "tests/metrics-pending-cancel.spec.ts": "c936380765d73dfb18a5d2f849e1f0081042bdfe8e687a1b0c87d59d9221e641",
+    "tests/metrics-response-lifecycle.spec.ts": "bd00752aebfd8400e843d931f165cd702aa04f59af5ab811f70e11b7c7c4b8db",
+    "docs/request-metrics.md": "4ac1cae37431c67c5637d2d6acce54421511cc71ed27a931793872a021533f2b"
+  },
+  "review": {
+    "verdict": "PASS",
+    "findings": [],
+    "residual_limits": [
+      "仅依据提供的源码和 diff，未发现可具体复现的阻断性缺陷。",
+      "未执行测试、运行时兼容性或故障注入验证；测试源码不作为通过证据。",
+      "按已声明的逻辑准入策略审查，不要求 abort 后等待物理连接清理。"
+    ]
+  },
+  "postReviewChanges": "Runtime sources unchanged. Public guide removes private dead link and draft experiment recipe; adds bilingual usage, limits, stop and troubleshooting. Release metadata and new docs tests are separately validated.",
+  "runtimeDigestsMatch": true,
+  "realProductAcceptanceCalls": 0
+}

@@ -262,9 +262,10 @@ export function createOpenAICodexAdapter(
     ): AsyncIterable<StreamChunk> {
       const dispatch = (request: GenerateOptions) => {
         const projected = imageEditingEnabled?.() === true ? withOpenAICodexImageSelectionHandles(request) : request
-        return streamWithCodexRequestDiagnostics(
-          next => streamWithNativeCompactionScope(stream, next, nativeCompactionEnabled?.() === true), projected,
+        const observed = (nextOptions: GenerateOptions) => streamWithCodexRequestDiagnostics(
+          next => streamWithNativeCompactionScope(stream, next, nativeCompactionEnabled?.() === true), nextOptions,
         )
+        return backendRequests?.metrics?.stream(observed, projected) ?? observed(projected)
       }
       return taskDispatch?.stream(options, dispatch) ?? dispatch(options)
     }
