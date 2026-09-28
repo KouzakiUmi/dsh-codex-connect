@@ -1,8 +1,10 @@
-# Local request metrics (unreleased)
+# Local request metrics
 
-This source adds opt-in, local-only HTTP-attempt evidence and a boot-free report command. It does not enable task orchestration, change model requests, call a model for measurement, or convert API prices to subscription quota. The published Alpha 4.50 package does not contain this addition.
+English | [中文](request-metrics.zh.md)
 
-The [internal autonomy evaluation protocol](experiments/autonomy-evaluation.md) defines how this evidence may support future task-quality comparisons. Its current offline fixtures are not real agent trials, and no user-facing metrics panel or efficiency claim is included.
+This source adds opt-in, local-only HTTP-attempt evidence and a boot-free report command. It does not enable task orchestration, change model requests, call a model for measurement, or convert API prices to subscription quota. This guide describes the Alpha 4.52 candidate; Alpha 4.51 and earlier packages do not contain this feature. A candidate is not publication evidence.
+
+The internal evaluation program is not part of the installed package. This feature supplies evidence for diagnostics and separately designed comparisons; it is not a task-quality evaluator, a user-facing metrics panel or a proven efficiency improvement.
 
 ## Enable in an isolated profile
 
@@ -12,6 +14,8 @@ Add these fields to the existing `llm-openai-codex` plugin's `config` in the int
 requestMetricsDirectory: /absolute/private/path/codex-request-metrics
 requestMetricsMaxBytes: 16777216
 ```
+
+The byte limit must be an integer from `4096` to `67108864`; the default is `16777216` (16 MiB). Setting only this limit does not enable collection. Use the native absolute path syntax on each OS; for example, a Windows YAML single-quoted value may be `'C:\Private\CodexMetrics'`. Configure access so only the intended account can read the directory.
 
 Omitting `requestMetricsDirectory` disables recording. The directory must be absolute and, on POSIX, owner-only; a new directory is created with mode `0700`. Each process creates its own exclusive `requests-<uuid>.jsonl` with mode `0600`. Windows uses the directory's inherited ACL, which the plugin does not validate or change. Choose a private, nonsynchronized directory. Removing the configuration and restarting stops new collection without deleting evidence.
 
@@ -23,7 +27,7 @@ The size limit applies to one process journal, not the entire directory. Reachin
 dsh plugin --profile web exec dsh-codex-connect metrics --file /absolute/private/path/codex-request-metrics/requests-UUID.jsonl --json
 ```
 
-Repeat `--file` to combine explicitly selected journals across restarts. Repeat `--session <DSH-session-id>` to select known sessions, including any children you explicitly want to include. Without a session filter, unattributed auxiliary traffic is included. The standalone equivalent is `node lib/bin.js metrics --file <journal> --json`; omitting `--json` prints a human-readable summary. The command reads only the named journal files, never credentials, and makes no network requests. Duplicate inputs, conflicting records and invalid schemas fail instead of silently doubling or dropping spend. A partial final line is disclosed and excluded. The unreleased journal format requires one collection-start header per file; request records before that header or after a closed/stopped marker, cross-file request pairing, non-string enum fields and impossible terminal-state changes are rejected. These checks do not make a journal an authenticated proof of task completion.
+Repeat `--file` to combine explicitly selected journals across restarts. Repeat `--session <DSH-session-id>` to select known sessions, including any children you explicitly want to include. Without a session filter, unattributed auxiliary traffic is included. The standalone equivalent is `node lib/bin.js metrics --file <journal> --json`; omitting `--json` prints a human-readable summary. The command reads only the named journal files, never credentials, and makes no network requests. Duplicate inputs, conflicting records and invalid schemas fail instead of silently doubling or dropping spend. A partial final line is disclosed and excluded. The version 1 journal format requires one collection-start header per file; request records before that header or after a closed/stopped marker, cross-file request pairing, non-string enum fields and impossible terminal-state changes are rejected. These checks do not make a journal an authenticated proof of task completion.
 
 ## What the numbers mean
 
@@ -41,15 +45,17 @@ Only allowlisted numerical/status metadata and bounded model identifiers are wri
 
 The Codex streaming caller explicitly declares SSE for successful responses whose media type is absent. This observation hint does not modify the response, override an explicit media type or apply to error responses. Other callers without a protocol hint retain unknown usage for unsupported or missing media types.
 
-## Cache-baseline acceptance before dynamic effort
+## Troubleshooting and stopping collection
 
-Use the actual installed adapter and provider serialization, not a hand-built HTTP approximation. Record exact plugin/host/provider versions separately, the selected model, a fixed synthetic task and explicit evaluation boundaries. First verify a warm repeated-prefix control has positive wire-reported cached input; zero or unknown means the baseline is not established. Only then compare effort updates, without simultaneously changing models, tool definitions, compaction policy or account. Record all journals, including failed attempts, and compare token-weighted ratios, observation coverage, output tokens and request durations. This collector does not yet send `configuration_update`.
+If no journal appears, check that the directory is configured on the intended profile and that the profile restarted. On POSIX, the existing directory must be private (no group/other permission bits), writable, and a real directory rather than a symlink. A fixed warning means recording stopped; it does not mean the model request failed. Correct the path/permissions or disk condition before restarting. Do not share private journals publicly.
 
-Real-account calls require a separately bounded test budget and isolated profile. The keyless tests prove collection and aggregation, not cache availability, savings, effective server effort or subscription-quota behavior. Human task-quality acceptance and parent/child task attribution remain separate work.
+A `stoppedEarly` value or partial tail means the evidence is incomplete. Reaching the per-file limit does not rotate or delete files, and restarting creates another file; plan retention outside the plugin. To disable, remove `requestMetricsDirectory` from the effective startup config and restart the intended profile. Existing journals remain for explicit export or manual deletion.
 
-For the first baseline, allow at most three Astra requests with a fixed synthetic prefix, session key and reasoning effort, no tools, no automatic retries and no model switching. Stop on authentication, quota or protocol errors. Check credential validity before dispatch; use a separate isolated login rather than refreshing a daily profile's credentials. Do not copy credential values into reports.
+If the report rejects a journal, use the original regular JSONL files from the configured directory. Do not splice multiple processes into one file or supply the same journal twice. Pass multiple files using repeated `--file` options. The command returns exit code 1 with a fixed, content-free error rather than printing private records. An unfinished final line is reported, not repaired.
 
-The inspected pi-ai `0.85.1` Codex serializer does not send `max_output_tokens`, even when the caller supplies `maxTokens`. A short-answer instruction or client cancellation deadline is not a hard server-side token or cost ceiling. Report this limitation before live sampling; an aborted request may still consume usage. The three-request limit is a request-count bound, not a currency or subscription-quota bound.
+## Validation limits
+
+Automated tests use synthetic provider responses and verify configuration, observed values, cancellation, reporting and recovery. They do not prove current account availability, complete task cost, cache savings or server-side enforcement of client token limits. Any future real-account experiment needs its own bounded scope; installing or enabling the collector does not run an experiment or send an extra model request.
 
 ## Logical cancellation versus transport cleanup
 

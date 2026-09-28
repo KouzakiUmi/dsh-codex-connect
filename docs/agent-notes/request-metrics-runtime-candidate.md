@@ -1,4 +1,4 @@
-# Request metrics: standalone runtime candidate
+# Request metrics: standalone runtime candidate history
 
 ## Scope
 
@@ -20,4 +20,8 @@ Frozen install, full check, Chromium and the exact rc.1/rc.2 same-artifact insta
 
 On the extracted candidate, frozen install and full check passed (131 files / 1,529 tests); Chromium passed (13 files / 73 tests). Both stock DSH rc.1 and rc.2 passed the same-artifact installed runtime checks with defaults unchanged. The tested archive SHA-256 is `43d87c178d16792d674ce3878dc8ab3b9f98541145a91aaae6e16fe61d6f1a9d`; it predates only the final evidence-note update and is not the published 4.51 archive. Existing image/compaction paths and the installed metrics checker were exercised with synthetic responses. No real experiment or account acceptance was run.
 
-This remains a draft product candidate: no new release number is allocated, no `latest` tag changes, and no daily service installation. Final PR-head CI and review remain separate from the preserved local results.
+At that historical checkpoint the product remained a draft, with no new release number or daily service installation. The promotion section below and current PR record supersede that release status; the recorded test/archive identity remains historical.
+
+## Product promotion — 2026-09-28
+
+The maintainer approved advancing this isolated product scope. Alpha 4.52 is now prepared from the reviewed runtime and current main documentation, with a new independent static source review (no blocker), public English/Chinese operational guides, and no internal evaluation runner. Historical candidate evidence above remains unchanged. Current exact-version checks and release outcome are recorded in the PR and release-readiness record; preparation is not publication. No automatic collection, Task activation or daily-service change is included.
