@@ -2,7 +2,7 @@
 
 English | [中文](request-metrics.zh.md)
 
-This source adds opt-in, local-only HTTP-attempt evidence and a boot-free report command. It does not enable task orchestration, change model requests, call a model for measurement, or convert API prices to subscription quota. This guide describes the Alpha 4.52 candidate; Alpha 4.51 and earlier packages do not contain this feature. A candidate is not publication evidence.
+This source adds opt-in, local-only HTTP-attempt evidence and a boot-free report command. It does not enable task orchestration, change model requests, call a model for measurement, or convert API prices to subscription quota. Introduced in the published Alpha 4.52 release; Alpha 4.51 and earlier packages do not contain this feature.
 
 The internal evaluation program is not part of the installed package. This feature supplies evidence for diagnostics and separately designed comparisons; it is not a task-quality evaluator, a user-facing metrics panel or a proven efficiency improvement.
 

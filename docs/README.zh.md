@@ -16,21 +16,21 @@ Codex Connect 为标准 Harness agent loop 添加 `openai-codex` 模型提供方
 
 | 要求 | 已验证组合 |
 |---|---|
-| Codex Connect | `0.1.0-alpha.4.51` |
+| Codex Connect | `0.1.0-alpha.4.52` |
 | DeepSeek Harness | `0.1.7-rc.1` 或 `0.1.7-rc.2`（包版本必须一致） |
 | Node.js | `^22.19.0 \|\| >=24.0.0` |
 | 账户 | 通过 ChatGPT OAuth 使用所请求的 Codex 模型；可用性由 OpenAI 决定 |
 
-截至 2026-09-28，npm `alpha` 指向 4.51，`latest` 仍为 4.50；本次维护发布没有提升 `latest`。安装此 DSH 组合请使用下方精确版本命令；会移动的 npm tag 不保证其他宿主版本的兼容性。
+截至 2026-09-28，npm `alpha` 指向 4.52，`latest` 仍为 4.50；本次产品发布没有提升 `latest`。安装此 DSH 组合请使用下方精确版本命令；会移动的 npm tag 不保证其他宿主版本的兼容性。
 
-Alpha 4.51 修复异常诊断事件类型导致请求中断，以及未读取／暂停读取时取消或网络错误未及时传到外层的问题。本版本不包含草稿中的请求计量或评测功能。
+Alpha 4.52 保留 4.51 的诊断修复，并加入[可选本地请求计量](request-metrics.zh.md)：记录实际观察到的请求、用量和耗时，支持离线报告。配置私有目录后才采集；未知用量不当作零。不上传遥测，不包含内部评测运行器或统计面板，也不恢复 Task。
 
 该安装包已通过原版 DSH `0.1.7-rc.1` 和 `0.1.7-rc.2` 的安装及运行回归验证；Task 控件仍暂停：激活请求会被拒绝，新 Session 不显示这些控件。跨 Harness 升级迁移旧任务授权尚未验证。较旧组合及其任务行为见[安装与升级](../INSTALL.md)。
 
 ### 1. 安装
 
 ```sh
-dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.51
+dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.52
 dsh web
 ```
 
@@ -132,6 +132,7 @@ OAuth 凭据保存在运行 DSH 的主机上，由该主机用于向 OpenAI 认�
 
 - [安装与升级](../INSTALL.md)
 - [配置、诊断与恢复](reference.zh.md)
+- [本地请求计量：启用、报告与停用](request-metrics.zh.md)
 - [从 `dsh-codex` 迁移](../MIGRATION.md)
 - [架构与安全细节](design.zh.md)
 - [自动审查行为](auto-review.zh.md)

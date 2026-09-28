@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-09-28",
+  "version": "0.1.0-alpha.4.52",
+  "pr": 284,
+  "prHead": "460897102971ca169bb2a856b0b3e1ebfa73a4fb",
+  "dailyServicesChanged": false,
+  "latestPromoted": false,
+  "realProductAcceptanceCalls": 0,
+  "prChecksPassed": 10,
+  "mergeCommit": "21504f83f0bed1d5737cb2b1972bcd3246b8d3a1",
+  "mainCiRun": 36366815118,
+  "releaseRun": "36367211049",
+  "originalRunConclusion": "failure",
+  "recoveryPreflight": {
+    "status": "verified-recovery-needed",
+    "version": "0.1.0-alpha.4.52",
+    "runId": "36367211049",
+    "sha": "21504f83f0bed1d5737cb2b1972bcd3246b8d3a1",
+    "sha256": "5cab311ed632fb2156188a13633d0bf5ca4c569dad8415da4c95ad4d5063e4a4",
+    "npmRepublished": false,
+    "tagsPromoted": false
+  },
+  "recovery": {
+    "status": "recovered",
+    "version": "0.1.0-alpha.4.52",
+    "runId": "36367211049",
+    "sha": "21504f83f0bed1d5737cb2b1972bcd3246b8d3a1",
+    "sha256": "5cab311ed632fb2156188a13633d0bf5ca4c569dad8415da4c95ad4d5063e4a4",
+    "npmRepublished": false,
+    "tagsPromoted": false,
+    "releaseId": 397895899
+  },
+  "finalReadOnlyVerification": {
+    "status": "already-complete",
+    "version": "0.1.0-alpha.4.52",
+    "runId": "36367211049",
+    "sha": "21504f83f0bed1d5737cb2b1972bcd3246b8d3a1",
+    "sha256": "5cab311ed632fb2156188a13633d0bf5ca4c569dad8415da4c95ad4d5063e4a4",
+    "npmRepublished": false,
+    "tagsPromoted": false,
+    "releaseId": 397895899
+  },
+  "channels": {
+    "latest": "0.1.0-alpha.4.50",
+    "alpha": "0.1.0-alpha.4.52"
+  },
+  "tagCommit": "21504f83f0bed1d5737cb2b1972bcd3246b8d3a1",
+  "release": {
+    "isDraft": false,
+    "isPrerelease": true,
+    "publishedAt": "2026-09-28T01:52:28Z",
+    "tagName": "v0.1.0-alpha.4.52",
+    "targetCommitish": "21504f83f0bed1d5737cb2b1972bcd3246b8d3a1",
+    "url": "https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.1.0-alpha.4.52"
+  },
+  "verified": true
+}
