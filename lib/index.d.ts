@@ -1,5 +1,6 @@
 import z from "@deepseek-ai/schemastery";
 import { AuthInteraction, Credential, CredentialInfo, CredentialStore, OAuthCredential } from "@earendil-works/pi-ai";
+import { GenerateOptions, StreamChunk } from "@deepseek-ai/dsh-llm";
 import { Context, Service, Volatile } from "@deepseek-ai/cordis";
 import "@deepseek-ai/dsh-tools";
 import { WebSearchProvider, WebSearchRequest, WebSearchResult } from "@deepseek-ai/dsh-web";
@@ -141,6 +142,62 @@ export declare class OpenAICodexProxyManager {
 /** Probe the bounded automatic candidate set in parallel. */
 export declare function detectOpenAICodexProxies(manager: OpenAICodexProxyManager): Promise<readonly OpenAICodexProxyProbeResult[]>;
 //#endregion
+//#region src/request-metrics.d.ts
+interface RequestMetricUsage {
+  /** Responses input_tokens includes cached input; fields remain null when absent or invalid. */
+  input: number | null;
+  cachedInput: number | null;
+  cacheWrite: number | null;
+  output: number | null;
+  /** Subset of output, never added to output again. */
+  reasoningOutput: number | null;
+}
+type RequestMetricOutcome = 'completed' | 'incomplete' | 'provider-error' | 'http-error' | 'network-error' | 'cancelled' | 'unobserved';
+interface RequestMetricFinish {
+  schemaVersion: 1;
+  event: 'finish';
+  id: string;
+  at: number;
+  elapsedMs: number;
+  status: number | null;
+  outcome: RequestMetricOutcome;
+  usage: RequestMetricUsage;
+  observation: 'observed' | 'missing' | 'oversized' | 'malformed';
+}
+/** One process-local writer; exclusive owner-only file, bounded size, no shared journal mutation. */
+declare class RequestMetrics {
+  private readonly maxBytes;
+  private readonly warn;
+  private readonly scope;
+  private fd;
+  private bytes;
+  private disabled;
+  private readonly journalId;
+  readonly filename: string;
+  constructor(directory: string, maxBytes?: number, warn?: () => void);
+  private stop;
+  private write;
+  /** Release the local journal descriptor; in-flight writes after close are not claimed as recorded. */
+  close(): void;
+  /** Scope each actual adapter call, including compaction/title calls, without rewriting options. */
+  stream(stream: (options: GenerateOptions) => AsyncIterable<StreamChunk>, options: GenerateOptions): AsyncIterable<StreamChunk>;
+  /** Called after admission/reservation, immediately before a real fetch attempt. */
+  begin(lane: OpenAICodexBackendLane, id: string): MetricAttempt;
+}
+/** Records the whole response lifetime, including unread-body cancellation, exactly once. */
+declare class MetricAttempt {
+  private readonly id;
+  private readonly write;
+  private readonly start;
+  private ended;
+  private status;
+  private observer;
+  constructor(id: string, write: (event: RequestMetricFinish) => void);
+  headers(response: Response, expected?: 'sse'): void;
+  feed(value: Uint8Array): void;
+  finish(transport: 'eof' | 'cancelled' | 'network-error'): void;
+}
+//#endregion
 //#region src/backend-request-policy.d.ts
 type OpenAICodexBackendIdentity = 'plugin' | 'preserve' | 'probe';
 interface OpenAICodexBackendResponseMeta {
@@ -160,6 +217,8 @@ interface OpenAICodexBackendRunOptions {
 }
 interface OpenAICodexBackendFetchOptions {
   readonly lane: OpenAICodexBackendLane;
+  /** Known successful protocol when the upstream omits its media type; observation only. */
+  readonly responseFormat?: 'sse';
   readonly identity?: OpenAICodexBackendIdentity;
   readonly fetch?: BackendFetch;
   readonly onAttempt?: (meta: Pick<OpenAICodexBackendResponseMeta, 'clientRequestId'>) => void;
@@ -175,12 +234,13 @@ declare class OpenAICodexBackendRequests {
   private readonly resolveProxyUrl;
   private readonly maxConcurrent;
   private readonly beforeAuxiliaryAttempt?;
+  readonly metrics?: RequestMetrics | undefined;
   private active;
   private readonly waiters;
   private readonly cooldowns;
   private readonly lifecycle;
   private disposed;
-  constructor(proxyManager?: OpenAICodexProxyManager | undefined, resolveProxyUrl?: () => string | undefined, maxConcurrent?: number, beforeAuxiliaryAttempt?: (() => Promise<void>) | undefined);
+  constructor(proxyManager?: OpenAICodexProxyManager | undefined, resolveProxyUrl?: () => string | undefined, maxConcurrent?: number, beforeAuxiliaryAttempt?: (() => Promise<void>) | undefined, metrics?: RequestMetrics | undefined);
   private combinedSignal;
   private drain;
   private release;
@@ -829,6 +889,10 @@ export declare const inject: string[];
 export declare const OPENAI_CODEX_SETTINGS_NS = "llm-openai-codex";
 /** Plain configuration accepted by direct Cordis composition and unit tests. */
 export interface Config {
+  /** Opt-in absolute owner-only directory for local request evidence; never uploads telemetry. Restart to change. */
+  requestMetricsDirectory?: string | undefined;
+  /** Per-process journal limit; reaching it stops recording with a warning, not model execution. */
+  requestMetricsMaxBytes?: number;
   /** Complete interactive OAuth deadline in milliseconds; applies when the plugin loads. */
   oauthTimeoutMs?: number;
   /** Model ids advertised in selectors; omitted to advertise the full catalog. */
@@ -876,6 +940,8 @@ export interface Config {
 }
 /** Runtime configuration exposes each editable field through Cordis's public Volatile type. */
 export interface VolatileConfig {
+  requestMetricsDirectory?: string | undefined;
+  requestMetricsMaxBytes: number;
   oauthTimeoutMs: number;
   models: Volatile<string[] | undefined>;
   enableProxy: Volatile<boolean>;

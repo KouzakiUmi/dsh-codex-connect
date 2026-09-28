@@ -14,6 +14,7 @@ import { openAICodexAuthPath } from './store.ts'
 import { normalizeTrustedOrigin, OpenAICodexTrustedOriginsStore } from './trusted-origins.ts'
 import { runCapabilityCommand } from './capability-cli.ts'
 import { runAutoReviewProbeCommand } from './auto-review-cli.ts'
+import { runRequestMetricsCommand } from './request-metrics-cli.ts'
 import { publicAuthError as safeMessage } from './auth-error.ts'
 
 type Action = 'doctor' | 'login' | 'logout' | 'migrate-history' | 'status' | 'trust-origin' | 'trusted-origins' | 'untrust-origin'
@@ -94,6 +95,7 @@ function printHelp(): void {
     '       dsh-codex-connect untrust-origin <origin>',
     '       dsh-codex-connect capabilities [--model <catalog-id>] [--probe] [--proxy <http(s)-origin>] [--timeout-ms <1..60000>] [--json]',
     '       dsh-codex-connect auto-review-probe [--proxy <http(s)-origin>] [--timeout-ms <1..60000>] [--json]',
+    '       dsh-codex-connect metrics --file <journal.jsonl> [--file <journal.jsonl>] [--session <DSH-session-id>] [--json]',
     '',
     '  doctor         inspect secret-free runtime and OAuth file metadata; an explicit DSH anchor verifies host package versions',
     '  auto-review-probe test the hidden approval reviewer with one synthetic no-op',
@@ -150,6 +152,7 @@ export async function run(argv: readonly string[]): Promise<number> {
   const [rawAction, ...flags] = argv
   if (rawAction === 'capabilities') return runCapabilityCommand(flags)
   if (rawAction === 'auto-review-probe') return runAutoReviewProbeCommand(flags)
+  if (rawAction === 'metrics') return runRequestMetricsCommand(flags)
   const actions: readonly Action[] = ['doctor', 'login', 'logout', 'migrate-history', 'status', 'trust-origin', 'trusted-origins', 'untrust-origin']
   if (!actions.includes(rawAction as Action)) {
     process.stderr.write(`dsh-codex-connect: expected doctor, login, logout, migrate-history, status, trust-origin, trusted-origins, or untrust-origin; got ${JSON.stringify(rawAction)}\n`)
