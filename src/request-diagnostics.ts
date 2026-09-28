@@ -100,7 +100,10 @@ class ErrorFrameObserver {
     let event: unknown
     try { event = JSON.parse(data) } catch { this.stop(); return }
     if (!record(event)) { this.stop(); return }
-    if (['response.completed', 'response.done', 'response.incomplete'].includes(String(event['type']))) { this.stop(); return }
+    // Diagnostic observation must not coerce untrusted JSON or interrupt the consumer.
+    const eventType = event['type']
+    if (typeof eventType !== 'string') { this.stop(); return }
+    if (['response.completed', 'response.done', 'response.incomplete'].includes(eventType)) { this.stop(); return }
     if (event['type'] !== 'error' && event['type'] !== 'response.failed') return
     this.stop()
     const response = record(event['response']) ? event['response'] : undefined
@@ -120,25 +123,40 @@ function observeResponse(response: Response, diagnostic: SafeDiagnostic): Respon
   const observer = new ErrorFrameObserver(diagnostic)
   const reader = response.body.getReader()
   let released = false
+  let finished = false
+  let output: ReadableStreamDefaultController<Uint8Array>
   const release = (): void => {
     if (!released) { released = true; reader.releaseLock() }
   }
+  const fail = (error: unknown): void => {
+    if (finished) return
+    finished = true
+    output.error(error)
+    // Cancellation is harmless for an already errored reader; it also closes an
+    // unread upstream if an unexpected local observation error caused the failure.
+    void reader.cancel(error).catch(() => undefined)
+    release()
+  }
   const body = new ReadableStream<Uint8Array>({
+    start(controller) { output = controller },
     async pull(controller) {
       try {
         const { done, value } = await reader.read()
-        if (done) { observer.finish(); release(); controller.close(); return }
+        if (finished) return
+        if (done) { observer.finish(); finished = true; release(); controller.close(); return }
         observer.feed(value)
         controller.enqueue(value)
-      } catch (error: unknown) {
-        release()
-        controller.error(error)
-      }
+      } catch (error: unknown) { fail(error) }
     },
     async cancel(reason: unknown) {
+      if (finished) return
+      finished = true
       try { await reader.cancel(reason) } finally { release() }
     },
   }, { highWaterMark: 0 })
+  // Error/cancellation must be observable even when the consumer never reads again.
+  // Normal release/cancel is already terminal, so its reader.closed rejection is ignored.
+  void reader.closed.catch(fail)
   const wrapped = new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
   for (const key of ['url', 'redirected', 'type'] as const) {
     Object.defineProperty(wrapped, key, { value: response[key] })
