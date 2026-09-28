@@ -16,21 +16,21 @@ This guide describes the published pairing below. Check `dsh --version` first an
 
 | Requirement | Verified pairing |
 |---|---|
-| Codex Connect | `0.1.0-alpha.4.51` |
+| Codex Connect | `0.1.0-alpha.4.52` |
 | DeepSeek Harness | `0.1.7-rc.1` or `0.1.7-rc.2` (consistent package set) |
 | Node.js | `^22.19.0 \|\| >=24.0.0` |
 | Account | ChatGPT OAuth with access to the requested Codex model; availability is decided by OpenAI |
 
-As of 2026-09-28, npm `alpha` points to 4.51 while `latest` remains 4.50; this maintenance publication did not promote `latest`. Use the exact version below for this DSH pairing; a moving npm tag is not a compatibility guarantee for other hosts.
+As of 2026-09-28, npm `alpha` points to 4.52 while `latest` remains 4.50; this product publication did not promote `latest`. Use the exact version below for this DSH pairing; a moving npm tag is not a compatibility guarantee for other hosts.
 
-Alpha 4.51 prevents malformed diagnostic event types from interrupting responses and forwards cancellation/network errors through unread or paused responses. It does not include the draft request-metrics or evaluation functionality.
+Alpha 4.52 retains the 4.51 diagnostic fixes and adds [opt-in local request metrics](docs/request-metrics.md): observed requests, usage and latency with offline reporting. Collection stays off until a private directory is configured; unknown usage is not zero. No telemetry upload, internal evaluation runner, statistics panel or Task reopening is included.
 
 On stock DSH `0.1.7-rc.1` and `0.1.7-rc.2`, the package is installation/runtime-regression verified; Task controls remain paused: activation is rejected and fresh Sessions do not show them. Migration of earlier Task grants across a Harness upgrade is not verified. Older supported pairings and their task behavior are documented in [Installation and upgrades](INSTALL.md).
 
 ### 1. Install
 
 ```sh
-dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.51
+dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.52
 dsh web
 ```
 
@@ -132,6 +132,7 @@ A missing entry in [verified-compatibility.json](verified-compatibility.json) me
 
 - [Installation and upgrades](INSTALL.md)
 - [Configuration, diagnostics, and recovery](docs/reference.md)
+- [Local request metrics: enable, report, and disable](docs/request-metrics.md)
 - [Migration from `dsh-codex`](MIGRATION.md)
 - [Architecture and security details](docs/design.md)
 - [Auto-review behavior](docs/auto-review.md)
