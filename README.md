@@ -16,19 +16,21 @@ This guide describes the published pairing below. Check `dsh --version` first an
 
 | Requirement | Verified pairing |
 |---|---|
-| Codex Connect | `0.1.0-alpha.4.50` |
+| Codex Connect | `0.1.0-alpha.4.51` |
 | DeepSeek Harness | `0.1.7-rc.1` or `0.1.7-rc.2` (consistent package set) |
 | Node.js | `^22.19.0 \|\| >=24.0.0` |
 | Account | ChatGPT OAuth with access to the requested Codex model; availability is decided by OpenAI |
 
-As of 2026-09-26, npm `alpha` points to 4.50 while `latest` remains 4.47; publishing this release did not promote `latest`. Use the exact version below for this DSH pairing; a moving npm tag is not a compatibility guarantee for other hosts.
+As of 2026-09-28, npm `alpha` points to 4.51 while `latest` remains 4.50; this maintenance publication did not promote `latest`. Use the exact version below for this DSH pairing; a moving npm tag is not a compatibility guarantee for other hosts.
+
+Alpha 4.51 prevents malformed diagnostic event types from interrupting responses and forwards cancellation/network errors through unread or paused responses. It does not include the draft request-metrics or evaluation functionality.
 
 On stock DSH `0.1.7-rc.1` and `0.1.7-rc.2`, the package is installation/runtime-regression verified; Task controls remain paused: activation is rejected and fresh Sessions do not show them. Migration of earlier Task grants across a Harness upgrade is not verified. Older supported pairings and their task behavior are documented in [Installation and upgrades](INSTALL.md).
 
 ### 1. Install
 
 ```sh
-dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.50
+dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.51
 dsh web
 ```
 
