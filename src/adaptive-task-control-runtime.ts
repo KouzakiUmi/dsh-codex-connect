@@ -1,5 +1,6 @@
 /** Default-off composition: v1 main-task grants and explicitly upgraded v2 roots have one owner. */
 import { randomUUID } from 'node:crypto'
+import { withAdaptiveTaskProvider } from './adaptive-task-scope.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
@@ -25,6 +26,7 @@ export interface TaskControlOptions {
   artifacts(identity: LedgerIdentity): TaskDelegationArtifacts
 }
 export class AdaptiveTaskControlRuntime {
+  readonly wrapProvider = withAdaptiveTaskProvider
   private readonly store: AtomicTaskDocumentStore<ReturnType<typeof parseTaskLedger>>
   private readonly legacy: AdaptiveTaskRuntime
   private readonly ledger: AdaptiveTaskDelegationLedger

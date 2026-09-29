@@ -1,5 +1,6 @@
 /** Explicit composition, real host/persistence/adapter/governor/authentication; no real provider. */
 import { randomUUID } from 'node:crypto'
+import { reserveAdaptiveTaskAttempt } from '../src/adaptive-task-scope.ts'
 import { mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -103,7 +104,7 @@ async function setup(selectedChild = child, catalogModels = [main, selectedChild
     runtime = new AdaptiveTaskControlRuntime(pluginCtx, { directory: join(root, 'tasks'), artifacts: () => artifacts,
       models: async () => Promise.all(catalogModels.map(model => pluginCtx.llm.resolveModelInfo('openai-codex', model))) })
   } })
-  const governor = new OpenAICodexBackendRequests(undefined, undefined, 8, () => runtime.reserveAuxiliary())
+  const governor = new OpenAICodexBackendRequests(undefined, undefined, 8, () => runtime.reserveAuxiliary(), undefined, reserveAdaptiveTaskAttempt)
   ctx.effect(() => () => governor.dispose())
   ctx.llm.registerAdapter(['openai-codex'], createOpenAICodexAdapter(credentials, () => undefined, undefined, undefined,
     undefined, undefined, undefined, undefined, () => false, governor, runtime))

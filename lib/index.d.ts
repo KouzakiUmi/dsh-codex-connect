@@ -235,12 +235,16 @@ declare class OpenAICodexBackendRequests {
   private readonly maxConcurrent;
   private readonly beforeAuxiliaryAttempt?;
   readonly metrics?: RequestMetrics | undefined;
+  /** Optional owner accounting, before auxiliary checks and every actual fetch. */
+  private readonly beforeAttempt?;
   private active;
   private readonly waiters;
   private readonly cooldowns;
   private readonly lifecycle;
   private disposed;
-  constructor(proxyManager?: OpenAICodexProxyManager | undefined, resolveProxyUrl?: () => string | undefined, maxConcurrent?: number, beforeAuxiliaryAttempt?: (() => Promise<void>) | undefined, metrics?: RequestMetrics | undefined);
+  constructor(proxyManager?: OpenAICodexProxyManager | undefined, resolveProxyUrl?: () => string | undefined, maxConcurrent?: number, beforeAuxiliaryAttempt?: (() => Promise<void>) | undefined, metrics?: RequestMetrics | undefined,
+  /** Optional owner accounting, before auxiliary checks and every actual fetch. */
+  beforeAttempt?: (() => Promise<void>) | undefined);
   private combinedSignal;
   private drain;
   private release;

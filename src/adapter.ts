@@ -22,13 +22,14 @@ import type { ReserveRequestPermits } from './reserve-state.ts'
 import { OPENAI_CODEX_RESERVE_MODEL, OPENAI_CODEX_RESERVE_NORMAL_MODEL } from './reserve-usage.ts'
 import { streamWithNativeCompactionScope, withOpenAICodexNativeCompaction } from './native-compaction.ts'
 import { streamWithCodexRequestDiagnostics, withCodexDiagnosticFetch } from './request-diagnostics.ts'
-import { withAdaptiveTaskProvider } from './adaptive-task-scope.ts'
 import { decodeImageInputAttachment } from './image-input-contract.ts'
 
 export { OPENAI_CODEX_ASTRA_MODEL_ID, OPENAI_CODEX_TRANSPORT, openAICodexModelCatalog, withOpenAICodexAstra, withOpenAICodexModels } from './model-catalog.ts'
 
 /** Omission preserves ordinary dispatch; authority stays with the live task runtime. */
 export interface OpenAICodexTaskDispatch {
+  /** Explicit legacy-task provider policy; ordinary profiles do not import it. */
+  wrapProvider?: (provider: Provider) => Provider
   stream(options: GenerateOptions, delegate: (next: GenerateOptions) => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>
 }
 
@@ -106,8 +107,10 @@ function requestProvider(
   proxyManager?: OpenAICodexProxyManager,
   resolveProxyUrl?: () => string | undefined,
   backendRequests?: OpenAICodexBackendRequests,
+  wrapProvider?: (provider: Provider) => Provider,
 ): Provider {
-  const configured = withAdaptiveTaskProvider(withOpenAICodexFastMode(withOpenAICodexNativeCompaction(provider), fastMode))
+  const ordinary = withOpenAICodexFastMode(withOpenAICodexNativeCompaction(provider), fastMode)
+  const configured = wrapProvider === undefined ? ordinary : wrapProvider(ordinary)
   const streamSimple = configured.streamSimple
   return {
     ...configured,
@@ -139,6 +142,7 @@ export function createOpenAICodexProfile(
   resolveProxyUrl?: () => string | undefined,
   contextWindowOverrides?: Readonly<Record<string, number>> | undefined,
   backendRequests?: OpenAICodexBackendRequests,
+  wrapProvider?: (provider: Provider) => Provider,
 ): ResolvedPiAiProviderProfile & { piProvider: Provider } {
   const effectiveProvider = contextWindowOverrides === undefined
     ? provider
@@ -154,7 +158,7 @@ export function createOpenAICodexProfile(
     retryPolicy: resolveRetryPolicy(undefined, 'dsh-codex-connect retryPolicy'),
     configuredMaxTokens: new Map(),
     modelErrors: new Map<string, string>(),
-    piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests),
+    piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider),
   }
   return profile
 }
@@ -248,7 +252,7 @@ export function createOpenAICodexAdapter(
   const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => {
     const overrides = contextWindowOverrides?.()
     if (profiles === undefined || !deepEqualJson(previousOverrides, overrides)) {
-      const profile = createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, overrides, backendRequests)
+      const profile = createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, overrides, backendRequests, taskDispatch?.wrapProvider)
       previousOverrides = overrides === undefined ? undefined : { ...overrides }
       // PiAiAdapter keys snapshots by map identity; captured calls keep the old map.
       profiles = new Map([[OPENAI_CODEX_PROVIDER, profile]])
