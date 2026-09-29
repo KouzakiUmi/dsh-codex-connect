@@ -10,7 +10,9 @@ The Host registers `llm-openai-codex` as the plugin-owned capability settings na
 
 Fast Mode remains per-session process-local state. Separate default-off profile settings seed newly started top-level and subagent sessions through `agent/created`; resume, setting edits, and repeated startup notifications do not change an existing session's Composer choice. The adapter adds `service_tier: 'priority'` only on Codex requests for an enabled session.
 
-## Task-level model selection (unreleased Phase 1 candidate)
+## Task-level model selection: frozen
+
+Phase 1 #236 and Phase 2 #239 were merged; #248 subsequently paused public activation, which remains paused in Alpha 4.52. The [maintenance scope](maintenance-scope.md) freezes further orchestration development. Retain old-state readback and authorized safety exits. The two candidate descriptions below are historical architecture context, not current release status or instructions to finish acceptance.
 
 The optional conversation control grants a bounded main-model/effort scope to one task, initially Sol/Medium. The task runtime, adapter dispatch wrapper and existing backend governor share durable request accounting. There is no separate Think, Split or Remember product selector. Host-owned permissions, session history and compaction remain their existing owners; model choice grants no new tool authority. See [the consolidated contract and migration](experiments/adaptive-task-phase1.md) for source selection from #232–#235, cancellation, recovery and acceptance limits.
 

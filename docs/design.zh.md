@@ -8,6 +8,10 @@ bundle patch 只插入 `llm-openai-codex`，不会写入 `agent-default-model` �
 
 Host 将 `llm-openai-codex` 注册为插件自有的能力 settings namespace。DSH 的 `llm-pi-ai` catalog 持有 `openai-codex` 可配置 provider 目录条目，Codex Connect 只注册实际 adapter，不重复声明该条目。浏览器通过 Harness settings-scope transport 绑定插件 namespace，把账户、额度以及带保存/放弃的能力配置放在现有“插件配置”卡片中。带 revision 防护的逐字段写入不会覆盖无关设置；提交后会即时协调搜索与图片能力的注册状态。插件绝不写入默认模型设置。
 
+## Task 开发冻结
+
+维护范围现以[核心维护决定](maintenance-scope.md)为准：Task Phase 1/2 实现已经合并，但公开启动入口保持暂停，后续自动编排开发冻结。保留旧状态读取、经授权的停止与人工接管；历史候选验收计划不再是当前待办。
+
 ## OAuth 持久化
 
 插件使用 `$DSH_HOME/.openai-codex-auth.json`，与 Codex CLI/Desktop 状态分离。格式 version 2 最多保存 16 个 OAuth 账户，并明确指定唯一当前账户。原 version 1 文件仍可读取，第一次修改凭据时才迁移；迁移前会先生成仅所有者可读的 `.openai-codex-auth.json.v1-backup` 回退副本。若该副本已存在，它必须仅所有者可读且与当前 version 1 文件一致，否则迁移会在替换主文件前停止。移除任一账户或执行退出登录时会删除该副本，避免已移除凭据继续留存。文档大小上限为 512 KiB。POSIX 上拒绝组/其他用户可读文件，也拒绝非普通文件；写入采用原子替换，所有修改使用 Harness 跨进程文件锁，返回给调用方的是凭据副本。

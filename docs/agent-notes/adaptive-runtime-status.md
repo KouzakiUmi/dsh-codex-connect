@@ -1,3 +1,7 @@
+# Current planning decision — 2026-09-29
+
+The [core maintenance scope](../maintenance-scope.md) supersedes every proposed next step below. Task and automatic delegation are frozen; internal evaluation is archival work, not a prerequisite to reopening. Preserve historical evidence and shared safety/recovery obligations. The dated checkpoints below are not a live dashboard or authorization to resume.
+
 # Phase 1 merged / Phase 2 main-based review — 2026-09-23
 
 Phase 1 #236 was reviewed and squash-merged as `3c3d1762536efafaecefb36146e062dad5edd4f8`; its tree exactly equals reviewed `76c3c0c`. Main's active ruleset permits squash only. The Phase 2 branch retains its source history and connects that identical Phase 1 main tree without changing product bytes; #239 now proceeds through a main-based exact-head CI/CodeQL gate. Source branches remain intact. This supersedes the historical no-push/no-merge status below, not their evidence limitations.

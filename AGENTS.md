@@ -2,6 +2,8 @@
 
 ## Start with the task
 
+Read [the current maintenance scope](docs/maintenance-scope.md) before roadmap or experimental work. Adaptive Task, automatic delegation and unproven optimizations are frozen; archived evaluation plans are not instructions to resume. Preserve shared safety/recovery code and existing user data. Concrete defects remain separately actionable.
+
 Verify the repository, branch, HEAD and existing changes. Preserve unrelated work.
 Use [the dated runtime checkpoint](docs/agent-notes/adaptive-runtime-status.md) when resuming Think, Split or Remember work; confirm mutable GitHub facts before acting on them.
 Read only the relevant additional material:
