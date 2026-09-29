@@ -27,6 +27,7 @@ import {
 } from './check-dsh-install.mjs'
 import { validateRuntimeProjection } from './check-installed-runtime.mjs'
 import './canary-multiversion.test.mjs'
+import './canary-maintenance.test.mjs'
 
 const failures = []
 let assertionCount = 0
@@ -406,7 +407,7 @@ const supersededFixture = await runSupersededCandidateFixture()
 assertContract(
   'issue 86 regression: an older channel is skipped before the isolated checker runs',
   supersededFixture.status === 0
-    && supersededFixture.report.status === 'pass'
+    && supersededFixture.report.status === 'skipped'
     && supersededFixture.report.classification === 'not-newer'
     && supersededFixture.report.stage === 'compare-candidate',
 )

@@ -83,7 +83,7 @@ jobs:
             const fs = require('node:fs')
             const { pathToFileURL } = require('node:url')
             const trackerUrl = pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/canary-tracking.mjs`).href
-            const { buildCanaryTrackingIssue } = await import(trackerUrl)
+            const { buildCanaryTrackingIssue, canaryTrackerAction } = await import(trackerUrl)
             if (!fs.existsSync(process.env.FIRST_REPORT)) {
               core.info('The candidate check produced no report; no version-scoped tracker can be updated.')
               return
@@ -108,7 +108,12 @@ jobs:
               per_page: 100,
             })
             const existing = issues.find(issue => issue.pull_request === undefined && issue.body?.includes(tracking.marker))
-            if (existing === undefined) {
+            const action = canaryTrackerAction(existing, tracking)
+            if (action === 'suppressed') {
+              core.notice(`DSH tracker ${existing.html_url} was closed as not planned; evidence remains in this run. Maintainer review is required to reopen.`)
+              return
+            }
+            if (action === 'create') {
               const created = await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -123,7 +128,7 @@ jobs:
             labels.delete('bug')
             labels.delete('enhancement')
             labels.add(tracking.label)
-            if (existing.state === 'closed') {
+            if (action === 'reopen') {
               await github.rest.issues.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -136,8 +141,8 @@ jobs:
               core.notice(`Reopened DSH candidate tracker ${existing.html_url}`)
               return
             }
-            if (existing.body?.includes(tracking.stateMarker) && existing.title === tracking.title) {
-              core.info(`DSH candidate tracker ${existing.html_url} already records ${tracking.state}; no update is needed.`)
+            if (action === 'unchanged') {
+              core.info(`DSH candidate tracker ${existing.html_url} already records this evidence; no update is needed.`)
               return
             }
             await github.rest.issues.update({

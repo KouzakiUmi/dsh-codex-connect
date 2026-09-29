@@ -233,12 +233,18 @@ export function parseCanaryArgs(args) {
 }
 
 async function emitReport(path, report) {
+  report.checkedAt = new Date().toISOString()
+  report.checkExecuted = report.stage === 'isolated-install'
   const serialized = `${JSON.stringify(report)}\n`
   if (path !== undefined) {
     await mkdir(dirname(path), { recursive: true })
     await writeFile(path, serialized, 'utf8')
   }
   process.stdout.write(serialized)
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    await appendFile(process.env.GITHUB_STEP_SUMMARY,
+      `### DSH ${report.channel}: ${report.status}\n\n- Version: ${report.candidateVersion ?? 'unresolved'}\n- Check executed: ${report.checkExecuted ? 'yes' : 'no'}\n- Classification: ${report.classification}\n- Full user acceptance: not assessed\n\n`)
+  }
 }
 
 function baseReport(supportedVersion, supportedVersions, channel) {
@@ -309,7 +315,7 @@ export async function runCanary(options, dependencies = {}) {
     await emitReport(outputPath, {
       ...base,
       candidateVersion,
-      status: 'pass',
+      status: 'skipped',
       classification: 'duplicate',
       stage: 'compare-candidate',
       summary: `DSH ${channel} matches ${duplicateOwner} at ${candidateVersion}; the ${duplicateOwner} canary owns this candidate.`,
@@ -321,7 +327,7 @@ export async function runCanary(options, dependencies = {}) {
     await emitReport(outputPath, {
       ...base,
       candidateVersion,
-      status: 'pass',
+      status: 'skipped',
       classification: 'not-newer',
       stage: 'compare-candidate',
       summary: `DSH ${channel} is ${candidateVersion}, which does not supersede the declared supported version ${supportedVersion}; the isolated candidate check was skipped.`,
