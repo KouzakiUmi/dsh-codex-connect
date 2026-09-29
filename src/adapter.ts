@@ -3,6 +3,7 @@
 import { defaultProviderAuthContext, InMemoryCredentialStore } from '@earendil-works/pi-ai'
 import type { Context as PiContext, Provider, SimpleStreamOptions } from '@earendil-works/pi-ai'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
+import { codexProviderContext } from './pi-context.ts'
 import { resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, GenerateOptions, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
@@ -116,7 +117,7 @@ function requestProvider(
     ...configured,
     streamSimple(model, context: PiContext, options?: SimpleStreamOptions) {
       const proxyUrl = resolveProxyUrl?.()
-      const operation = () => streamSimple.call(configured, model, context, withCodexDiagnosticFetch(options, backendRequests))
+      const operation = () => streamSimple.call(configured, model, codexProviderContext(context), withCodexDiagnosticFetch(options, backendRequests))
       return backendRequests?.runStream(operation) ?? proxyManager?.runStream(proxyUrl, operation) ?? operation()
     },
     auth: {
