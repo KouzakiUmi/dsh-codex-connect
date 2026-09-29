@@ -85,6 +85,7 @@ export function buildCanaryTrackingIssue(first, second, metadata) {
     `- Plugin commit: \`${pluginCommit}\``,
     `- Node.js: \`${final.nodeVersion ?? 'unknown'}\``,
     `- Workflow run: ${metadata.runUrl}`,
+    `- Checked at: ${final.checkedAt ?? 'not recorded'}`,
     '',
     'Bounded, path-redacted summary from the final attempt:',
     '',
@@ -106,4 +107,12 @@ export function buildCanaryTrackingIssue(first, second, metadata) {
     body,
     label,
   }
+}
+
+/** Refresh evidence without reopening an explicit maintainer rejection. */
+export function canaryTrackerAction(existing, tracking) {
+  if (existing === undefined) return 'create'
+  if (existing.state === 'closed' && existing.state_reason === 'not_planned') return 'suppressed'
+  if (existing.state === 'closed') return 'reopen'
+  return existing.body === tracking.body && existing.title === tracking.title ? 'unchanged' : 'update'
 }

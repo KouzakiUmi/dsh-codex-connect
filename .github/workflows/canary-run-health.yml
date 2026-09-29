@@ -1,0 +1,76 @@
+name: Canary run health
+
+on:
+  workflow_run:
+    workflows: [Upstream DSH canary, Compatibility canary]
+    types: [completed]
+
+concurrency:
+  group: canary-run-health-${{ github.event.workflow_run.workflow_id }}
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  issues: write
+
+jobs:
+  record:
+    if: github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      # Do not check out or execute code/artifacts from the triggering run.
+      - uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const run = context.payload.workflow_run
+            if (run.head_branch !== 'main' || run.head_repository?.full_name !== `${context.repo.owner}/${context.repo.repo}`) return
+            if (!['schedule', 'workflow_dispatch'].includes(run.event)) return
+            const recent = await github.rest.actions.listWorkflowRuns({
+              ...context.repo, workflow_id: run.workflow_id, branch: 'main', per_page: 1,
+            })
+            // A late completion must not replace a newer run's health evidence.
+            if (recent.data.workflow_runs[0]?.id !== run.id) return
+            const marker = `<!-- dsh-canary-run-health:${run.workflow_id} -->`
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              ...context.repo, state: 'all', per_page: 100,
+            })
+            const existing = issues.find(issue => !issue.pull_request && issue.body?.includes(marker))
+            const failed = run.conclusion !== 'success'
+            // Version trackers already explain ordinary checker failures. This is
+            // the fallback for resolution, setup, timeout and report/tracker failures.
+            const jobs = failed ? await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+              ...context.repo, run_id: run.id, filter: 'latest', per_page: 100,
+            }) : []
+            const failedJobs = jobs.filter(job => job.conclusion !== 'success' && job.conclusion !== 'skipped')
+            const versionTracked = failedJobs.length > 0 && failedJobs.every(job => {
+              const channel = /^canary \((latest|next|alpha)\)$/.exec(job.name)?.[1]
+              const badSteps = (job.steps ?? []).filter(step => ['failure', 'cancelled', 'timed_out'].includes(step.conclusion))
+              return channel && badSteps.length > 0
+                && badSteps.every(step => ['Check DSH upstream candidate', 'Confirm a candidate failure', 'Fail after two unsuccessful checks'].includes(step.name))
+                && issues.some(issue => !issue.pull_request
+                  && /<!-- dsh-canary(?:-regression)?:/.test(issue.body ?? '')
+                  && issue.body.includes(run.html_url)
+                  && issue.body.includes(`- Current owning channel: \`${channel}\``))
+            })
+            if (!existing && (!failed || versionTracked)) return
+            if (existing?.state === 'closed' && !failed) return
+            const body = [marker, '## Canary run health', '',
+              `- Workflow: ${run.name}`,
+              `- Run: ${run.html_url}`,
+              `- Commit: ${run.head_sha}`,
+              `- Conclusion: ${run.conclusion}`,
+              `- Updated: ${run.updated_at}`,
+              '', failed
+                ? 'This run did not complete successfully. Inspect job/step results; do not infer a DSH compatibility defect from workflow failure alone.'
+                : 'The latest workflow completed successfully. This is recovery evidence only: skipped checks and full user acceptance must still be reviewed. Do not auto-close an unresolved defect.',
+              '', 'Maintenance must record the cause, owner, next step, and any fix/release evidence. No model requests or credentials are needed to inspect this run.',
+            ].join('\n')
+            const title = `canary: run health for ${run.name}`
+            if (!existing) {
+              await github.rest.issues.create({ ...context.repo, title, body, labels: ['bug'] })
+            } else if (existing.state === 'closed' && existing.state_reason === 'not_planned') {
+              core.notice(`Run health tracker ${existing.html_url} is not planned; review the new run without automatically reopening it.`)
+            } else if (existing.body !== body || existing.state === 'closed') {
+              await github.rest.issues.update({ ...context.repo, issue_number: existing.number, title, body, state: 'open' })
+            }
