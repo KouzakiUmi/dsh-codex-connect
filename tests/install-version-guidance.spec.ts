@@ -18,8 +18,8 @@ describe('installation version guidance', () => {
     ['0.1.5-alpha.1', '0.1.0-alpha.4.41'],
     ['0.1.5-rc.1', '0.1.0-alpha.4.41'],
     ['0.1.5-rc.2', '0.1.0-alpha.4.41'],
-    ['0.1.7-rc.1', '0.1.0-alpha.4.52'],
-    ['0.1.7-rc.2', '0.1.0-alpha.4.52'],
+    ['0.1.7-rc.1', '0.1.0-alpha.4.53'],
+    ['0.1.7-rc.2', '0.1.0-alpha.4.53'],
   ])('selects the recorded DSH %s / Codex Connect %s pair before installation', (dsh, plugin) => {
     expect(firstInstall).toBeGreaterThan(0)
     expect(compatibility.pluginVersions).toContainEqual(expect.objectContaining({
@@ -38,7 +38,7 @@ describe('installation version guidance', () => {
       readFile(new URL('../docs/README.zh.md', import.meta.url), 'utf8'),
     ])
     for (const guide of [english, chinese]) {
-      expect(guide).toContain('dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.52')
+      expect(guide).toContain('dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.53')
       expect(guide).toContain('`latest`')
       expect(guide).toContain('`0.1.7-rc.1`')
       expect(guide).toContain('`0.1.7-rc.2`')
@@ -49,9 +49,9 @@ describe('installation version guidance', () => {
     expect(chinese).toContain('**已发布的实验功能：**')
     expect(chinese).toContain('仍默认关闭')
     expect(chinese).toContain('仍未验证')
-    expect(install).toContain('npm `alpha` points to `0.1.0-alpha.4.52`; `latest` remains `0.1.0-alpha.4.50`')
-    expect(english).toContain('`alpha` points to 4.52 while `latest` remains 4.50')
-    expect(chinese).toContain('`alpha` 指向 4.52，`latest` 仍为 4.50')
+    expect(install).toContain('npm `alpha` points to `0.1.0-alpha.4.53`; `latest` remains `0.1.0-alpha.4.50`')
+    expect(english).toContain('`alpha` points to 4.53 while `latest` remains 4.50')
+    expect(chinese).toContain('`alpha` 指向 4.53，`latest` 仍为 4.50')
     expect(install).toContain('Stock rc.1 keeps Task controls paused')
     expect(install).toContain('enableReserveFallback: false')
   })
