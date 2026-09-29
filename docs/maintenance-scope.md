@@ -50,6 +50,8 @@ Local research preservation has a separate private archive manifest; do not comm
 
 The [first code separation](agent-notes/core-transport-decoupling.md) removes implicit Task imports from ordinary transport. It retains explicit legacy-task wiring in the product and does not claim the entire runtime is retired.
 
+The [activation UI retirement](agent-notes/task-activation-ui-retirement.md) removes the full experimental form and its exclusive browser tests after dependency inspection. The public contribution retains recovery only. Historical design/evidence entries describing the deleted form are archival, not current source paths or reopening work.
+
 ## Evidence baseline
 
 Inspected main: `e26165d962102ca6c6eeba5c5d9a8cfa75ffd02a`, tree `63c1842ed9b6c2527a774ec1943ad9733933231e`. The local documentation branch starts from the identical reviewed PR #287 tree. Public release scope: [Alpha 4.52](https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.1.0-alpha.4.52). Historical obligations: [#195](https://github.com/franksong2702/dsh-codex-connect/issues/195), [#65](https://github.com/franksong2702/dsh-codex-connect/issues/65), [#194](https://github.com/franksong2702/dsh-codex-connect/issues/194). Their earlier proposed next steps are superseded for local planning, but their GitHub bodies have not been edited by this change.

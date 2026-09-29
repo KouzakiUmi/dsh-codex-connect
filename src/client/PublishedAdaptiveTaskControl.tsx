@@ -3,21 +3,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { ADAPTIVE_TASK_PATH, decodeTaskState } from '../adaptive-task-contract.ts'
 import type { AdaptiveTaskState } from '../adaptive-task-contract.ts'
-import { ADAPTIVE_TASK_PUBLIC_RELEASE } from '../adaptive-task-publication.ts'
-import { AdaptiveTaskControl } from './AdaptiveTaskControl.tsx'
 
 type Props = { sessionId: string; language?: string }
 const words = {
   en: {
     button: 'Existing task controls', title: 'Existing task recovery',
-    paused: 'Automatic model choice and delegation are temporarily unavailable pending maintainer acceptance. You can stop an existing task or continue manually. Its saved history and request counts are retained.',
+    paused: 'Automatic model choice and delegation are frozen. You can stop an existing task or continue manually. Its saved history and request counts are retained.',
     error: 'Task state is unconfirmed. Read it again before taking another action. No operation is automatically retried.',
     busy: 'Reading or applying…', counter: 'Requests reserved', mode: 'Recorded state',
     manual: 'Take over manually', stop: 'Stop this task', refresh: 'Read state again', close: 'Close',
   },
   zh: {
     button: '已有任务控制', title: '已有任务恢复',
-    paused: '自动选模型和只读委派暂未开放，等待维护者验收。已有任务可以停止或切回手动，历史记录和请求计数会保留。',
+    paused: '自动选模型和只读委派已冻结。已有任务可以停止或切回手动，历史记录和请求计数会保留。',
     error: '尚未确认任务状态。请重新读取后再操作；不会自动重试任何操作。',
     busy: '正在读取或应用…', counter: '已预留请求', mode: '已记录状态',
     manual: '切回手动', stop: '停止这项任务', refresh: '重新读取状态', close: '关闭',
@@ -27,9 +25,7 @@ const buttonStyle: CSSProperties = { minHeight: 36, padding: '5px 10px', borderR
   border: '1px solid var(--dsw-alias-border-l2)', background: 'var(--dsw-alias-bg-layer-1)', color: 'inherit', cursor: 'pointer' }
 
 export function PublishedAdaptiveTaskControl(props: Props) {
-  return ADAPTIVE_TASK_PUBLIC_RELEASE
-    ? <AdaptiveTaskControl {...props} />
-    : <TaskRecoveryControl key={props.sessionId} {...props} />
+  return <TaskRecoveryControl key={props.sessionId} {...props} />
 }
 
 function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
