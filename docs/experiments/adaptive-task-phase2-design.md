@@ -23,7 +23,7 @@ The original design-only slice was followed by Phase 1 installed-page acceptance
 | `src/adaptive-task-scope.ts`, `src/backend-request.ts` | Exact scoped route, no automatic retry, existing governor | Reuse for child transport with one debit, no second request governor |
 | Host `dsh-agent` baseline types | Factory `create` with unpublished `setup`, publication `commit`, owned `AgentHandle.dispose()` | Use owned handle; creation signal is not a lifetime signal |
 | Old #200 `83f6a02`, `src/split-worker.ts` | Fixed worker, one pre-staged offer, rejects persistence-enabled hosts | Reference only; cannot become the new runtime by removing its guard |
-| `src/client/AdaptiveTaskControl.tsx` | One task model-choice surface | Optional delegation consent/status inside it, not a Split setting |
+| Retired `src/client/AdaptiveTaskControl.tsx` | Historical task model-choice surface | Removed under the maintenance freeze; current public UI is recovery-only, not delegation consent |
 
 Host evidence above is the installed baseline API, not a claim all four host versions have identical signatures. Exact-host create/setup/ownership and cleanup tests are implementation gates. The previous matrix already showed newer hosts need explicit parent ownership; capability adapters must preserve that distinction.
 

@@ -1,4 +1,4 @@
-/** Shipping closed-gate surface. Original full controls retain their separate internal tests. */
+/** Recovery-only shipping surface; activation and delegation consent UI are retired. */
 import { createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -33,6 +33,8 @@ it.each(['en', 'zh'])('retains only safety exits for an existing task in %s at p
   const stop = page.getByRole('button', { name: language === 'zh' ? '停止这项任务' : 'Stop this task', exact: true })
   await expect.element(stop).toBeEnabled()
   expect(document.querySelectorAll('input,select')).toHaveLength(0)
+  expect(element!.textContent).toContain(language === 'zh' ? '已冻结' : 'are frozen')
+  expect(element!.textContent).not.toContain(language === 'zh' ? '等待维护者验收' : 'pending maintainer acceptance')
   expect(element!.textContent).toContain('3 / 10')
   const dialog = document.querySelector('dialog')!
   expect(dialog.getBoundingClientRect().width).toBeLessThanOrEqual(390)
