@@ -69,6 +69,8 @@ dsh plugin --profile web exec dsh-codex-connect doctor --json
 
 ## Optional capabilities
 
+Development now follows the [core maintenance scope](docs/maintenance-scope.md): maintain connection, compatibility, diagnostics and recovery; freeze Task orchestration and unproven optimization work. Existing published options are not removed or remotely disabled by this decision.
+
 **Earlier Alpha 4.40/4.41 pairings:** task-level model control is off by default. After explicit task authorization, GPT-5.6 Sol/Medium starts the task, and the active model may continue, change effort, or hand off the main task within the granted scope. The task shares one request ledger and budget; stopping, manual takeover, and restart recovery retain the grant boundary. Phase 2 read-only delegation requires separate consent and does not grant workers write access. Stock DSH `0.1.7-rc.1` with Alpha 4.43 keeps these Task controls paused; do not infer they are available from an older pairing. See [Phase 1](docs/experiments/adaptive-task-phase1.md) and [Phase 2 consent](docs/experiments/adaptive-task-phase2-consent.md).
 
 Alpha 4.40 also supplies `gpt-6-sol` and `gpt-6-luna` when older provider catalogs omit them, retaining native metadata when present. Both expose Low through Max (including Xhigh); Default omits an explicit effort. Codex Sol's Ultra orchestration mode is not implemented. New task grants can explicitly include these models, but existing grants, GPT-5.6 Sol/Medium startup and Luna Reserve remain unchanged. A catalog entry is not proof of account access. See [compatibility scope and validation](docs/experiments/gpt6-sol-luna-compatibility.md).
