@@ -21,7 +21,15 @@ for (const changed of [
 const workflow = readFileSync(new URL('../.github/workflows/canary-run-health.yml', import.meta.url), 'utf8')
 assert.ok(workflow.includes('workflows: [Upstream DSH canary, Compatibility canary]'))
 assert.ok(!/actions\/checkout|download-artifact|secrets\./u.test(workflow))
-const source = workflow.split('          script: |\n')[1].split('\n').map(line => line.replace(/^            /u, '')).join('\n')
+function workflowScript(text) {
+  const block = text.replace(/\r\n/gu, '\n').split('          script: |\n')[1]
+  assert.ok(block, 'run-health workflow must contain the embedded script')
+  return block.split('\n').map(line => line.replace(/^            /u, '')).join('\n')
+}
+const source = workflowScript(workflow)
+const lfWorkflow = workflow.replace(/\r\n/gu, '\n')
+assert.equal(workflowScript(lfWorkflow), workflowScript(lfWorkflow.replace(/\n/gu, '\r\n')))
+assert.throws(() => workflowScript('name: missing-script\r\n'), /must contain the embedded script/u)
 const execute = new (Object.getPrototypeOf(async function () {}).constructor)('github', 'context', 'core', source)
 const run = { id: 123, workflow_id: 7, head_branch: 'main', head_repository: { full_name: 'example/repo' }, event: 'schedule', name: 'Upstream DSH canary', conclusion: 'failure', html_url: metadata.runUrl, head_sha: metadata.pluginCommit, updated_at: '2026-09-29T00:00:00Z' }
 async function observe(overrides = {}, issues = [], latest = 123, jobs = []) {
