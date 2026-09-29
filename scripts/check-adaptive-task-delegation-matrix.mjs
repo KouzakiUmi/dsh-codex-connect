@@ -52,8 +52,8 @@ async function main() {
       const metadata = exactDshFixtureManifest(overrides)
       // Keep peer-only roots explicit: npm's auto-peer resolver can otherwise
       // produce conflicting override sets once the authenticated UI peers enter.
-      const adapter = await registry('@deepseek-ai/dsh-llm-pi-ai', version)
-      metadata.dependencies['@earendil-works/pi-ai'] = adapter.dependencies['@earendil-works/pi-ai']
+      // Source fixtures must retain the plugin-owned provider version; the host adapter owns its nested dependency.
+      metadata.dependencies['@earendil-works/pi-ai'] = pkg.dependencies['@earendil-works/pi-ai']
       metadata.dependencies.undici = pkg.dependencies.undici; metadata.type = 'module'
       await writeFile(join(host, 'package.json'), JSON.stringify(metadata))
       const env = { ...scrubCanaryEnvironment(process.env), PATH: dirname(process.execPath) + delimiter + process.env.PATH, DSH_HOME: join(host, 'synthetic-home'),
