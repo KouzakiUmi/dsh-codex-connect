@@ -35,7 +35,7 @@ Task Phase 1/2 are merged implementations, not merely unshipped drafts. Alpha 4.
 | Native compaction creation experiments | Checkpoint representation and adapter replay also serve existing saved sessions | Keep old checkpoint readability, fallback and recovery; separate creation policy from persisted-data support |
 | Reserve routing | Shared quota cache/account identity and return-state recovery | Keep normal quota display, account isolation and safe restoration; no blanket quota-module deletion |
 
-This is a reviewed starting inventory, not proof that the dependency graph is fully detached. No runtime module, test or dependency is deleted here. A later narrow removal must update references/docs together and run focused regression, required build/package checks and supported-host checks appropriate to the changed surface. Do not erase unresolved defects by closing an experiment tracker.
+This is a reviewed starting inventory, not proof that the dependency graph is fully detached. Completed narrow removals are recorded below; the rest remains retained. Each removal must update references/docs together and run focused regression, required build/package checks and supported-host checks appropriate to the changed surface. Do not erase unresolved defects by closing an experiment tracker.
 
 ## Current iteration and acceptance
 
@@ -44,7 +44,9 @@ This is a reviewed starting inventory, not proof that the dependency graph is fu
 - [x] Identify shared dependencies that prevent bulk removal.
 - [x] Publish the documentation decision: #288 merged as `43a1c013537dd5bfc6944761018c117d197dd25b` after all ten checks passed.
 - [x] Synchronize trackers: #195 and #194 closed as not planned; #65 remains open for two historical failure observations, not a broad experiment campaign. Core-defect monitoring and Canary follow-up now respect the freeze; the original October 3 closeout deadline is unchanged.
-- [ ] Complete dependency separation and regression before proposing deletion; deletion is not part of this iteration.
+- [x] Separate implicit Task policy imports from core transport, with explicit legacy accounting retained (#289).
+- [x] Remove activation-only browser forms and their exclusive tests after dependency inspection; retain recovery-only UI and regression coverage.
+- [ ] Before any further server removal, replace legacy orchestration with verified recovery-only ownership, missing-state, replay, counters and child cleanup handling. Until then retain the existing server implementation; this is not a commitment to new experiments or Task reopening.
 
 Local research preservation has a separate private archive manifest; do not commit machine paths or private experiment evidence into the public repository. A local archive is not a merged product change and does not stop another running task. Existing scheduled jobs must not be assumed updated by this document.
 
