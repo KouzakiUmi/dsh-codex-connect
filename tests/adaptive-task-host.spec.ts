@@ -1,5 +1,6 @@
 /** Real DSH loop and adapter, synthetic inputs and responses. No real account or provider is used. */
 import { createHash, randomUUID } from 'node:crypto'
+import { reserveAdaptiveTaskAttempt, withAdaptiveTaskProvider } from '../src/adaptive-task-scope.ts'
 import { mkdtemp, rm, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -70,8 +71,8 @@ async function setup(options: { persistence?: 'none' | 'zstd'; maxConcurrent?: n
   let catalogFailure = false
   const models = async () => { if (catalogFailure) throw new Error('Synthetic catalog outage'); return catalog }
   let runtime!: AdaptiveTaskRuntime
-  const governor = new OpenAICodexBackendRequests(undefined, undefined, options.maxConcurrent ?? 8, async () => runtime.reserveAuxiliary())
-  const dispatch = { stream: (...args: Parameters<AdaptiveTaskRuntime['stream']>) => runtime.stream(...args) }
+  const governor = new OpenAICodexBackendRequests(undefined, undefined, options.maxConcurrent ?? 8, async () => runtime.reserveAuxiliary(), undefined, reserveAdaptiveTaskAttempt)
+  const dispatch = { wrapProvider: withAdaptiveTaskProvider, stream: (...args: Parameters<AdaptiveTaskRuntime['stream']>) => runtime.stream(...args) }
   const adapter = createOpenAICodexAdapter(credentials, () => undefined, undefined, undefined,
     undefined, undefined, undefined, undefined, () => options.nativeCompaction === true, governor, dispatch)
   ctx.llm.registerAdapter(['openai-codex'], adapter)

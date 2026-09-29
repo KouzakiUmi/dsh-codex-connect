@@ -1,0 +1,11 @@
+# Core transport separation — 2026-09-29
+
+Scope: remove implicit Task policy imports from the ordinary model adapter and backend governor. The product assembly explicitly supplies legacy provider policy and per-attempt accounting, preserving old grants, budget checks, cancellation and recovery. No default, saved state, authorization rule, supported version or public Task gate changes.
+
+The adapter's optional dispatch object supplies `wrapProvider`; ordinary profiles retain provider retry/session behavior. The governor accepts optional owner accounting before the existing auxiliary check and before the actual fetch; rejection releases admission without dispatch. Task-specific wiring belongs to the product assembly and historical task fixtures, not core transport imports.
+
+Verification requires a test that makes importing the Task scope fail while ordinary profile/governor requests still succeed, plus explicit-policy/refused-accounting cases and the existing real-host synthetic Task suites. Full repository checks, fresh-process accounting/recovery checks and exact-head CI remain required before merge. All fixtures use fake responses; no live acceptance is claimed.
+
+This is dependency separation, not complete runtime retirement. `src/index.ts` still constructs the legacy runtime to preserve saved-task ownership, recovery and accounting. It cannot simply be omitted based on a missing directory: lost task metadata and retained session markers must still fail closed. Full orchestration deletion requires a recovery-only replacement with equivalent historical-state checks; this change does not assert that replacement is complete.
+
+Local verification on Node 24.13.0: `pnpm run check` passed, including 133 files / 1,537 tests, lint/typecheck, normal build, built import/CLI/metrics checks and package validation. `check-adaptive-task-persistence.mjs` passed four fresh processes; `check-adaptive-task-delegation-crashes.mjs` passed 18 cases / 36 fresh processes with zero real provider requests. Initial sandbox-local HTTP binding was denied; the normal host execution passed. The initial Node 26 run failed because existing probe launchers use the removed `--experimental-transform-types` flag; this change does not repair or certify those Node 26 launchers.

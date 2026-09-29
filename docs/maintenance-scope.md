@@ -42,11 +42,13 @@ This is a reviewed starting inventory, not proof that the dependency graph is fu
 - [x] Record the scope decision and retirement rules, separate from historical acceptance.
 - [x] Link contributor and product entry points to this scope.
 - [x] Identify shared dependencies that prevent bulk removal.
-- [ ] Publish the documentation change through a separately authorized push/PR/merge.
-- [ ] Synchronize GitHub roadmap trackers with this decision after explicit authorization for external edits; close discontinued research as not planned, never as verified or fixed.
+- [x] Publish the documentation decision: #288 merged as `43a1c013537dd5bfc6944761018c117d197dd25b` after all ten checks passed.
+- [x] Synchronize trackers: #195 and #194 closed as not planned; #65 remains open for two historical failure observations, not a broad experiment campaign. Core-defect monitoring and Canary follow-up now respect the freeze; the original October 3 closeout deadline is unchanged.
 - [ ] Complete dependency separation and regression before proposing deletion; deletion is not part of this iteration.
 
 Local research preservation has a separate private archive manifest; do not commit machine paths or private experiment evidence into the public repository. A local archive is not a merged product change and does not stop another running task. Existing scheduled jobs must not be assumed updated by this document.
+
+The [first code separation](agent-notes/core-transport-decoupling.md) removes implicit Task imports from ordinary transport. It retains explicit legacy-task wiring in the product and does not claim the entire runtime is retired.
 
 ## Evidence baseline
 

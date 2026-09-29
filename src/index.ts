@@ -45,6 +45,7 @@ import { OpenAICodexProxyManager } from './provider-proxy.ts'
 import { OpenAICodexBackendRequests } from './backend-request.ts'
 import { RequestMetrics } from './request-metrics.ts'
 import { AdaptiveTaskControlRuntime } from './adaptive-task-control-runtime.ts'
+import { reserveAdaptiveTaskAttempt } from './adaptive-task-scope.ts'
 import { TaskDelegationArtifacts } from './adaptive-task-artifacts.ts'
 import { taskIdentity } from './adaptive-task-store.ts'
 import { registerAdaptiveTaskHttp } from './adaptive-task-http.ts'
@@ -395,7 +396,8 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
   let taskRuntime: AdaptiveTaskControlRuntime | undefined
   const backendRequests = new OpenAICodexBackendRequests(proxyManager, resolveProviderProxyUrl, undefined,
     async () => { await taskRuntime?.reserveAuxiliary() },
-    config.requestMetricsDirectory === undefined ? undefined : new RequestMetrics(config.requestMetricsDirectory, config.requestMetricsMaxBytes))
+    config.requestMetricsDirectory === undefined ? undefined : new RequestMetrics(config.requestMetricsDirectory, config.requestMetricsMaxBytes),
+    reserveAdaptiveTaskAttempt)
   // Also release the journal if a later registration fails before the full teardown is installed.
   ctx.effect(() => () => backendRequests.dispose())
   let proxyWasActive = resolveProviderProxyUrl() !== undefined

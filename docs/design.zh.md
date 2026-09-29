@@ -10,6 +10,8 @@ Host 将 `llm-openai-codex` 注册为插件自有的能力 settings namespace。
 
 ## Task 开发冻结
 
+普通模型适配器与后端请求管理器不直接导入 Task 策略；产品组装处显式接入旧任务的 provider 包装和请求前计数。此拆分保留旧任务权限、取消与恢复，不等于已删除全部实验运行时。见[拆分记录](agent-notes/core-transport-decoupling.md)。
+
 维护范围现以[核心维护决定](maintenance-scope.md)为准：Task Phase 1/2 实现已经合并，但公开启动入口保持暂停，后续自动编排开发冻结。保留旧状态读取、经授权的停止与人工接管；历史候选验收计划不再是当前待办。
 
 ## OAuth 持久化

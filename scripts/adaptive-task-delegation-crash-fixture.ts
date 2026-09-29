@@ -1,6 +1,7 @@
 /** Real parent/child execution, externally killed after a completed durable operation. Synthetic transport only. */
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
+import { reserveAdaptiveTaskAttempt } from '../src/adaptive-task-scope.ts'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { zstdDecompressSync } from 'node:zlib'
@@ -85,7 +86,7 @@ if (phase === 'write') {
 const ledger = new AdaptiveTaskDelegationLedger(join(root, 'tasks'))
 const artifacts = new TaskDelegationArtifacts(join(root, 'artifacts')), host = new TaskDelegationHost(ctx)
 const runtime = new AdaptiveTaskDelegation(ctx, { ledger, host, artifacts: () => artifacts })
-const governor = new OpenAICodexBackendRequests(undefined, undefined, 8, () => runtime.reserveAuxiliary())
+const governor = new OpenAICodexBackendRequests(undefined, undefined, 8, () => runtime.reserveAuxiliary(), undefined, reserveAdaptiveTaskAttempt)
 ctx.effect(() => () => governor.dispose())
 ctx.llm.registerAdapter(['openai-codex'], createOpenAICodexAdapter(credentials, () => undefined, undefined,
   undefined, undefined, undefined, undefined, undefined, () => false, governor, runtime))

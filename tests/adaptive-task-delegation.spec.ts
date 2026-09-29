@@ -1,5 +1,6 @@
 /** Real host + pi-ai + shared governor + private ledger/artifacts. Synthetic wire only. */
 import { randomUUID } from 'node:crypto'
+import { reserveAdaptiveTaskAttempt, withAdaptiveTaskProvider } from '../src/adaptive-task-scope.ts'
 import { mkdtemp, rm, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -68,10 +69,10 @@ async function setup(options: { compression?: 'none' | 'zstd'; persistence?: boo
   const artifacts = new TaskDelegationArtifacts(join(root, 'artifacts'))
   const runtime = new AdaptiveTaskDelegation(ctx, { ledger, host, artifacts: () => artifacts })
   let dispatch = runtime
-  const governor = new OpenAICodexBackendRequests(undefined, undefined, 8, () => dispatch.reserveAuxiliary())
+  const governor = new OpenAICodexBackendRequests(undefined, undefined, 8, () => dispatch.reserveAuxiliary(), undefined, reserveAdaptiveTaskAttempt)
   ctx.effect(() => () => governor.dispose())
   const adapter = createOpenAICodexAdapter(credentials, () => undefined, undefined, undefined, undefined, undefined, undefined, undefined, () => options.nativeCompaction === true, governor,
-    { stream: (options, delegate) => dispatch.stream(options, delegate) })
+    { wrapProvider: withAdaptiveTaskProvider, stream: (options, delegate) => dispatch.stream(options, delegate) })
   ctx.llm.registerAdapter(['openai-codex'], adapter)
   const handle = await ctx.agents.create({ sessionId: SessionId('delegation-root'), meta: { cwd: root },
     agentOptions: { provider: 'openai-codex', model: route.model, reasoningEffort: ReasoningEffortId(route.effort) } })

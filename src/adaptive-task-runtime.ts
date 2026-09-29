@@ -12,7 +12,7 @@ import { ADAPTIVE_TASK_MODELS, ADAPTIVE_TASK_START, ADAPTIVE_TASK_REQUEST_LIMIT,
 import type { AdaptiveTaskCommand, AdaptiveTaskState, TaskCapability, TaskRoute } from './adaptive-task-contract.ts'
 import { AdaptiveTaskStore, taskFailure, taskIdentity } from './adaptive-task-store.ts'
 import type { TaskDocument } from './adaptive-task-store.ts'
-import { currentAdaptiveTaskDispatch, inAdaptiveTaskDispatch } from './adaptive-task-scope.ts'
+import { currentAdaptiveTaskDispatch, inAdaptiveTaskDispatch, withAdaptiveTaskProvider } from './adaptive-task-scope.ts'
 import type { TaskDispatchScope } from './adaptive-task-scope.ts'
 import { portableTaskMessages } from './adaptive-task-context.ts'
 
@@ -52,6 +52,7 @@ function userStopped(agent: Agent): boolean {
   return end?.type === 'turn/end' && end.data.reason?.kind === 'aborted' && end.data.reason.reason.kind === 'user'
 }
 export class AdaptiveTaskRuntime {
+  readonly wrapProvider = withAdaptiveTaskProvider
   private readonly epoch = taskIdentity(randomUUID())
   private readonly tools = new Map<Agent, () => void>()
   private readonly lifetimes = new Map<Agent, AbortController>()

@@ -18,7 +18,7 @@ import { taskHostServices } from './adaptive-task-delegation-host.ts'
 import { TaskEvidenceManifest, TaskEvidenceReader, parseTaskEvidence, parseTaskFindings } from './adaptive-task-evidence.ts'
 import type { TaskFindings } from './adaptive-task-evidence.ts'
 import type { TaskDelegationArtifacts } from './adaptive-task-artifacts.ts'
-import { currentAdaptiveTaskDispatch, inAdaptiveTaskDispatch } from './adaptive-task-scope.ts'
+import { currentAdaptiveTaskDispatch, inAdaptiveTaskDispatch, withAdaptiveTaskProvider } from './adaptive-task-scope.ts'
 import type { TaskDispatchScope } from './adaptive-task-scope.ts'
 import { taskFailure, taskIdentity } from './adaptive-task-store.ts'
 
@@ -56,6 +56,7 @@ const capture = (doc: TaskLedgerDocument): ChildFence => ({ epoch: doc.runtime, 
 const selectionSeq = (parent: Agent): number => parent.session.snapshotEvents().findLast(event => event.type === 'model/selection')?.seq ?? -1
 
 export class AdaptiveTaskDelegation {
+  readonly wrapProvider = withAdaptiveTaskProvider
   private get agents() { return taskHostServices(this.ctx).agents }
   private get sessions() { return taskHostServices(this.ctx).sessions }
   private readonly roots = new Map<Agent, RootBinding>()
