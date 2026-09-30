@@ -1,13 +1,31 @@
 import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
-import { describe, expect, it } from 'vitest'
-import { compareOpenAICodexVersions, parseOpenAICodexVerifiedCompatibility } from '../src/update.ts'
+import { describe, expect, it, vi } from 'vitest'
+import { checkForOpenAICodexUpdate, compareOpenAICodexVersions, OPENAI_CODEX_NPM_METADATA_URL, OPENAI_CODEX_RELEASE_API_BASE, OPENAI_CODEX_UPDATE_HIGHLIGHTS_URL, parseOpenAICodexUpdateResult, parseOpenAICodexVerifiedCompatibility } from '../src/update.ts'
 
 describe('independent plugin versioning', () => {
-  it('orders the existing counter and a possible future sequence above the current release', () => {
+  it('orders the approved shorter sequence above the published Alpha 4 history', () => {
     expect(compareOpenAICodexVersions('0.1.0-alpha.4.30', '0.1.0-alpha.4.29')).toBeGreaterThan(0)
-    expect(compareOpenAICodexVersions('0.2.0-alpha.1', '0.1.0-alpha.4.29')).toBeGreaterThan(0)
+    for (const previous of ['0.1.0-alpha.4.29', '0.1.0-alpha.4.50', '0.1.0-alpha.4.54']) {
+      expect(compareOpenAICodexVersions('0.2.0-alpha.1', previous)).toBeGreaterThan(0)
+    }
     expect(compareOpenAICodexVersions('0.1.0-alpha.1', '0.1.0-alpha.4.29')).toBeLessThan(0)
+  })
+
+  it.each(['0.1.0-alpha.4.50', '0.1.0-alpha.4.54'])('offers the new alpha to %s while latest remains unchanged', async currentVersion => {
+    const fetchMock = vi.fn(async (url: string): Promise<Response> => {
+      if (url === OPENAI_CODEX_NPM_METADATA_URL) return Response.json({ latest: '0.1.0-alpha.4.50', alpha: '0.2.0-alpha.1' })
+      if (url === OPENAI_CODEX_UPDATE_HIGHLIGHTS_URL) return Response.json({ schemaVersion: 1, releases: [] })
+      expect(url).toBe(`${OPENAI_CODEX_RELEASE_API_BASE}0.2.0-alpha.1`)
+      return Response.json({ name: '0.2.0-alpha.1', body: 'Independent numbering; existing DSH targets retained.' })
+    })
+    const result = await checkForOpenAICodexUpdate({ currentVersion, fetchImpl: fetchMock })
+    expect(result).toMatchObject({
+      status: 'update-available', currentVersion, latestVersion: '0.2.0-alpha.1',
+      releaseUrl: 'https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.2.0-alpha.1',
+    })
+    expect(parseOpenAICodexUpdateResult(result)).toEqual(result)
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   it('does not treat build metadata as an available update', () => {

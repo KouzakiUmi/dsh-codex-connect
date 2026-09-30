@@ -306,7 +306,7 @@ describe('Codex model visibility in Chromium', () => {
   it('shows the full catalog, saves a subset, and stays inside a narrow viewport', async () => {
     const models = [
       { id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna' },
-      { id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' },
+      { id: 'gpt-6.1-sol', name: 'GPT-6.1-Sol' },
       { id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra' },
     ]
     const fetchMock = vi.fn(async (input: RequestInfo | URL): Promise<Response> => {
@@ -317,7 +317,7 @@ describe('Codex model visibility in Chromium', () => {
     vi.stubGlobal('fetch', fetchMock)
     root.render(createElement(OpenAICodexConfiguration, { scope, t }))
 
-    const sol = page.getByRole('checkbox', { name: /GPT-5\.6 Sol/u })
+    const sol = page.getByRole('checkbox', { name: /GPT-6\.1-Sol/u })
     await vi.waitFor(() => { expect(sol.element()).toBeInstanceOf(HTMLInputElement) })
     await sol.click()
     await page.getByRole('button', { name: en.save }).click()

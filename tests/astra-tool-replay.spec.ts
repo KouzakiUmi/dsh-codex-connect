@@ -11,7 +11,6 @@ import { OpenAICodexCredentialStore, OPENAI_CODEX_PROVIDER } from '../src/store.
 
 let context: Context
 let root: string
-const selection = { provider: OPENAI_CODEX_PROVIDER, model: OPENAI_CODEX_ASTRA_MODEL_ID }
 const tools: ToolSchema[] = [{ name: 'lookup', description: 'Read a fixture value', parameters: { type: 'object', properties: { key: { type: 'string' } }, required: ['key'], additionalProperties: false } }]
 
 beforeEach(async () => {
@@ -42,11 +41,14 @@ function textItem(id: string, phase: string, text: string): Record<string, unkno
   return { type: 'message', id, role: 'assistant', phase, status: 'completed', content: [{ type: 'output_text', text, annotations: [] }] }
 }
 
-it.each(['', 'Inspect the fixture.'])('preserves reasoning, phases, and parallel tool correlation across JSON round trips (summary=%j)', async summary => {
+it.each([OPENAI_CODEX_ASTRA_MODEL_ID, 'gpt-6.1-sol'].flatMap(model => ['', 'Inspect the fixture.'].map(summary => ({ model, summary }))))('preserves reasoning, phases, and parallel tool correlation ($model, summary=$summary)', async ({ model, summary }) => {
+  const selection = { provider: OPENAI_CODEX_PROVIDER, model }
   const reasoning = { type: 'reasoning', id: 'rs_fixture', encrypted_content: 'synthetic-encrypted-fixture', summary: summary === '' ? [] : [{ type: 'summary_text', text: summary }] }
   const calls = ['a', 'b'].map(key => ({ type: 'function_call', id: `fc_${key}`, call_id: `call_${key}`, name: 'lookup', arguments: JSON.stringify({ key }), status: 'completed' }))
   const wires: Record<string, unknown>[] = []
   vi.stubGlobal('fetch', vi.fn(async (_url: unknown, init: RequestInit) => {
+    expect(String(_url)).toContain('chatgpt.com/backend-api/codex/responses')
+    expect(String(_url)).not.toContain('chat/completions')
     const body = new Headers(init.headers).get('content-encoding') === 'zstd' ? zstdDecompressSync(init.body as Uint8Array).toString('utf8') : String(init.body)
     wires.push(JSON.parse(body) as Record<string, unknown>)
     if (wires.length === 1) return response([reasoning, textItem('msg_work', 'commentary', 'Checking both values.'), ...calls])

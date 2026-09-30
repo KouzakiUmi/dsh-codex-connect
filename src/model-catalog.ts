@@ -48,7 +48,7 @@ export function withOpenAICodexModels(
 ): Provider<'openai-codex-responses'> {
   const baseline = withOpenAICodexAstra(provider)
   const models = [...baseline.getModels()]
-  for (const [id, name] of [['gpt-6-sol', 'GPT-6-Sol'], ['gpt-6-luna', 'GPT-6-Luna']] as const) {
+  for (const [id, name] of [['gpt-6.1-sol', 'GPT-6.1-Sol'], ['gpt-6-sol', 'GPT-6-Sol'], ['gpt-6-luna', 'GPT-6-Luna']] as const) {
     const index = models.findIndex(model => model.id === id)
     // Ultra is Codex client orchestration, not a pi-ai thinking level.
     const thinkingLevelMap = { off: null, minimal: null, xhigh: 'xhigh', max: 'max' } as const

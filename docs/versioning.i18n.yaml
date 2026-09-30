@@ -1,4 +1,4 @@
 # Bilingual-pair consistency record for the versioning policy. Re-record with:
 #   git hash-object VERSIONING.md docs/VERSIONING.zh.md
-VERSIONING.md: 53c3c96541e2ac96c54314fff68aa1b0768d3ad8
-docs/VERSIONING.zh.md: 8ee76b6b299342b0797e3ed292a18b32deb961fb
+VERSIONING.md: 377b922afe93c60a3a2a6bdc8069eab6e606ed8d
+docs/VERSIONING.zh.md: 341f3c3e58d313caf67bba8810f5aee0b8452ba4

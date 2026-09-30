@@ -13,7 +13,7 @@ import {
 import {
   decodeOpenAICodexModelCatalog,
   isValidOpenAICodexContextBudget,
-  OPENAI_CODEX_CONTEXT_LIMIT_SOURCE,
+  openAICodexContextLimitSource,
   OPENAI_CODEX_MODEL_CATALOG_PATH,
 } from '../model-contract.ts'
 import type { OpenAICodexModelCatalogEntry } from '../model-contract.ts'
@@ -550,7 +550,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
                         <div style={{ ...bodyStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                             {model.contextLimitSource === 'codex-catalog'
-                              ? <a href={OPENAI_CODEX_CONTEXT_LIMIT_SOURCE} target="_blank" rel="noopener noreferrer" title={t('contextLimitSource')} style={{ color: 'inherit', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>{t('contextMaximum')}</a>
+                              ? <a href={openAICodexContextLimitSource(model.id)} target="_blank" rel="noopener noreferrer" title={t('contextLimitSource')} style={{ color: 'inherit', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>{t('contextMaximum')}</a>
                               : <span title={t('contextLimitFallback')}>{t('contextMaximum')}</span>}
                             <span style={{ padding: '1px 6px', borderRadius: 4, background: 'var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-layer-1))', fontVariantNumeric: 'tabular-nums' }}>{model.maxContextWindow}</span>
                             <span>tokens</span>

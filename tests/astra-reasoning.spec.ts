@@ -31,7 +31,7 @@ afterEach(async () => {
   if (root !== undefined) await rm(root, { recursive: true, force: true })
 })
 
-const modelSelections = [OPENAI_CODEX_ASTRA_MODEL_ID, 'gpt-6-sol', 'gpt-6-luna'] as const
+const modelSelections = [OPENAI_CODEX_ASTRA_MODEL_ID, 'gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna'] as const
 
 describe.each(modelSelections)('%s reasoning selections', model => {
   const selection = { provider: OPENAI_CODEX_PROVIDER, model }
@@ -84,6 +84,7 @@ describe.each(modelSelections)('%s reasoning selections', model => {
     const chunks = []
     for await (const chunk of prepared.stream({ ...prepared.config, messages: [] })) chunks.push(chunk)
     expect(fetch).toHaveBeenCalledOnce()
+    expect(wire?.model).toBe(model)
     if (effort === undefined) expect(wire).not.toHaveProperty('reasoning')
     else expect(wire?.reasoning).toMatchObject({ effort })
     expect(chunks.find(chunk => chunk.type === 'finish')).toMatchObject({ reason: { kind: 'stop' } })

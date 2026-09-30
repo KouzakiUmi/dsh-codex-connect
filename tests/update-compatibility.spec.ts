@@ -48,6 +48,7 @@ const catalog = {
     { version: '0.1.0-alpha.4.52', verifiedDshVersions: ['0.1.7-rc.1', '0.1.7-rc.2'] },
     { version: '0.1.0-alpha.4.53', verifiedDshVersions: ['0.1.7-rc.1', '0.1.7-rc.2'] },
     { version: '0.1.0-alpha.4.54', verifiedDshVersions: ['0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2'] },
+    { version: '0.2.0-alpha.1', verifiedDshVersions: ['0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2'] },
   ],
 }
 
