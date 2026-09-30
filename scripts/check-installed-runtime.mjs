@@ -93,11 +93,11 @@ export async function checkInstalledRuntime(profilePackagePath, hostPackagePath 
       throw new Error(`runtime retained the ${PROVIDER_ID} provider after plugin disposal`)
     }
 
+    const requestMetrics = await checkInstalledMetrics(importHost, OpenAICodex, packagePath)
     const reserveTransitionsVerified = await checkInstalledReserve(importHost, OpenAICodex)
     const nativeCompactionLifecycle = await checkInstalledNativeCompaction(packagePath, hostPath)
     const toolsManifest = JSON.parse(await readFile(createRequire(hostPath).resolve('@deepseek-ai/dsh-tools/package.json'), 'utf8'))
     const images = await checkInstalledImages(importHost, OpenAICodex, toolsManifest)
-    const requestMetrics = await checkInstalledMetrics(importHost, OpenAICodex, packagePath)
 
     return {
       schemaVersion: JSON_SCHEMA_VERSION,

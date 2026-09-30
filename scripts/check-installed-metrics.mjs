@@ -8,7 +8,7 @@ import { zstdDecompressSync } from 'node:zlib'
 
 /** Verify installed startup configuration, provider observation and offline reporting with synthetic HTTP only. */
 export async function checkInstalledMetrics(importHost, CodexConnect, profilePackagePath) {
-  const [{ Context }, { default: Llm }, { SessionId }] = await Promise.all([
+  const [{ Context }, { default: Llm, createUserMessage }, { SessionId }] = await Promise.all([
     '@deepseek-ai/cordis', '@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-session',
   ].map(importHost))
   const directory = await mkdtemp(join(tmpdir(), 'codex-installed-metrics-'))
@@ -31,6 +31,10 @@ export async function checkInstalledMetrics(importHost, CodexConnect, profilePac
       const wire = JSON.parse(body)
       assert.equal(wire.model, 'gpt-6-astra')
       assert.equal(wire.prompt_cache_key, 'installed-metrics-fixture')
+      assert.ok(wire.instructions.includes('Synthetic installed request instructions'))
+      assert.ok(wire.tools.some(tool => tool.name === 'fixture_tool'))
+      assert.ok(wire.input.some(message => message.role === 'user'
+        && message.content.some(block => block.text === 'Synthetic installed user message')))
       dispatches++
       const usage = dispatches === 1 ? { input_tokens: 2048, input_tokens_details: { cached_tokens: 1024 }, output_tokens: 2 } : undefined
       const event = { type: 'response.completed', response: { id: 'fixture-response', status: 'completed', output: [], ...(usage ? { usage } : {}) } }
@@ -42,7 +46,10 @@ export async function checkInstalledMetrics(importHost, CodexConnect, profilePac
     for (let index = 0; index < 2; index++) {
       const chunks = []
       for await (const chunk of ctx.llm.stream({ provider: 'openai-codex', model: 'gpt-6-astra',
-        sessionId: SessionId('installed-metrics-fixture'), messages: [] })) chunks.push(chunk)
+        sessionId: SessionId('installed-metrics-fixture'),
+        system: 'Synthetic installed request instructions',
+        tools: [{ name: 'fixture_tool', description: 'Synthetic tool', parameters: { type: 'object', properties: {} } }],
+        messages: [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Synthetic installed user message' }] })] })) chunks.push(chunk)
       assert.ok(chunks.some(chunk => chunk.type === 'finish'))
     }
     await plugin.dispose()

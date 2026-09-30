@@ -85,8 +85,8 @@ async function main() {
       // artifact matrix owns full DSH CLI/profile installation. Keep the complete exact
       // override closure, but do not install every unrelated host UI/remote backend here.
       metadata.dependencies = Object.fromEntries(TASK_RUNTIME_PACKAGES.map(name => [name, version]))
-      const adapter = await readDshRegistryManifest('@deepseek-ai/dsh-llm-pi-ai', version)
-      metadata.dependencies['@earendil-works/pi-ai'] = adapter.dependencies['@earendil-works/pi-ai']
+      // Match the installed plugin's dependency ownership instead of replacing its provider with the host's.
+      metadata.dependencies['@earendil-works/pi-ai'] = pkg.dependencies['@earendil-works/pi-ai']
       metadata.dependencies.undici = pkg.dependencies.undici
       metadata.type = 'module'
       await writeFile(join(host, 'package.json'), JSON.stringify(metadata))
