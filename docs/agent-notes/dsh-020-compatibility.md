@@ -1,6 +1,6 @@
 # DSH 0.2.0 candidate compatibility
 
-Alpha 4.54 is an unpublished candidate containing the compatibility repair merged in [PR #294](https://github.com/franksong2702/dsh-codex-connect/pull/294), main commit `355b9bce49fbec9d63b99458adbe68b8d30771e7`. The published Alpha 4.53 artifact supports only DSH 0.1.7-rc.1 and rc.2; do not apply the new candidate's results to that existing artifact. Catalog entries record exact installation/runtime checks and do not establish npm publication or full user acceptance. Public installation recommendations stay on Alpha 4.53 until independent publication readback confirms the new release.
+Published [Alpha 4.54](https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.1.0-alpha.4.54) contains the compatibility repair merged in [PR #294](https://github.com/franksong2702/dsh-codex-connect/pull/294). Its release commit is `bf4fe177decb06b1b224fa642a6233594f66e40b`; independent verification matched the public npm package to the original workflow artifact and release tag. The published Alpha 4.53 artifact supports only DSH 0.1.7-rc.1 and rc.2; do not apply Alpha 4.54's results to that older artifact. Catalog entries record exact installation/runtime checks, not full user acceptance.
 
 ## Failure and repair
 
@@ -14,4 +14,4 @@ Diagnostics resolve DSH peers from the explicit host anchor, but resolve plugin-
 
 ## Verification boundary
 
-Run `pnpm run check`, `pnpm run test:browser` and `pnpm --silent run check:dsh-matrix` on the final candidate. The matrix covers exact hosts 0.1.7-rc.1, 0.1.7-rc.2, 0.2.0-rc.1 and 0.2.0-rc.2 using identical packed bytes. These checks establish keyless installation/runtime compatibility, not live OAuth, paid quota, full user acceptance or deployment. A new published version and separate deployment approval remain required before daily-service use.
+Alpha 4.54 passed `pnpm run check` (1548 tests), `pnpm run test:browser` (53 tests) and `pnpm --silent run check:dsh-matrix`. The matrix covers exact hosts 0.1.7-rc.1, 0.1.7-rc.2, 0.2.0-rc.1 and 0.2.0-rc.2 using identical packed bytes. These checks establish keyless installation/runtime compatibility, not live OAuth, paid quota, full user acceptance or deployment. Separate deployment approval remains required before daily-service use.
