@@ -16,21 +16,21 @@ This guide describes the published pairing below. Check `dsh --version` first an
 
 | Requirement | Verified pairing |
 |---|---|
-| Codex Connect | `0.1.0-alpha.4.53` |
-| DeepSeek Harness | `0.1.7-rc.1` or `0.1.7-rc.2` (consistent package set) |
+| Codex Connect | `0.1.0-alpha.4.54` |
+| DeepSeek Harness | `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1` or `0.2.0-rc.2` (consistent package set) |
 | Node.js | `^22.19.0 \|\| >=24.0.0` |
 | Account | ChatGPT OAuth with access to the requested Codex model; availability is decided by OpenAI |
 
-As of 2026-09-29, npm `alpha` points to 4.53 while `latest` remains 4.50; this publication did not promote `latest`. Use the exact version below for this DSH pairing; a moving npm tag is not a compatibility guarantee for other hosts.
+As of 2026-09-30, npm `alpha` points to 4.54 while `latest` remains 4.50; this publication did not promote `latest`. Use the exact version below for these DSH pairings; a moving npm tag is not a compatibility guarantee for other hosts.
 
-Alpha 4.53 retires frozen Task activation/delegation forms and separates core request handling from implicit Task policy imports, while retaining existing-task recovery and safety checks. It preserves the 4.51 diagnostic fixes and 4.52 [opt-in local request metrics](docs/request-metrics.md). Collection stays off until a private directory is configured; unknown usage is not zero. No telemetry upload, internal evaluation runner, statistics panel or Task reopening is included.
+Alpha 4.54 preserves initial system instructions and tool definitions when DSH 0.2.0-rc.2 calls the pinned Codex provider, corrects diagnostics when the host and plugin own different provider-library versions, and strengthens Canary's normal-request checks. It retains Alpha 4.53's core maintenance changes, existing-task recovery and safety, and 4.52's [opt-in local request metrics](docs/request-metrics.md). Collection stays off until a private directory is configured; unknown usage is not zero. No Task reopening or model-library/OAuth upgrade is included.
 
-On stock DSH `0.1.7-rc.1` and `0.1.7-rc.2`, the package is installation/runtime-regression verified; Task controls remain paused: activation is rejected and fresh Sessions do not show them. Migration of earlier Task grants across a Harness upgrade is not verified. Older supported pairings and their task behavior are documented in [Installation and upgrades](INSTALL.md).
+The package passed keyless installation/runtime regression on all four exact DSH versions above. Task controls remain paused: activation is rejected and existing current-host browser regressions show no controls in fresh Sessions. These checks do not establish live OAuth or full user acceptance; migration of earlier Task grants across a Harness upgrade is not verified. Older supported pairings and their task behavior are documented in [Installation and upgrades](INSTALL.md).
 
 ### 1. Install
 
 ```sh
-dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.53
+dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.54
 dsh web
 ```
 

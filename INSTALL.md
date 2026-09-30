@@ -1,10 +1,10 @@
 # Installation Runbook for CLI Agents
 
-Published Alpha 4.53 is verified with either exact DSH `0.1.7-rc.1` or `0.1.7-rc.2` and pi-ai `0.85.1`, using a consistent host package set. Earlier DSH pairings retain their separately published plugin versions below.
+Published Alpha 4.54 is installation/runtime-regression verified with exact DSH `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1` or `0.2.0-rc.2`, using a consistent host package set and plugin-owned pi-ai `0.85.1`. Earlier DSH pairings retain their separately published plugin versions below.
 
 Install `dsh-codex-connect` into one requested DeepSeek Harness profile without changing its current default model, search route, global configuration, or OAuth state.
 
-Channel snapshot on 2026-09-29: npm `alpha` points to `0.1.0-alpha.4.53`; `latest` remains `0.1.0-alpha.4.50`. Use the exact-version command for the installed DSH version; moving npm tags are not compatibility guarantees.
+Channel snapshot on 2026-09-30: npm `alpha` points to `0.1.0-alpha.4.54`; `latest` remains `0.1.0-alpha.4.50`. Use the exact-version command for the installed DSH version; moving npm tags are not compatibility guarantees.
 
 ## Safety requirements
 
@@ -30,12 +30,20 @@ Check `dsh --version` before changing the requested profile. Use `dsh --help` to
 | `0.1.5-alpha.1` | `0.1.0-alpha.4.41` |
 | `0.1.5-rc.1` | `0.1.0-alpha.4.41` |
 | `0.1.5-rc.2` | `0.1.0-alpha.4.41` |
-| `0.1.7-rc.1` | `0.1.0-alpha.4.53` |
-| `0.1.7-rc.2` | `0.1.0-alpha.4.53` |
+| `0.1.7-rc.1` | `0.1.0-alpha.4.54` |
+| `0.1.7-rc.2` | `0.1.0-alpha.4.54` |
+| `0.2.0-rc.1` | `0.1.0-alpha.4.54` |
+| `0.2.0-rc.2` | `0.1.0-alpha.4.54` |
 
 If your exact DSH version is unknown or not listed, preserve the installed host, report that the combination is unverified, and verify it before making installation changes. A missing record does not prove incompatibility, and the catalog's latest verified DSH version is not the latest upstream release. Do not recommend upgrading or downgrading DSH merely to match a row. Investigate any specific failure and seek verification of the installed combination. Do not blindly install `dsh-codex-connect@alpha`: `alpha` is a moving tag, not a compatibility guarantee. Do not infer support for newer DSH versions from these rows.
 
-Alpha 4.53 requires one consistent DSH `0.1.7-rc.1` or `0.1.7-rc.2` plugin API and pi-ai `0.85.1`; its direct runtime imports include `@deepseek-ai/schemastery` `3.18.4` and `@earendil-works/pi-ai` `0.85.1` so an isolated profile need not already provide them. Node.js remains `^22.19.0 || >=24.0.0`. It does not support the older DSH rows. Alpha 4.41 remains the choice for DSH `0.1.2-rc.1` with pi-ai `^0.84.2`, or `0.1.5-alpha.1`, `0.1.5-rc.1`, and `0.1.5-rc.2` with pi-ai `0.85.1`. Mixed host versions and other DSH/pi-ai combinations remain unverified. Alpha 4.25 remains the verified choice for DSH `0.1.2-alpha.5`, Alpha 4.23 for DSH `0.1.2-alpha.2`, Alpha 4.21 for DSH `0.1.1-rc.2`, and Alpha 4.14 for DSH `0.1.0-rc.7`. Changing DSH is a separate operation requiring the user's explicit request; a plugin update request does not authorize it. The repository's `pnpm --silent run check:compatibility` remains a strict development/release dependency gate, not a recommendation to change a user's host.
+Alpha 4.54 requires one consistent DSH plugin API version from the four rows above; its direct runtime imports include `@deepseek-ai/schemastery` `3.18.4` and plugin-owned `@earendil-works/pi-ai` `0.85.1` so an isolated profile need not already provide them. The host adapter can own a different nested pi-ai version, as verified on DSH 0.2.0-rc.2. Node.js remains `^22.19.0 || >=24.0.0`. Alpha 4.54 does not support the older DSH rows. Alpha 4.41 remains the choice for DSH `0.1.2-rc.1` with pi-ai `^0.84.2`, or `0.1.5-alpha.1`, `0.1.5-rc.1`, and `0.1.5-rc.2` with pi-ai `0.85.1`. Mixed host versions and other DSH/pi-ai combinations remain unverified. Alpha 4.25 remains the verified choice for DSH `0.1.2-alpha.5`, Alpha 4.23 for DSH `0.1.2-alpha.2`, Alpha 4.21 for DSH `0.1.1-rc.2`, and Alpha 4.14 for DSH `0.1.0-rc.7`. Changing DSH is a separate operation requiring the user's explicit request; a plugin update request does not authorize it. The repository's `pnpm --silent run check:compatibility` remains a strict development/release dependency gate, not a recommendation to change a user's host.
+
+### Alpha 4.54 DSH 0.2.0 compatibility delivery
+
+[Alpha 4.54](https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.1.0-alpha.4.54) delivers the normal-request and dependency-ownership diagnostic repairs from [#294](https://github.com/franksong2702/dsh-codex-connect/pull/294), prepared by [#296](https://github.com/franksong2702/dsh-codex-connect/pull/296). It preserves initial system instructions and tool definitions for the pinned provider on DSH 0.2.0-rc.2 and strengthens the Canary request probe. Dynamic system/tool changes remain explicitly unsupported; frozen experimental features remain off.
+
+[Exact-release main CI](https://github.com/franksong2702/dsh-codex-connect/actions/runs/36657684473) and the [publication workflow](https://github.com/franksong2702/dsh-codex-connect/actions/runs/36658367825) passed for `bf4fe177decb06b1b224fa642a6233594f66e40b`. Local verification passed 1,548 tests, 53 browser tests and all four same-artifact installations. Independent read-only verification matched the public npm archive to the workflow artifact (SHA-256 `3fe58fabf0aa16ab41d0d54e5d787779245bcfac45b6fe25e75573dc76e338ad`) and confirmed the release tag. These are keyless checks, not live OAuth or full user acceptance. No daily-service deployment or latest promotion is included.
 
 ### Alpha 4.53 core maintenance delivery
 
