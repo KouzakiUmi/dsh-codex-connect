@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
 import { assertOpenAICodexContextWindowOverrides, openAICodexModelCatalog, withOpenAICodexContextWindowOverrides } from '../src/adapter.ts'
-import { decodeOpenAICodexModelCatalog, isValidOpenAICodexContextBudget, openAICodexContextLimit } from '../src/model-contract.ts'
+import { decodeOpenAICodexModelCatalog, isValidOpenAICodexContextBudget, openAICodexContextLimit, openAICodexContextLimitSource, OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE, OPENAI_CODEX_CONTEXT_LIMIT_SOURCE } from '../src/model-contract.ts'
 
 describe('model-specific configuration ceilings', () => {
+  it('keeps model-specific policy links pinned without changing old provenance', () => {
+    expect(openAICodexContextLimitSource('gpt-6.1-sol')).toBe(OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE)
+    expect(openAICodexContextLimitSource('gpt-6-sol')).toBe(OPENAI_CODEX_CONTEXT_LIMIT_SOURCE)
+  })
   it.each([
     ['gpt-6-astra', 272_000, 872_000],
+    ['gpt-6.1-sol', 272_000, 872_000],
     ['gpt-6-sol', 272_000, 872_000],
     ['gpt-6-luna', 272_000, 872_000],
     ['gpt-5.6-sol', 272_000, 872_000],

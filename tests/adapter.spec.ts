@@ -18,7 +18,7 @@ import { OPENAI_CODEX_PROVIDER } from '../src/store.ts'
 import { Config } from '../src/index.ts'
 
 describe('OpenAI Codex rc.2 adapter profile', () => {
-  it.each(['gpt-6-sol', 'gpt-6-luna'])('adds missing %s without duplicating or overwriting native metadata', id => {
+  it.each(['gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna'])('adds missing %s without duplicating or overwriting native metadata', id => {
     const provider = openaiCodexProvider()
     const baseline = provider.getModels().filter(model => model.id !== id)
     const patched = withOpenAICodexModels({ ...provider, getModels: () => baseline })
@@ -33,7 +33,7 @@ describe('OpenAI Codex rc.2 adapter profile', () => {
     expect(result.filter(model => model.id === id)).toEqual([{ ...native,
       thinkingLevelMap: { off: null, minimal: null, xhigh: 'xhigh', max: 'max' } }])
     expect(native.thinkingLevelMap).toEqual({ minimal: 'minimal' })
-    for (const old of baseline.filter(model => model.id !== OPENAI_CODEX_ASTRA_MODEL_ID && !model.id.startsWith('gpt-6-'))) {
+    for (const old of baseline.filter(model => model.id !== OPENAI_CODEX_ASTRA_MODEL_ID && !['gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna'].includes(model.id))) {
       expect(result.find(model => model.id === old.id)).toBe(old)
     }
   })
