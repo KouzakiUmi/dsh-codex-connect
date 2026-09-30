@@ -6,7 +6,7 @@ Codex Connect versions identify plugin releases independently of DeepSeek Harnes
 
 ## Release identity and phase
 
-The current release series is `0.1.0-alpha.4.x`. Increment the final counter for another release in this series; a DSH update does not reset it. This policy does not rename any existing release or select a new version.
+The current release series starts at `0.2.0-alpha.1` and continues as `0.2.0-alpha.N`. This maintainer-approved numbering cleanup replaces the longer `0.1.0-alpha.4.x` sequence for new releases. It simplifies the independent plugin version; it does not narrow DSH compatibility, require a host upgrade, or promote the plugin to Beta or stable. Published versions and tags keep their original names and contents. A DSH update does not reset the plugin counter.
 
 The publishing workflow accepts `MAJOR.MINOR.PATCH-alpha.NUMBER[.NUMBER…]`, with nonnegative integer components and no leading zeroes. Build metadata is not a release counter: SemVer ignores `+build.n` when comparing versions, and the pinned npm publishing implementation removes it. Use a distinct, higher-precedence version for every new package. Never overwrite a published package or move its release tag to different content.
 
@@ -42,11 +42,13 @@ The project newest version and the newest verified plugin for a user's existing 
 
 Keep V1 highlight entries in increasing SemVer order, with unique versions and known capability kinds. Preserve the existing history. New documentation-only or maintenance releases may be omitted; existing empty `highlights` arrays remain valid. Release notes still describe fixes. Do not invent capabilities or require a contiguous counter sequence just to validate the catalog.
 
-## A future numbering cleanup
+## Numbering migration to 0.2.0 Alpha
 
-A shorter independent series, such as `0.2.0-alpha.1`, is a possible later migration, not the next version selected by this change. Do not reset to `0.1.0-alpha.1`: it sorts below the current `0.1.0-alpha.4.x` releases.
+`0.2.0-alpha.1` sorts above every `0.1.0-alpha.4.x` release, including the last published `0.1.0-alpha.4.54`. Do not reset to `0.1.0-alpha.1`: it sorts below the historical series. The unshipped `0.1.0-alpha.4.55` candidate is replaced by this version and is not a published release.
 
-Before a migration, verify that installed clients recognize the new version as an update, preserve compatibility and highlight history, and check package, workflow, tag, and channel agreement. For a phase change, also update the Alpha-only gates and publication/readback path. Keep host upgrades, schema changes, and numbering migration separately reviewable.
+The existing update checker compares both `alpha` and `latest` using SemVer, so it recognizes the new Alpha even while `latest` stays at `0.1.0-alpha.4.50`. It reports an update without installing it or upgrading DSH. Users can install the exact plugin version into their existing profile. Compatibility and highlight history keep their V1 formats; the four declared DSH targets remain `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, and `0.2.0-rc.2`. Exact verification still precedes a new catalog entry.
+
+Publication uses the existing Alpha-only workflow, protected environment, `v0.2.0-alpha.1` tag, GitHub prerelease, and npm `alpha` channel. It does not promote `latest`. Any later phase change still requires separate review of the gates and publication/readback path. Keep host upgrades, schema changes, and numbering migration separately reviewable.
 
 ## Release checks
 

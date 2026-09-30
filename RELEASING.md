@@ -7,8 +7,10 @@ file, and the `npm-release` environment. The workflow uses no long-lived npm
 token and does not promote the `latest` dist-tag.
 
 Numbering, compatibility evidence, and channel policy are defined in
-[VERSIONING.md](VERSIONING.md). The current Alpha series continues unchanged;
-this runbook does not authorize a numbering or phase migration.
+[VERSIONING.md](VERSIONING.md). The approved independent numbering migration
+starts at `0.2.0-alpha.1`; later releases use `0.2.0-alpha.N`. It preserves the
+four declared DSH targets, Alpha-only gates, and separate `latest` policy.
+It is not a Beta/stable promotion or a requirement to upgrade DSH.
 
 ## Before triggering the workflow
 
