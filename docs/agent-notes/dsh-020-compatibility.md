@@ -1,6 +1,6 @@
 # DSH 0.2.0 candidate compatibility
 
-This is an unreleased source change based on main `3a6e33f6a494804829a6804419547cb5483220bb`. The published Alpha 4.53 artifact supports only DSH 0.1.7-rc.1 and rc.2; do not apply these source results to that existing artifact. The release catalog remains unchanged until a distinct release is verified.
+Alpha 4.54 is an unpublished candidate containing the compatibility repair merged in [PR #294](https://github.com/franksong2702/dsh-codex-connect/pull/294), main commit `355b9bce49fbec9d63b99458adbe68b8d30771e7`. The published Alpha 4.53 artifact supports only DSH 0.1.7-rc.1 and rc.2; do not apply the new candidate's results to that existing artifact. Catalog entries record exact installation/runtime checks and do not establish npm publication or full user acceptance. Public installation recommendations stay on Alpha 4.53 until independent publication readback confirms the new release.
 
 ## Failure and repair
 
