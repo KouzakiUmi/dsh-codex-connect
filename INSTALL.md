@@ -128,7 +128,7 @@ Alpha 4.33 omits the `modelErrors` profile field required by RC model packages, 
    dsh plugin --profile web add dsh-codex-connect@0.1.0-alpha.4.41
    ```
 
-   For exact DSH `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1` or `0.2.0-rc.2`, use Alpha 4.54:
+   For exact DSH `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1` or `0.2.0-rc.2`, use `0.2.0-alpha.1`:
 
    ```sh
    dsh plugin --profile web add dsh-codex-connect@0.2.0-alpha.1
@@ -142,7 +142,7 @@ Alpha 4.33 omits the `modelErrors` profile field required by RC model packages, 
 
    If npm is unavailable after the matching GitHub prerelease is created, use `dsh plugin --profile web add 'github:franksong2702/dsh-codex-connect#v0.1.0-alpha.4.21'` only for the DSH `0.1.1-rc.2` combination, `dsh plugin --profile web add 'github:franksong2702/dsh-codex-connect#v0.1.0-alpha.4.23'` only for the DSH `0.1.2-alpha.2` combination, `dsh plugin --profile web add 'github:franksong2702/dsh-codex-connect#v0.1.0-alpha.4.25'` only for the DSH `0.1.2-alpha.5` combination, `dsh plugin --profile web add 'github:franksong2702/dsh-codex-connect#v0.1.0-alpha.4.41'` only for the DSH `0.1.2-rc.1`, `0.1.5-alpha.1`, `0.1.5-rc.1`, and `0.1.5-rc.2` combinations, or `dsh plugin --profile web add 'github:franksong2702/dsh-codex-connect#v0.1.0-alpha.4.46'` only for DSH `0.1.7-rc.1`.
 
-   For current DSH `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1` or `0.2.0-rc.2`, if npm is unavailable after the matching GitHub prerelease is created, use `dsh plugin --profile web add 'github:franksong2702/dsh-codex-connect#v0.1.0-alpha.4.54'`.
+   For current DSH `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1` or `0.2.0-rc.2`, if npm is unavailable after the matching GitHub prerelease is created, use `dsh plugin --profile web add 'github:franksong2702/dsh-codex-connect#v0.2.0-alpha.1'`.
 
 3. Run `dsh web --help` once to compose the installed profile without starting the server. DSH `0.1.2-rc.1` prepares profile plugin dependency fallback during this step.
 4. Run `dsh --profile web --dump-config` and require exactly one `llm-openai-codex` row loading `dsh-codex-connect`.
