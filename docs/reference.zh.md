@@ -137,6 +137,7 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `enableProxy` | `false` | Codex Connect 流量是否使用 `proxyUrl` |
 | `proxyUrl` | `http://127.0.0.1:7890` | 不带凭据的 HTTP(S) proxy origin；启用前不生效 |
 | `contextWindowOverrides` | 无 | 按模型设置客户端上下文预算 |
+| `enableExtendedContext` | `false` | 全局开关：把所有目录默认值更小的模型提升到官方 922,000 token 最大输入 |
 | `enableSearch` | `false` | 注册 Codex 搜索，并在保存时将它选为搜索提供方 |
 | `enableReserveFallback` | `false` | 为 agent 请求执行身份匹配、后端授权的 Luna Reserve 切换 |
 | `enableImageTool` | `false` | 注册 `view_image` |
@@ -151,6 +152,8 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `requestMetricsMaxBytes` | `16777216` | 每进程单日志上限，整数 `4096`–`67108864`；不配置目录则不采集 |
 
 `contextWindowOverrides` 修改的是客户端预算，不是 OpenAI 服务端容量。未知模型 ID 或超过插件文档配置上限的值会明确失败。将整个字段设为 `null` 可屏蔽继承的全部覆盖值；将单个模型设为 `null` 可恢复其目录默认值，同时保留其他条目。请为输出和协议开销预留空间，并把更大的数值视为特定部署的实验，不能当作账户权限证据。所有权与持久化规则见 [Alpha 设计](design.zh.md)。
+
+`enableExtendedContext` 是全局扩展上下文开关。Codex 官方模型页公布 1,050,000 token 窗口与 922,000 token 最大输入，而 Codex 客户端目录给出的是 272,000 默认值与 872,000 配置上限。开关打开时，所有目录默认值更小的模型都会改用官方 922,000 token 上限（必要时高于该模型的 Codex 目录上限），用同一个 profile 实测账号或通道究竟在哪里被拒绝。按模型的 `contextWindowOverrides` 优先。该开关只改变客户端预算与 DSH 压缩策略：既不授予也不验证服务端容量，请求仍可能被账号或通道拒绝。
 
 ## 诊断与恢复
 
