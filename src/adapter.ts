@@ -144,10 +144,11 @@ export function createOpenAICodexProfile(
   contextWindowOverrides?: Readonly<Record<string, number>> | undefined,
   backendRequests?: OpenAICodexBackendRequests,
   wrapProvider?: (provider: Provider) => Provider,
+  extendedContextWindow?: number | undefined,
 ): ResolvedPiAiProviderProfile & { piProvider: Provider } {
-  const effectiveProvider = contextWindowOverrides === undefined
+  const effectiveProvider = contextWindowOverrides === undefined && extendedContextWindow === undefined
     ? provider
-    : withOpenAICodexContextWindowOverrides(provider, contextWindowOverrides)
+    : withOpenAICodexContextWindowOverrides(provider, contextWindowOverrides ?? {}, extendedContextWindow)
   const profile = {
     provider: OPENAI_CODEX_PROVIDER,
     displayName: 'OpenAI Codex',
@@ -169,16 +170,24 @@ export function createOpenAICodexProfile(
  * configured model ids. Request streaming itself is unaffected: pi-ai streams
  * the caller-supplied model, so only the metadata Harness reads for context
  * budgeting and compaction changes.
+ *
+ * `extendedContextWindow` is the opt-in test switch: it raises every model
+ * whose catalog default is smaller (above that model's Codex catalog ceiling
+ * when the profile asks for it) so a deployment can measure the real server
+ * limit. An explicit per-model override stays authoritative.
  */
 export function withOpenAICodexContextWindowOverrides(
   provider: Provider,
   overrides: Readonly<Record<string, number>>,
+  extendedContextWindow?: number | undefined,
 ): Provider {
   const baselineModels = provider.getModels()
   assertOpenAICodexContextWindowOverrides(overrides, baselineModels)
   const replaced = baselineModels.map(model => {
     const contextWindow = overrides[model.id]
-    return contextWindow === undefined ? model : { ...model, contextWindow }
+    if (contextWindow !== undefined) return { ...model, contextWindow }
+    if (extendedContextWindow === undefined || extendedContextWindow <= model.contextWindow) return model
+    return { ...model, contextWindow: extendedContextWindow }
   })
   return { ...provider, getModels: () => replaced }
 }
@@ -239,18 +248,21 @@ export function createOpenAICodexAdapter(
   backendRequests?: OpenAICodexBackendRequests,
   taskDispatch?: OpenAICodexTaskDispatch,
   imageEditingEnabled?: () => boolean,
+  /** Opt-in extended-context test budget read on every profile rebuild. */
+  extendedContextWindow?: () => number | undefined,
 ): PiAiAdapter {
   const baseline = withOpenAICodexModels(openaiCodexProvider())
   const provider = reservePermits === undefined ? baseline : withOpenAICodexReserve(baseline, reservePermits)
   let profiles: Map<string, ResolvedPiAiProviderProfile> | undefined
-  let previousOverrides: Readonly<Record<string, number>> | undefined
+  let previousBudget: { overrides: Readonly<Record<string, number>> | undefined; extended: number | undefined } | undefined
   const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => {
     const overrides = contextWindowOverrides?.()
-    if (profiles === undefined || !deepEqualJson(previousOverrides, overrides)) {
-      const profile = createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, overrides, backendRequests, taskDispatch?.wrapProvider)
-      previousOverrides = overrides === undefined ? undefined : { ...overrides }
+    const extended = extendedContextWindow?.()
+    if (profiles === undefined || !deepEqualJson(previousBudget, { overrides, extended })) {
+      const profile = createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, overrides, backendRequests, taskDispatch?.wrapProvider, extended)
       // PiAiAdapter keys snapshots by map identity; captured calls keep the old map.
       profiles = new Map([[OPENAI_CODEX_PROVIDER, profile]])
+      previousBudget = { overrides: overrides === undefined ? undefined : { ...overrides }, extended }
     }
     return profiles
   }

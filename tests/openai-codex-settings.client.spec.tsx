@@ -914,3 +914,24 @@ describe('OpenAI Codex Plugin configuration card', () => {
     expect((screen.getByRole('button', { name: en.save }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
+
+describe('maximum extended context switch', () => {
+  it('stages the global switch and writes it on save', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request) =>
+      requestPath(input) === OPENAI_CODEX_MODEL_CATALOG_PATH
+        ? json(modelCatalogFixture([{ id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna' }]))
+        : json({ status: 'signed-out' })))
+    const { scope, mutate } = settingsScopeFixture()
+
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="models" />)
+    const toggle = screen.getByRole<HTMLInputElement>('checkbox', { name: en.extendedEnable })
+    expect(toggle.checked).toBe(false)
+
+    fireEvent.click(toggle)
+    expect(toggle.checked).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
+    await screen.findByText(en.settingsSaved)
+    const ops = mutate.mock.calls[0]?.[0] as { op: string; path: string[]; value?: unknown }[]
+    expect(Object.fromEntries(ops.map(op => [op.path[0]!, op.value]))).toMatchObject({ enableExtendedContext: true })
+  })
+})

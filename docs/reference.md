@@ -137,6 +137,7 @@ The main plugin options are:
 | `enableProxy` | `false` | Use `proxyUrl` for Codex Connect traffic |
 | `proxyUrl` | `http://127.0.0.1:7890` | Credential-free HTTP(S) proxy origin; inactive until enabled |
 | `contextWindowOverrides` | none | Per-model client context-budget overrides |
+| `enableExtendedContext` | `false` | Global switch: advertise the official 922,000-token maximum input for every catalog model whose default budget is smaller |
 | `enableSearch` | `false` | Register Codex search and select it when the setting is saved |
 | `enableReserveFallback` | `false` | Follow identity-matched, backend-authorized Luna Reserve transitions for agent requests |
 | `enableImageTool` | `false` | Register `view_image` |
@@ -151,6 +152,8 @@ The main plugin options are:
 | `requestMetricsMaxBytes` | `16777216` | Startup-only per-process journal cap, integer `4096`–`67108864`; no directory means no collection |
 
 `contextWindowOverrides` changes the client budget, not OpenAI's server capacity. Unknown model ids and values above the plugin's documented configuration ceiling fail explicitly. Use `null` for the whole field to mask inherited overrides, or `null` for one model to restore its catalog default while preserving other entries. Leave room for output and protocol overhead, and treat larger values as deployment-specific experiments rather than entitlement evidence. [Alpha design](design.md) documents the ownership and persistence rules.
+
+`enableExtendedContext` is the global extended-context switch. The official Codex model pages publish a 1,050,000-token window with a 922,000-token maximum input, while the Codex client catalog ships a 272,000 default and an 872,000 configuration ceiling. While the switch is on, every catalog model whose default budget is smaller advertises that official 922,000-token maximum — above the model's Codex catalog ceiling when needed — so one profile can measure where the account or route actually clamps. An explicit per-model `contextWindowOverrides` entry stays authoritative. The switch changes client budgeting and DSH compaction only: it neither grants nor verifies server capacity, and requests can still be rejected by the account or route.
 
 ## Diagnostics and recovery
 
