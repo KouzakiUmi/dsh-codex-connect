@@ -1,9 +1,8 @@
 /** OpenAI Codex adapter assembled from public dsh-llm-pi-ai extension points. */
 
 import { defaultProviderAuthContext, InMemoryCredentialStore } from '@earendil-works/pi-ai'
-import type { Context as PiContext, Provider, SimpleStreamOptions } from '@earendil-works/pi-ai'
+import type { Provider, SimpleStreamOptions, TranscriptContext } from '@earendil-works/pi-ai'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
-import { codexProviderContext } from './pi-context.ts'
 import { resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, GenerateOptions, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
@@ -21,6 +20,8 @@ import type { OpenAICodexProxyManager } from './provider-proxy.ts'
 import type { OpenAICodexBackendRequests } from './backend-request.ts'
 import type { ReserveRequestPermits } from './reserve-state.ts'
 import { OPENAI_CODEX_RESERVE_MODEL, OPENAI_CODEX_RESERVE_NORMAL_MODEL } from './reserve-usage.ts'
+import { officialCodexModel } from './official-models.ts'
+import { withServedModelObserver } from './served-model.ts'
 import { streamWithNativeCompactionScope, withOpenAICodexNativeCompaction } from './native-compaction.ts'
 import { streamWithCodexRequestDiagnostics, withCodexDiagnosticFetch } from './request-diagnostics.ts'
 import { imageSelectionHandleText } from './image-input-contract.ts'
@@ -62,7 +63,7 @@ export function withOpenAICodexFastMode(
   const streamSimple = provider.streamSimple
   return {
     ...provider,
-    streamSimple(model, context: PiContext, options?: SimpleStreamOptions) {
+    streamSimple(model, context: TranscriptContext, options?: SimpleStreamOptions) {
       const sessionId = options?.sessionId
       const enabled = provider.id === OPENAI_CODEX_PROVIDER
         && model.provider === OPENAI_CODEX_PROVIDER
@@ -86,11 +87,101 @@ export function withOpenAICodexFastMode(
   }
 }
 
+/**
+ * Profile-scoped output-style preferences applied to ordinary Codex requests.
+ * `verbosity: 'default'` resolves to the model's catalog `default_verbosity`
+ * and is always sent as `text.verbosity`, as the official client does.
+ * `reasoningSummary: 'none'` removes `reasoning.summary` from the payload,
+ * matching the official client; other values are sent lowercase. Native
+ * compaction keeps its own pinned body and never reads these options.
+ */
+export interface OpenAICodexOutputStyle {
+  verbosity: 'default' | 'low' | 'medium' | 'high'
+  reasoningSummary: 'auto' | 'concise' | 'detailed' | 'none'
+}
+
+/** Official client defaults used when no profile preference is configured. */
+export const OFFICIAL_DEFAULT_OUTPUT_STYLE: OpenAICodexOutputStyle = Object.freeze({
+  verbosity: 'default',
+  reasoningSummary: 'none',
+})
+
+/**
+ * pi-ai's generic streamSimple signature omits the Codex-specific Responses
+ * fields that its own implementation reads; both fields are part of the
+ * official Codex wire contract (text.verbosity / reasoning.summary).
+ */
+export type CodexSimpleStreamOptions = SimpleStreamOptions & {
+  textVerbosity?: 'low' | 'medium' | 'high'
+  reasoningSummary?: 'auto' | 'concise' | 'detailed' | 'off' | 'on' | null
+}
+
+/** Add the profile-scoped verbosity and reasoning-summary preferences to requests. */
+export function withOpenAICodexOutputStyle(
+  provider: Provider,
+  resolveStyle: () => OpenAICodexOutputStyle | undefined,
+): Provider {
+  const streamSimple = provider.streamSimple
+  return {
+    ...provider,
+    streamSimple(model, context: TranscriptContext, options?: SimpleStreamOptions) {
+      const style = resolveStyle()
+      if (style === undefined) return streamSimple.call(provider, model, context, options)
+      // The official client always serializes `text.verbosity`; `default` resolves to the model's
+      // catalog default_verbosity rather than omitting the field.
+      const verbosity = style.verbosity === 'default'
+        ? (officialCodexModel(model.id)?.defaultVerbosity ?? 'low')
+        : style.verbosity
+      const previousOnPayload = options?.onPayload
+      const nextOptions: CodexSimpleStreamOptions = {
+        ...options,
+        textVerbosity: verbosity,
+        // 'none' is the official Codex reasoning-summary value (codex-rs serializes the enum lowercase);
+        // pi-ai's declared union omits it, so the assignment is narrowed here and forwarded verbatim.
+        reasoningSummary: style.reasoningSummary as Exclude<CodexSimpleStreamOptions['reasoningSummary'], undefined>,
+        async onPayload(payload, payloadModel) {
+          const replaced = await previousOnPayload?.(payload, payloadModel)
+          const nextPayload = replaced === undefined ? payload : replaced
+          if (style.reasoningSummary !== 'none' || !isPayloadRecord(nextPayload)) return nextPayload
+          // The official client omits `reasoning.summary` entirely when the summary is `none`.
+          const reasoning = nextPayload['reasoning']
+          if (!isPayloadRecord(reasoning) || !('summary' in reasoning)) return nextPayload
+          const { summary: _omitted, ...withoutSummary } = reasoning
+          return { ...nextPayload, reasoning: withoutSummary }
+        },
+      }
+      return streamSimple.call(provider, model, context, nextOptions)
+    },
+  }
+}
+
+/**
+ * Official effort rule: when a request names no effort (or `off`, which these models do not define),
+ * the official client sends the catalog `default_reasoning_level`. Without this, pi-ai sends
+ * `effort: 'none'` for models without an `off` mapping and omits reasoning for models with one.
+ */
+export function withOpenAICodexDefaultEffort(provider: Provider): Provider {
+  const streamSimple = provider.streamSimple
+  return {
+    ...provider,
+    streamSimple(model, context, options) {
+      const official = officialCodexModel(model.id)
+      const requested = options?.reasoning as string | undefined
+      if (official === undefined || (requested !== undefined && requested !== 'off' && requested !== 'none')) {
+        return streamSimple.call(provider, model, context, options)
+      }
+      return streamSimple.call(provider, model, context, { ...options, reasoning: official.defaultReasoningLevel })
+    },
+  }
+}
+
 /** Add an internal Luna route whose dispatch requires one fresh agent-request permit. */
 export function withOpenAICodexReserve(provider: Provider, permits: ReserveRequestPermits): Provider {
   const models = provider.getModels().filter(model => model.id !== OPENAI_CODEX_RESERVE_MODEL)
   const luna = models.find(model => model.id === OPENAI_CODEX_RESERVE_NORMAL_MODEL)
   if (luna === undefined) throw new Error('Codex Reserve requires the Luna model catalog')
+  // The official catalog serves this route as `gpt-reserve` with its own default_reasoning_level,
+  // which the default-effort wrapper applies; only the Luna metadata is reused here.
   const reserve = { ...luna, id: OPENAI_CODEX_RESERVE_MODEL, name: 'Luna Reserve' }
   return {
     ...provider,
@@ -109,15 +200,19 @@ function requestProvider(
   resolveProxyUrl?: () => string | undefined,
   backendRequests?: OpenAICodexBackendRequests,
   wrapProvider?: (provider: Provider) => Provider,
+  outputStyle?: () => OpenAICodexOutputStyle | undefined,
 ): Provider {
-  const ordinary = withOpenAICodexFastMode(withOpenAICodexNativeCompaction(provider), fastMode)
+  const ordinary = withOpenAICodexFastMode(
+    withOpenAICodexOutputStyle(withOpenAICodexNativeCompaction(withOpenAICodexDefaultEffort(provider)), outputStyle ?? (() => OFFICIAL_DEFAULT_OUTPUT_STYLE)),
+    fastMode,
+  )
   const configured = wrapProvider === undefined ? ordinary : wrapProvider(ordinary)
   const streamSimple = configured.streamSimple
   return {
     ...configured,
-    streamSimple(model, context: PiContext, options?: SimpleStreamOptions) {
+    streamSimple(model, context: TranscriptContext, options?: SimpleStreamOptions) {
       const proxyUrl = resolveProxyUrl?.()
-      const operation = () => streamSimple.call(configured, model, codexProviderContext(context), withCodexDiagnosticFetch(options, backendRequests))
+      const operation = () => streamSimple.call(configured, model, context, withServedModelObserver(withCodexDiagnosticFetch(options, backendRequests), model.id))
       return backendRequests?.runStream(operation) ?? proxyManager?.runStream(proxyUrl, operation) ?? operation()
     },
     auth: {
@@ -144,6 +239,7 @@ export function createOpenAICodexProfile(
   contextWindowOverrides?: Readonly<Record<string, number>> | undefined,
   backendRequests?: OpenAICodexBackendRequests,
   wrapProvider?: (provider: Provider) => Provider,
+  outputStyle?: () => OpenAICodexOutputStyle | undefined,
 ): ResolvedPiAiProviderProfile & { piProvider: Provider } {
   const effectiveProvider = contextWindowOverrides === undefined
     ? provider
@@ -159,7 +255,7 @@ export function createOpenAICodexProfile(
     retryPolicy: resolveRetryPolicy(undefined, 'dsh-codex-connect retryPolicy'),
     configuredMaxTokens: new Map(),
     modelErrors: new Map<string, string>(),
-    piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider),
+    piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider, outputStyle),
   }
   return profile
 }
@@ -239,6 +335,8 @@ export function createOpenAICodexAdapter(
   backendRequests?: OpenAICodexBackendRequests,
   taskDispatch?: OpenAICodexTaskDispatch,
   imageEditingEnabled?: () => boolean,
+  /** Profile-scoped output-detail and reasoning-summary preferences read on every request. */
+  outputStyle?: () => OpenAICodexOutputStyle | undefined,
 ): PiAiAdapter {
   const baseline = withOpenAICodexModels(openaiCodexProvider())
   const provider = reservePermits === undefined ? baseline : withOpenAICodexReserve(baseline, reservePermits)
@@ -247,7 +345,7 @@ export function createOpenAICodexAdapter(
   const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => {
     const overrides = contextWindowOverrides?.()
     if (profiles === undefined || !deepEqualJson(previousOverrides, overrides)) {
-      const profile = createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, overrides, backendRequests, taskDispatch?.wrapProvider)
+      const profile = createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, overrides, backendRequests, taskDispatch?.wrapProvider, outputStyle)
       previousOverrides = overrides === undefined ? undefined : { ...overrides }
       // PiAiAdapter keys snapshots by map identity; captured calls keep the old map.
       profiles = new Map([[OPENAI_CODEX_PROVIDER, profile]])

@@ -4,7 +4,18 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+
+/**
+ * Local shape of the legacy invariant installer. DSH 0.2.1-alpha.1 and later no
+ * longer publish `@deepseek-ai/dsh-invariants`, so the companion keeps only the
+ * structural contract it actually uses.
+ */
+type InvariantInstaller = () => void
+
+/** Host invariant service surface used by the legacy companion registration. */
+interface InvariantService {
+  register(name: string, install: InvariantInstaller): () => void
+}
 
 const PACKAGE_NAME = 'dsh-codex-connect'
 
@@ -25,4 +36,4 @@ const install: InvariantInstaller = () => {}
  * @returns the installed registration's disposer after setup succeeds.
  */
 export const apply = (ctx: Context): Promise<() => void> =>
-  Promise.resolve(ctx.invariants.register(PACKAGE_NAME, install))
+  Promise.resolve((ctx as Context & { invariants: InvariantService }).invariants.register(PACKAGE_NAME, install))

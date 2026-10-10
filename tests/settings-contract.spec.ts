@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DEFAULT_OPENAI_CODEX_OUTPUT_VERBOSITY,
   DEFAULT_OPENAI_CODEX_PROXY_URL,
+  DEFAULT_OPENAI_CODEX_REASONING_SUMMARY,
   DEFAULT_OPENAI_CODEX_SETTINGS,
   decodeOpenAICodexSettings,
   isValidOpenAICodexImageModelHint,
   isValidOpenAICodexContextWindowOverrides,
+  isValidOpenAICodexOutputVerbosity,
+  isValidOpenAICodexReasoningSummary,
   resolveOpenAICodexProxyUrl,
   resolveOpenAICodexSettings,
 } from '../src/settings-contract.ts'
@@ -226,5 +230,58 @@ describe('OpenAI Codex proxy settings contract', () => {
     expect(decodeOpenAICodexSettings(configSettings(host))?.contextWindowOverrides).toEqual({ 'gpt-5.6-terra': 300_000 })
     expect(isValidOpenAICodexContextWindowOverrides({ '': null })).toBe(false)
     expect(isValidOpenAICodexContextWindowOverrides(Object.fromEntries(Array.from({ length: 257 }, (_, i) => [`model-${i}`, null])))).toBe(false)
+  })
+
+  it('defaults verbosity and reasoning summary to the official catalog behaviour', () => {
+    expect(DEFAULT_OPENAI_CODEX_SETTINGS.outputVerbosity).toBe('default')
+    expect(DEFAULT_OPENAI_CODEX_SETTINGS.reasoningSummary).toBe('none')
+    expect(DEFAULT_OPENAI_CODEX_OUTPUT_VERBOSITY).toBe('default')
+    expect(DEFAULT_OPENAI_CODEX_REASONING_SUMMARY).toBe('none')
+    const legacy = decodeOpenAICodexSettings({
+      enableSearch: false,
+      enableImageTool: false,
+      searchModel: 'gpt-5.6-sol',
+      searchMode: 'cached',
+      searchContextSize: 'medium',
+      searchMaxOutputTokens: 10_000,
+    })
+    expect(legacy?.outputVerbosity).toBe('default')
+    expect(legacy?.reasoningSummary).toBe('none')
+    expect(Config({}).outputVerbosity.get()).toBe('default')
+    expect(Config({}).reasoningSummary.get()).toBe('none')
+  })
+
+  it('accepts the official output-style choices on Host and browser', () => {
+    for (const verbosity of ['default', 'low', 'medium', 'high'] as const) {
+      expect(isValidOpenAICodexOutputVerbosity(verbosity)).toBe(true)
+      expect(Config({ outputVerbosity: verbosity }).outputVerbosity.get()).toBe(verbosity)
+      expect(resolveOpenAICodexSettings({ outputVerbosity: verbosity }).outputVerbosity).toBe(verbosity)
+      expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, outputVerbosity: verbosity })?.outputVerbosity)
+        .toBe(verbosity)
+    }
+    for (const summary of ['auto', 'concise', 'detailed', 'none'] as const) {
+      expect(isValidOpenAICodexReasoningSummary(summary)).toBe(true)
+      expect(Config({ reasoningSummary: summary }).reasoningSummary.get()).toBe(summary)
+      expect(resolveOpenAICodexSettings({ reasoningSummary: summary }).reasoningSummary).toBe(summary)
+      expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, reasoningSummary: summary })?.reasoningSummary)
+        .toBe(summary)
+    }
+  })
+
+  it.each(['ultra', 'verbose', 'terse', 2])('rejects malformed output-style values on Host and browser: %j', value => {
+    expect(() => Config({ outputVerbosity: value } as never)).toThrow()
+    expect(() => resolveOpenAICodexSettings({ outputVerbosity: value } as never)).toThrow()
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, outputVerbosity: value })).toBeUndefined()
+    expect(() => Config({ reasoningSummary: value } as never)).toThrow()
+    expect(() => resolveOpenAICodexSettings({ reasoningSummary: value } as never)).toThrow()
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, reasoningSummary: value })).toBeUndefined()
+  })
+
+  it('treats a null output-style value as invalid for resolution and browser decoding', () => {
+    // The Host volatile union tolerates a null entry, so null is asserted at the decode/resolution layers only.
+    expect(() => resolveOpenAICodexSettings({ outputVerbosity: null } as never)).toThrow()
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, outputVerbosity: null })).toBeUndefined()
+    expect(() => resolveOpenAICodexSettings({ reasoningSummary: null } as never)).toThrow()
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, reasoningSummary: null })).toBeUndefined()
   })
 })

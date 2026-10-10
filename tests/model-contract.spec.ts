@@ -1,12 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
 import { assertOpenAICodexContextWindowOverrides, openAICodexModelCatalog, withOpenAICodexContextWindowOverrides } from '../src/adapter.ts'
-import { decodeOpenAICodexModelCatalog, isValidOpenAICodexContextBudget, openAICodexContextLimit, openAICodexContextLimitSource, OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE, OPENAI_CODEX_CONTEXT_LIMIT_SOURCE } from '../src/model-contract.ts'
+import { decodeOpenAICodexModelCatalog, isValidOpenAICodexContextBudget, openAICodexContextLimit, openAICodexContextLimitSource, OPENAI_CODEX_CONTEXT_LIMIT_SOURCE } from '../src/model-contract.ts'
+import { OFFICIAL_CODEX_CATALOG_SOURCE, OFFICIAL_CODEX_REMOVED_MODEL_IDS } from '../src/official-models.ts'
 
 describe('model-specific configuration ceilings', () => {
-  it('keeps model-specific policy links pinned without changing old provenance', () => {
-    expect(openAICodexContextLimitSource('gpt-6.1-sol')).toBe(OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE)
-    expect(openAICodexContextLimitSource('gpt-6-sol')).toBe(OPENAI_CODEX_CONTEXT_LIMIT_SOURCE)
+  it('pins every configuration link to the mirrored official catalog revision', () => {
+    expect(OPENAI_CODEX_CONTEXT_LIMIT_SOURCE).toBe(OFFICIAL_CODEX_CATALOG_SOURCE)
+    expect(openAICodexContextLimitSource('gpt-6.1-sol')).toBe(OFFICIAL_CODEX_CATALOG_SOURCE)
+    expect(openAICodexContextLimitSource('gpt-6-sol')).toBe(OFFICIAL_CODEX_CATALOG_SOURCE)
+  })
+  it('exposes no model that the official catalog removed', () => {
+    const ids = openAICodexModelCatalog().map(entry => entry.id)
+    for (const removed of OFFICIAL_CODEX_REMOVED_MODEL_IDS) expect(ids).not.toContain(removed)
   })
   it.each([
     ['gpt-6-astra', 272_000, 872_000],
@@ -16,10 +22,7 @@ describe('model-specific configuration ceilings', () => {
     ['gpt-5.6-sol', 272_000, 872_000],
     ['gpt-5.6-terra', 272_000, 872_000],
     ['gpt-5.6-luna', 272_000, 872_000],
-    ['gpt-5.4', 272_000, 1_000_000],
     ['gpt-5.5', 272_000, 272_000],
-    ['gpt-5.4-mini', 272_000, 272_000],
-    ['gpt-5.3-codex-spark', 128_000, 128_000],
   ])('exposes %s defaults and enforces the ceiling in both browser and adapter validation', (id, contextWindow, maximum) => {
     const model = openAICodexModelCatalog().find(entry => entry.id === id)!
     expect(model).toMatchObject({ contextWindow, maxContextWindow: maximum })

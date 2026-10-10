@@ -9,16 +9,21 @@ import type {
   AssistantMessage,
   AssistantMessageEventStream,
   Api,
-  Context as PiContext,
   Model,
   Provider,
   SimpleStreamOptions,
+  TranscriptContext,
   Usage,
 } from '@earendil-works/pi-ai'
 import {
   convertResponsesMessages,
   convertResponsesTools,
 } from '@earendil-works/pi-ai/api/openai-responses-shared'
+import {
+  getCurrentSystemPrompt,
+  getCurrentTools,
+  normalizeContext,
+} from '@earendil-works/pi-ai/utils/transcript'
 import type { GenerateOptions, Message, RequestMessage, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { isCompactCheckpointSource as hasCompactCheckpointSource } from '@deepseek-ai/dsh-compaction'
 import { prepareOpenAICodexBackendHeaders } from './backend-request-policy.ts'
@@ -472,7 +477,7 @@ async function compactResponse(response: Response, retained: readonly unknown[])
 
 async function requestNativeCompaction(
   model: Model<Api>,
-  context: PiContext,
+  context: TranscriptContext,
   options: SimpleStreamOptions | undefined,
   scope: NativeCompactionScope,
 ): Promise<CompactResponse> {
@@ -480,18 +485,22 @@ async function requestNativeCompaction(
   if (access === undefined || access.length === 0) throw new Error('OpenAI Codex native compaction request has no OAuth token')
   if (context.messages.length === 0) throw new Error('OpenAI Codex native compaction request has no summarization instruction to remove')
   const messages = context.messages.slice(0, -1)
+  // pi-ai 1.1.0 carries the prompt and tools in transcript system messages; the
+  // compaction body pins them separately as `instructions` and `tools`.
+  const systemPrompt = getCurrentSystemPrompt(messages)
+  const currentTools = getCurrentTools(messages)
   const converted = convertResponsesMessages(
     model,
-    { ...context, messages },
+    normalizeContext({ messages }),
     CODEX_TOOL_CALL_PROVIDERS,
     { includeSystemPrompt: false },
   )
   const input = expandScopedInput(converted, scope)
   const retained = retainedNativeCompactionInput(input)
   const compat = model.compat as { supportsStrictMode?: boolean; supportsOpenAIGrammarTools?: boolean } | undefined
-  const tools = context.tools === undefined || context.tools.length === 0
+  const tools = currentTools.length === 0
     ? undefined
-    : convertResponsesTools(context.tools, {
+    : convertResponsesTools(currentTools, {
         strict: null,
         supportsStrictMode: compat?.supportsStrictMode ?? true,
         supportsOpenAIGrammarTools: compat?.supportsOpenAIGrammarTools ?? false,
@@ -504,7 +513,7 @@ async function requestNativeCompaction(
     store: false,
     stream: true,
     input: [...input, { type: 'compaction_trigger' }],
-    instructions: context.systemPrompt ?? '',
+    instructions: systemPrompt,
     ...(tools === undefined ? {} : { tools }),
     tool_choice: 'auto',
     parallel_tool_calls: true,
@@ -566,7 +575,7 @@ async function requestNativeCompaction(
 function standardStream(
   provider: Provider,
   model: Model<Api>,
-  context: PiContext,
+  context: TranscriptContext,
   options: SimpleStreamOptions | undefined,
   scope: NativeCompactionScope | undefined,
 ): AssistantMessageEventStream {
@@ -584,7 +593,7 @@ function standardStream(
 function nativeCompactionStream(
   provider: Provider,
   model: Model<Api>,
-  context: PiContext,
+  context: TranscriptContext,
   options: SimpleStreamOptions | undefined,
   scope: NativeCompactionScope,
 ): AssistantMessageEventStream {

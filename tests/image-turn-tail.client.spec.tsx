@@ -1,3 +1,4 @@
+import { PartialArguments } from '@deepseek-ai/dsh-util-values'
 // @vitest-environment jsdom
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
@@ -32,7 +33,7 @@ function t(key: OpenAICodexSettingsKey): string { return en[key] }
 
 function result(callId: string, seq: number, meta: unknown, name = 'codex_connect_image_generate') {
   return {
-    kind: 'tool-result' as const, callId, seq, time: seq, callTime: seq - 1,
+    kind: 'tool-result' as const, name: '', args: PartialArguments.EMPTY, callId, seq, time: seq, callTime: seq - 1,
     call: { name, argsRaw: JSON.stringify({ prompt: 'draw' }) },
     content: [{ type: 'image' as const, attachment: preview }], isError: false,
     meta, subCalls: [],

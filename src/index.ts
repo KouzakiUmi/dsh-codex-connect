@@ -21,6 +21,7 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { assertOpenAICodexContextWindowOverrides, createOpenAICodexAdapter, openAICodexModelCatalog } from './adapter.ts'
+import type { OpenAICodexOutputStyle } from './adapter.ts'
 import { OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS, registerOpenAICodexAuthRoutes } from './auth-routes.ts'
 import { registerOpenAICodexProxyRoutes } from './proxy-routes.ts'
 import { OPENAI_CODEX_TRUSTED_ORIGINS_FILENAME, OpenAICodexTrustedOriginsStore } from './trusted-origins.ts'
@@ -117,28 +118,35 @@ import {
 import type { OpenAICodexSearchContextSize, OpenAICodexSearchMode } from './search.ts'
 import { OpenAICodexCredentialStore, OPENAI_CODEX_PROVIDER } from './store.ts'
 import {
+  DEFAULT_OPENAI_CODEX_OUTPUT_VERBOSITY,
   DEFAULT_OPENAI_CODEX_PROXY_URL,
+  DEFAULT_OPENAI_CODEX_REASONING_SUMMARY,
   parseOpenAICodexImageModelHint,
   OPENAI_CODEX_SETTINGS_NAMESPACE,
   resolveOpenAICodexProxyUrl,
   resolveOpenAICodexSettings,
   parseOpenAICodexContextWindowOverrides,
 } from './settings-contract.ts'
-import type { OpenAICodexSettingsInput } from './settings-contract.ts'
+import type { OpenAICodexOutputVerbosity, OpenAICodexReasoningSummarySetting, OpenAICodexSettingsInput } from './settings-contract.ts'
 
 export {
   decodeOpenAICodexSettings,
+  DEFAULT_OPENAI_CODEX_OUTPUT_VERBOSITY,
   DEFAULT_OPENAI_CODEX_PROXY_URL,
   DEFAULT_OPENAI_CODEX_IMAGE_MODEL_HINT,
+  DEFAULT_OPENAI_CODEX_REASONING_SUMMARY,
   DEFAULT_OPENAI_CODEX_SETTINGS,
   isValidOpenAICodexImageModelHint,
   isValidOpenAICodexContextWindowOverrides,
+  isValidOpenAICodexOutputVerbosity,
   isValidOpenAICodexProxyUrl,
+  isValidOpenAICodexReasoningSummary,
   OPENAI_CODEX_SETTINGS_NAMESPACE,
   resolveOpenAICodexProxyUrl,
   resolveOpenAICodexSettings,
 } from './settings-contract.ts'
-export type { OpenAICodexSettingsConfig } from './settings-contract.ts'
+export type { OpenAICodexOutputVerbosity, OpenAICodexReasoningSummarySetting, OpenAICodexSettingsConfig } from './settings-contract.ts'
+export type { OpenAICodexOutputStyle } from './adapter.ts'
 
 export {
   isOpenAICodexTransportError,
@@ -298,6 +306,10 @@ export interface Config {
   searchContextSize?: OpenAICodexSearchContextSize
   /** Maximum generated tokens returned by the standalone search endpoint. */
   searchMaxOutputTokens?: number
+  /** Output-detail level sent as `text.verbosity`; `default` omits the wire field. */
+  outputVerbosity?: OpenAICodexOutputVerbosity
+  /** Reasoning-summary detail sent as `reasoning.summary`. */
+  reasoningSummary?: OpenAICodexReasoningSummarySetting
 }
 
 function configValue<T>(value: T | Volatile<T> | undefined): T | undefined {
@@ -341,6 +353,8 @@ const configSchema = z.object({
   searchMode: z.union(['cached', 'indexed', 'live'] as const).default(DEFAULT_OPENAI_CODEX_SEARCH_MODE).volatile(),
   searchContextSize: z.union(['low', 'medium', 'high'] as const).default(DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE).volatile(),
   searchMaxOutputTokens: z.number().step(1).min(1).default(DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS).volatile(),
+  outputVerbosity: z.union(['default', 'low', 'medium', 'high'] as const).default(DEFAULT_OPENAI_CODEX_OUTPUT_VERBOSITY).volatile(),
+  reasoningSummary: z.union(['auto', 'concise', 'detailed', 'none'] as const).default(DEFAULT_OPENAI_CODEX_REASONING_SUMMARY).volatile(),
 })
 
 /** Runtime configuration exposes each editable field through Cordis's public Volatile type. */
@@ -367,6 +381,8 @@ export interface VolatileConfig {
   searchMode: Volatile<OpenAICodexSearchMode>
   searchContextSize: Volatile<OpenAICodexSearchContextSize>
   searchMaxOutputTokens: Volatile<number>
+  outputVerbosity: Volatile<OpenAICodexOutputVerbosity>
+  reasoningSummary: Volatile<OpenAICodexReasoningSummarySetting>
 }
 
 export const Config: z<Config, VolatileConfig> = configSchema
@@ -390,6 +406,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
     imageModelHint: configValue(config.imageModelHint), autoReviewDisclosureAcknowledged: configValue(config.autoReviewDisclosureAcknowledged),
     enableAutoReview: configValue(config.enableAutoReview), searchModel: configValue(config.searchModel), searchMode: configValue(config.searchMode),
     searchContextSize: configValue(config.searchContextSize), searchMaxOutputTokens: configValue(config.searchMaxOutputTokens),
+    outputVerbosity: configValue(config.outputVerbosity), reasoningSummary: configValue(config.reasoningSummary),
   }).filter(([, value]) => value !== undefined)) as OpenAICodexSettingsInput
   const validateSettings = (value: OpenAICodexSettingsInput): void => {
     resolveOpenAICodexSettings(value)
@@ -470,6 +487,10 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       backendRequests,
       taskRuntime,
       () => resolveOpenAICodexSettings(current()).enableImageGeneration,
+      (): OpenAICodexOutputStyle => {
+        const resolved = resolveOpenAICodexSettings(current())
+        return { verbosity: resolved.outputVerbosity, reasoningSummary: resolved.reasoningSummary }
+      },
     ),
   )
   registerImageHandleBridge(ctx, {

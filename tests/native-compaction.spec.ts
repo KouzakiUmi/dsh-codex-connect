@@ -3,9 +3,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { zstdDecompressSync } from 'node:zlib'
 import { Context } from '@deepseek-ai/cordis'
-import type { Context as PiContext, SimpleStreamOptions } from '@earendil-works/pi-ai'
+import type { SimpleStreamOptions, TranscriptContext } from '@earendil-works/pi-ai'
 import { CompactionId, compactCheckpointSource } from '@deepseek-ai/dsh-compaction'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
+import { normalizeContext } from '@earendil-works/pi-ai/utils/transcript'
 import {
   BlockAssembler,
   createUserMessage,
@@ -231,7 +232,7 @@ describe('native checkpoint payload callback composition', () => {
         return mode === 'async-observer' ? Promise.resolve(undefined) : undefined
       })
       const scoped = streamWithNativeCompactionScope(async function* (prepared) {
-        const messages: PiContext['messages'] = prepared.messages.map(message => ({
+        const messages: TranscriptContext['messages'] = prepared.messages.map(message => ({
           role: 'user',
           content: message.content.map(block => {
             if (block.type !== 'text') throw new Error('expected a text-only fixture')
@@ -239,7 +240,7 @@ describe('native checkpoint payload callback composition', () => {
           }),
           timestamp: Date.now(),
         }))
-        const result = await nativeProvider.streamSimple(piModel, { messages }, {
+        const result = await nativeProvider.streamSimple(piModel, normalizeContext({ messages }), {
           apiKey: accessToken('callback-fixture'), transport: 'sse', maxRetries: 0, onPayload,
         }).result()
         expect(result.stopReason).toBe('stop')

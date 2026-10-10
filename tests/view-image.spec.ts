@@ -106,14 +106,14 @@ describe('view_image', () => {
     }
   })
 
-  it('refuses a model that does not explicitly declare image input', async () => {
+  it('refuses a model the official catalog no longer lists', async () => {
     const context = await setup()
     await writeFile(join(workspace, 'pixel.png'), PNG_1X1)
 
     const result = await view(context, 'pixel.png', 'gpt-5.3-codex-spark')
 
     expect(result.isError).toBe(true)
-    expect(result.content.find(block => block.type === 'text')?.text).toContain('does not declare image input')
+    expect(result.content.find(block => block.type === 'text')?.text).toContain('has no configured model')
   })
 
   it('presents remote URLs as network fetches and local paths as file reads', async () => {

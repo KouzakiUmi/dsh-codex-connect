@@ -190,7 +190,7 @@ describe('assembled Reserve agent routing', () => {
     await expect(request()).rejects.toThrow('Ordinary Codex usage and Luna Reserve are exhausted')
   })
 
-  it('logs and streams Reserve with Luna defaults, then restores the exact ordinary selection on recovery', async () => {
+  it('logs and streams Reserve at the official gpt-reserve default effort, then restores the exact ordinary selection on recovery', async () => {
     let now = Date.now()
     vi.spyOn(Date, 'now').mockImplementation(() => now)
     const { ctx, agent, proposal } = await fixture({ enableReserveFallback: true, contextWindowOverrides: { 'gpt-6-astra': 500_000 } })
@@ -213,7 +213,9 @@ describe('assembled Reserve agent routing', () => {
     await send(agent, 'first')
     expect(wires).toHaveLength(1)
     expect(wires[0]).toMatchObject({ model: 'gpt-reserve' })
-    expect(wires[0]).not.toHaveProperty('reasoning')
+    // The official catalog gives gpt-reserve default_reasoning_level medium and default summary none.
+    expect(wires[0]).toMatchObject({ reasoning: { effort: 'medium' } })
+    expect(wires[0]?.reasoning).not.toHaveProperty('summary')
     expect(wires[0]).not.toHaveProperty('service_tier')
     expect(agent.session.requestHeader()?.config).toEqual({ provider: 'openai-codex', model: 'gpt-reserve' })
     expect(agent.session.snapshotEvents().filter(event => event.type === 'request/context').at(-1)?.data)

@@ -10,8 +10,8 @@ const DSH_PACKAGES = [
 ]
 export const DURABLE_RUNTIME_VERSIONS = Object.freeze({
   '@deepseek-ai/cordis': '4.0.4',
-  ...Object.fromEntries(DSH_PACKAGES.map(name => [`@deepseek-ai/${name}`, '0.1.7-rc.1'])),
-  '@earendil-works/pi-ai': '0.85.1',
+  ...Object.fromEntries(DSH_PACKAGES.map(name => [`@deepseek-ai/${name}`, '0.2.1-alpha.2'])),
+  '@earendil-works/pi-ai': '1.1.0',
 })
 
 /** This probe is narrower than the plugin support matrix; mixed or new hosts fail closed. */

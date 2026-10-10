@@ -117,7 +117,25 @@ const CONFIG_FIELDS = [
   'searchContextSize',
   'searchMaxOutputTokens',
   'enableSearch',
+  'outputVerbosity',
+  'reasoningSummary',
 ] as const satisfies readonly (keyof OpenAICodexSettingsConfig)[]
+
+/** Official per-choice copy for the output-detail select, matched to the saved value. */
+const OUTPUT_VERBOSITY_HELP: Record<OpenAICodexSettingsConfig['outputVerbosity'], OpenAICodexSettingsKey> = {
+  default: 'verbosityDefaultHelp',
+  low: 'verbosityLowHelp',
+  medium: 'verbosityMediumHelp',
+  high: 'verbosityHighHelp',
+}
+
+/** Official per-choice copy for the reasoning-summary select, matched to the saved value. */
+const REASONING_SUMMARY_HELP: Record<OpenAICodexSettingsConfig['reasoningSummary'], OpenAICodexSettingsKey> = {
+  auto: 'summaryAutoHelp',
+  concise: 'summaryConciseHelp',
+  detailed: 'summaryDetailedHelp',
+  none: 'summaryNoneHelp',
+}
 
 interface AutoReviewConsentDialogProps {
   t: OpenAICodexConfigurationProps['t']
@@ -705,6 +723,39 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
             <h3 style={headingStyle}>{t('capabilitiesHeading')}</h3>
             <p style={{ ...bodyStyle, marginTop: 4 }}>{t('capabilitiesIntro')}</p>
           </div>
+          <div style={formGridStyle} role="group" aria-label={t('outputStyleGroup')}>
+            <label style={formFieldStyle}>
+              <span style={labelStyle}>{t('outputVerbosity')}</span>
+              <select
+                style={controlStyle}
+                value={draft.outputVerbosity}
+                disabled={!editable}
+                onChange={event => { update('outputVerbosity', event.currentTarget.value as OpenAICodexSettingsConfig['outputVerbosity']) }}
+              >
+                <option value="default">{t('verbosityDefault')}</option>
+                <option value="low">{t('verbosityLow')}</option>
+                <option value="medium">{t('verbosityMedium')}</option>
+                <option value="high">{t('verbosityHigh')}</option>
+              </select>
+              <span style={bodyStyle}>{t(OUTPUT_VERBOSITY_HELP[draft.outputVerbosity])}</span>
+            </label>
+            <label style={formFieldStyle}>
+              <span style={labelStyle}>{t('reasoningSummarySetting')}</span>
+              <select
+                style={controlStyle}
+                value={draft.reasoningSummary}
+                disabled={!editable}
+                onChange={event => { update('reasoningSummary', event.currentTarget.value as OpenAICodexSettingsConfig['reasoningSummary']) }}
+              >
+                <option value="auto">{t('summaryAuto')}</option>
+                <option value="concise">{t('summaryConcise')}</option>
+                <option value="detailed">{t('summaryDetailed')}</option>
+                <option value="none">{t('summaryNone')}</option>
+              </select>
+              <span style={bodyStyle}>{t(REASONING_SUMMARY_HELP[draft.reasoningSummary])}</span>
+            </label>
+          </div>
+          <p style={bodyStyle}>{t('outputStyleNote')}</p>
           <label style={toggleRowStyle}>
             <input
               type="checkbox"
