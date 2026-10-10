@@ -1,3 +1,4 @@
+import { PartialArguments } from '@deepseek-ai/dsh-util-values'
 // @vitest-environment jsdom
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -75,7 +76,7 @@ describe('Codex image Tool view', () => {
   it('PR272 review: shows the safe actionable reason for a rejected edit selection', () => {
     const reason = 'Error: Target image: is unavailable or does not match a reference in this session. Select or attach the image again.'
     render(<CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{
-      kind: 'tool-result', seq: 2, time: 2, callId: 'call-1', callTime: 1, subCalls: [], isError: true,
+      kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', callTime: 1, subCalls: [], isError: true,
       call: { name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ operation: 'edit', prompt: 'Change the sky', target: { attachmentId: 'sha256:absent' } }) },
       content: [{ type: 'text', text: reason }], error: { name: 'Error', code: 'UNKNOWN' },
     }} />)
@@ -92,7 +93,7 @@ describe('Codex image Tool view', () => {
       { type: 'image' as const, attachment: image },
     ]
     render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={{
-      kind: 'tool-result', seq: 2, time: 2, callId: 'call-1:ptc:1', callTime: 1, isError: false, content, subCalls: [],
+      kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1:ptc:1', callTime: 1, isError: false, content, subCalls: [],
       call: { name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt: 'A blue whale' }) },
     }} />)
     expect(screen.queryByText(en.unknownResult)).toBeNull()
@@ -105,7 +106,7 @@ describe('Codex image Tool view', () => {
     const writeText = vi.fn(async () => undefined)
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     const prompt = 'A detailed city at sunset\nwith flying trains'
-    render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={{ phase: 'start', callId: 'call-1', name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt }), turn: 1, step: 1, time: 1, subCalls: [] }} />)
+    render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={{ phase: 'start', args: PartialArguments.EMPTY, callId: 'call-1', name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt }), turn: 1, step: 1, time: 1, subCalls: [] }} />)
     expect(screen.getByTestId('image-generation-layout').getAttribute('data-responsive-layout')).toBe('visual-prompt')
     expect(screen.getByTestId('image-generation-visual')).toBeTruthy()
     expect(screen.getByTestId('image-generation-prompt')).toBeTruthy()
@@ -132,7 +133,7 @@ describe('Codex image Tool view', () => {
     const createObjectURL = vi.fn(() => 'blob:session-image')
     const revokeObjectURL = vi.fn()
     vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
-    const { unmount } = render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={{ kind: 'tool-result', seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: 'draw a pixel', images: [image] }, subCalls: [] }} />)
+    const { unmount } = render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={{ kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: 'draw a pixel', images: [image] }, subCalls: [] }} />)
     expect(screen.getByTestId('codex-image-gallery')).toBeTruthy()
     expect(screen.getByTestId('image-generation-layout').getAttribute('data-responsive-layout')).toBe('visual-prompt')
     expect(screen.getByText('draw a pixel')).toBeTruthy()
@@ -159,7 +160,7 @@ describe('Codex image Tool view', () => {
     vi.stubGlobal('URL', { createObjectURL, revokeObjectURL })
     vi.stubGlobal('fetch', fetchOriginal)
     render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={{
-      kind: 'tool-result',
+      kind: 'tool-result', name: '', args: PartialArguments.EMPTY,
       seq: 2,
       time: 2,
       callId: 'call-1',
@@ -201,7 +202,7 @@ describe('Codex image Tool view', () => {
     const second: ImageAttachmentRef = { ...image, attachmentId: 'sha256:two' as ImageAttachmentRef['attachmentId'], name: 'codex-image-2.png' }
     const readAttachment = vi.fn(async () => read)
     const downloadSessions = { binding: vi.fn(() => ({ session: { readAttachment } })) } as unknown as ISessions
-    render(<CodexImageToolView {...standard} t={t} sessions={downloadSessions} block={{ kind: 'tool-result', seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: 'two images', images: [first, second] }, subCalls: [] }} />)
+    render(<CodexImageToolView {...standard} t={t} sessions={downloadSessions} block={{ kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: 'two images', images: [first, second] }, subCalls: [] }} />)
     await waitFor(() => { expect(readAttachment).toHaveBeenCalled() })
     const buttons = screen.getAllByRole('button', { name: /^Download / })
     expect(buttons).toHaveLength(2)
@@ -226,7 +227,7 @@ describe('Codex image Tool view', () => {
       return { ok: true as const, value: { attachment: image, data: new Uint8Array([1, 2, 3]) } }
     })
     const downloadSessions = { binding: vi.fn(() => ({ session: { readAttachment } })) } as unknown as ISessions
-    render(<CodexImageToolView {...standard} t={t} sessions={downloadSessions} block={{ kind: 'tool-result', seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: 'retry this download', images: [image] }, subCalls: [] }} />)
+    render(<CodexImageToolView {...standard} t={t} sessions={downloadSessions} block={{ kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: 'retry this download', images: [image] }, subCalls: [] }} />)
     await waitFor(() => { expect(readAttachment).toHaveBeenCalled() })
     const download = screen.getByRole('button', { name: en.download })
     fireEvent.click(download)
@@ -243,7 +244,7 @@ describe('Codex image Tool view', () => {
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => { throw new Error('download blocked') })
     const readAttachment = vi.fn(async () => ({ ok: true as const, value: { attachment: image, data: new Uint8Array([1, 2, 3]) } }))
     const downloadSessions = { binding: vi.fn(() => ({ session: { readAttachment } })) } as unknown as ISessions
-    render(<CodexImageToolView {...standard} t={t} sessions={downloadSessions} block={{ kind: 'tool-result', seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: 'blocked download', images: [image] }, subCalls: [] }} />)
+    render(<CodexImageToolView {...standard} t={t} sessions={downloadSessions} block={{ kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: 'blocked download', images: [image] }, subCalls: [] }} />)
     await waitFor(() => { expect(readAttachment).toHaveBeenCalled() })
 
     fireEvent.click(screen.getByRole('button', { name: en.download }))
@@ -255,8 +256,8 @@ describe('Codex image Tool view', () => {
   it('keeps hook order stable when a running result settles into an image result', () => {
     const createObjectURL = vi.fn(() => 'blob:session-image')
     vi.stubGlobal('URL', { createObjectURL, revokeObjectURL: vi.fn() })
-    const running = { phase: 'start' as const, callId: 'call-1', name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt: 'settle this image' }), turn: 1, step: 1, time: 1, subCalls: [] }
-    const settled = { kind: 'tool-result' as const, seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images' as const, prompt: 'settle this image', images: [image] }, subCalls: [] }
+    const running = { phase: 'start' as const, args: PartialArguments.EMPTY, callId: 'call-1', name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt: 'settle this image' }), turn: 1, step: 1, time: 1, subCalls: [] }
+    const settled = { kind: 'tool-result' as const, name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images' as const, prompt: 'settle this image', images: [image] }, subCalls: [] }
     const { rerender } = render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={running} />)
     expect(screen.getByText(en.generatingDetail)).toBeTruthy()
     rerender(<CodexImageToolView {...standard} t={t} sessions={sessions} block={settled} />)
@@ -269,7 +270,7 @@ describe('Codex image Tool view', () => {
     Object.defineProperty(document, 'execCommand', { configurable: true, value: execCommand })
     vi.stubGlobal('navigator', {})
     try {
-      render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={{ phase: 'start', callId: 'call-1', name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt: 'copy on LAN' }), turn: 1, step: 1, time: 1, subCalls: [] }} />)
+      render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={{ phase: 'start', args: PartialArguments.EMPTY, callId: 'call-1', name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt: 'copy on LAN' }), turn: 1, step: 1, time: 1, subCalls: [] }} />)
       fireEvent.click(screen.getByRole('button', { name: en.copyPrompt }))
       await waitFor(() => { expect(execCommand).toHaveBeenCalledWith('copy') })
       expect(screen.getByRole('button', { name: en.promptCopied })).toBeTruthy()
@@ -280,7 +281,7 @@ describe('Codex image Tool view', () => {
 
   it('can stop a running generation through the owning session', async () => {
     const prompt = 'a quiet mountain lake'
-    render(<CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ phase: 'start', callId: 'call-1', name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt }), turn: 1, step: 1, time: 1, subCalls: [] }} />)
+    render(<CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ phase: 'start', args: PartialArguments.EMPTY, callId: 'call-1', name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt }), turn: 1, step: 1, time: 1, subCalls: [] }} />)
     fireEvent.click(screen.getByRole('button', { name: en.cancelGeneration }))
     await waitFor(() => { expect(actionCancel).toHaveBeenCalledOnce() })
     expect(actionPrompt).not.toHaveBeenCalled()
@@ -288,7 +289,7 @@ describe('Codex image Tool view', () => {
 
   it('offers retry after failure and queues the original prompt', async () => {
     const prompt = 'a red paper boat'
-    render(<CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ kind: 'tool-result', seq: 2, time: 2, callId: 'call-1', call: { name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt }) }, callTime: 1, content: [], isError: true, error: { name: 'Error', code: 'UNKNOWN' }, subCalls: [] }} />)
+    render(<CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', call: { name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt }) }, callTime: 1, content: [], isError: true, error: { name: 'Error', code: 'UNKNOWN' }, subCalls: [] }} />)
     fireEvent.click(screen.getByRole('button', { name: en.retryGeneration }))
     await waitFor(() => { expect(actionPrompt).toHaveBeenCalledOnce() })
     expect(actionPrompt).toHaveBeenCalledWith([{ type: 'text', text: prompt }], 'queue')
@@ -298,8 +299,8 @@ describe('Codex image Tool view', () => {
     const failedPrompt = 'the original failed prompt'
     const laterPrompt = 'a later unrelated prompt'
     render(<>
-      <CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ kind: 'tool-result', seq: 2, time: 2, callId: 'call-1', call: { name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt: failedPrompt }) }, callTime: 1, content: [], isError: true, error: { name: 'Error', code: 'UNKNOWN' }, subCalls: [] }} />
-      <CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ kind: 'tool-result', seq: 4, time: 4, callId: 'call-2', call: null, callTime: 3, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: laterPrompt, images: [image] }, subCalls: [] }} />
+      <CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', call: { name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt: failedPrompt }) }, callTime: 1, content: [], isError: true, error: { name: 'Error', code: 'UNKNOWN' }, subCalls: [] }} />
+      <CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 4, time: 4, callId: 'call-2', call: null, callTime: 3, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt: laterPrompt, images: [image] }, subCalls: [] }} />
     </>)
     fireEvent.click(screen.getByRole('button', { name: en.retryGeneration }))
     await waitFor(() => { expect(actionPrompt).toHaveBeenCalledOnce() })
@@ -309,7 +310,7 @@ describe('Codex image Tool view', () => {
 
   it('prepares an explicit selected preview edit without submitting on click', async () => {
     const prompt = 'a glass city at dawn'
-    render(<CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ kind: 'tool-result', seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt, images: [image] }, subCalls: [] }} />)
+    render(<CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{ kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', call: null, callTime: 1, content: [], isError: false, meta: { kind: 'codex-connect-images', prompt, images: [image] }, subCalls: [] }} />)
     fireEvent.click(screen.getByRole('button', { name: en.regenerate }))
     await waitFor(() => { expect(actionPrompt).toHaveBeenCalledOnce() })
     expect(actionPrompt).toHaveBeenCalledWith([{ type: 'text', text: prompt }], 'queue')
@@ -327,7 +328,7 @@ describe('Codex image Tool view', () => {
   })
 
   it('renders fixed canceled and redacted failure states', () => {
-    const base = { kind: 'tool-result' as const, seq: 2, time: 2, callId: 'call-1', call: { name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt: 'private but user-visible prompt' }) }, callTime: 1, subCalls: [] }
+    const base = { kind: 'tool-result' as const, name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', call: { name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ prompt: 'private but user-visible prompt' }) }, callTime: 1, subCalls: [] }
     const { rerender } = render(<CodexImageToolView {...standard} t={t} sessions={sessions} block={{ ...base, content: [{ type: 'text', text: 'raw secret' }], isError: true, error: { name: 'HarnessError', code: 'ABORTED' } }} />)
     expect(screen.getByText(en.canceledDetail)).toBeTruthy()
     expect(screen.getByText('private but user-visible prompt')).toBeTruthy()
@@ -340,7 +341,7 @@ describe('Codex image Tool view', () => {
     const secret = 'Bearer PRIVATE_TEST_TOKEN /Users/private-account/image.png'
     const raw = 'Error: Target image: is unavailable or does not match a reference in this session. Select or attach the image again. ' + secret
     render(<CodexImageToolView {...standard} t={t} sessions={actionSessions} block={{
-      kind: 'tool-result', seq: 2, time: 2, callId: 'call-1', callTime: 1, subCalls: [], isError: true,
+      kind: 'tool-result', name: '', args: PartialArguments.EMPTY, seq: 2, time: 2, callId: 'call-1', callTime: 1, subCalls: [], isError: true,
       call: { name: 'codex_connect_image_generate', argsRaw: JSON.stringify({ operation: 'edit', prompt: 'Change the sky', target: { attachmentId: 'sha256:absent' } }) },
       content: [{ type: 'text', text: raw }], error: { name: 'Error', code: 'UNKNOWN' },
     }} />)

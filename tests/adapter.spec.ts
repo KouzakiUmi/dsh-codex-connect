@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
+import { OFFICIAL_CODEX_REMOVED_MODEL_IDS } from '../src/official-models.ts'
 import {
   createOpenAICodexAdapter,
   createOpenAICodexProfile,
@@ -33,7 +34,11 @@ describe('OpenAI Codex rc.2 adapter profile', () => {
     expect(result.filter(model => model.id === id)).toEqual([{ ...native,
       thinkingLevelMap: { off: null, minimal: null, xhigh: 'xhigh', max: 'max' } }])
     expect(native.thinkingLevelMap).toEqual({ minimal: 'minimal' })
-    for (const old of baseline.filter(model => model.id !== OPENAI_CODEX_ASTRA_MODEL_ID && !['gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna'].includes(model.id))) {
+    // Native entries survive unchanged, except the calibrated ids and models the official catalog removed.
+    const retained = baseline.filter(model => model.id !== OPENAI_CODEX_ASTRA_MODEL_ID
+      && !['gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna'].includes(model.id)
+      && !OFFICIAL_CODEX_REMOVED_MODEL_IDS.includes(model.id))
+    for (const old of retained) {
       expect(result.find(model => model.id === old.id)).toBe(old)
     }
   })

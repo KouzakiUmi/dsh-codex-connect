@@ -18,7 +18,7 @@ function fixture() {
     providerConflict: false, hints: [],
     compatibility: evaluateCompatibility({ nodeVersion: 'v22.19.0', packageVersions: {
       '@deepseek-ai/dsh-llm': '0.1.7-rc.1', '@deepseek-ai/dsh-llm-pi-ai': '0.1.7-rc.1',
-      '@deepseek-ai/dsh-compaction': '0.1.7-rc.1', '@earendil-works/pi-ai': '0.85.1',
+      '@deepseek-ai/dsh-compaction': '0.1.7-rc.1', '@earendil-works/pi-ai': '1.1.0',
     } }),
   }
   const credential = { type: 'oauth' as const, access: secrets[0]!, accountId: secrets[1]!, refresh: secrets[2]!, expires: 1_000_000 }
@@ -38,7 +38,7 @@ describe('capability evidence', () => {
     const f = fixture()
     f.local.compatibility = evaluateCompatibility({ nodeVersion: f.local.node, packageVersions: {
       '@deepseek-ai/dsh-llm': '0.1.7-rc.1', '@deepseek-ai/dsh-llm-pi-ai': '0.1.7-rc.1',
-      '@deepseek-ai/dsh-compaction': '0.1.7-rc.1', '@earendil-works/pi-ai': '0.85.1',
+      '@deepseek-ai/dsh-compaction': '0.1.7-rc.1', '@earendil-works/pi-ai': '1.1.0',
     } })
     f.readVersion.mockResolvedValue('0.1.7-rc.1')
     expect((await f.diagnostics.inspect({ ...f.request, probe: false })).checks.runtime.status).toBe('supported')
@@ -52,7 +52,7 @@ describe('capability evidence', () => {
     const f = fixture()
     f.local.compatibility = evaluateCompatibility({ nodeVersion: f.local.node, packageVersions: {
       '@deepseek-ai/dsh-llm': '0.1.7-rc.2', '@deepseek-ai/dsh-llm-pi-ai': '0.1.7-rc.2',
-      '@deepseek-ai/dsh-compaction': '0.1.7-rc.2', '@earendil-works/pi-ai': '0.85.1',
+      '@deepseek-ai/dsh-compaction': '0.1.7-rc.2', '@earendil-works/pi-ai': '1.1.0',
     } })
     f.readVersion.mockResolvedValue('0.1.7-rc.2')
     expect((await f.diagnostics.inspect({ ...f.request, probe: false })).checks.runtime.status).toBe('supported')
@@ -69,7 +69,7 @@ describe('capability evidence', () => {
       const f = fixture()
       f.local.compatibility = evaluateCompatibility({ nodeVersion: f.local.node, packageVersions: {
         '@deepseek-ai/dsh-llm': '0.1.7-rc.2', '@deepseek-ai/dsh-llm-pi-ai': '0.1.7-rc.2',
-        '@deepseek-ai/dsh-compaction': '0.1.7-rc.2', '@earendil-works/pi-ai': '0.85.1',
+        '@deepseek-ai/dsh-compaction': '0.1.7-rc.2', '@earendil-works/pi-ai': '1.1.0',
       } })
       const name = `@deepseek-ai/${peer}`
       f.readVersion.mockImplementation(async key => key === name ? '0.1.7-rc.1' : '0.1.7-rc.2')

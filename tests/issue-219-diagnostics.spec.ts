@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { createOpenAICodexAdapter, createOpenAICodexProfile } from '../src/adapter.ts'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
+import { normalizeContext } from '@earendil-works/pi-ai/utils/transcript'
 import type { OpenAICodexCredentialStore } from '../src/store.ts'
 import { streamWithCodexRequestDiagnostics, withCodexDiagnosticFetch } from '../src/request-diagnostics.ts'
 import { readRetryAfterMs } from '../src/request-backoff.ts'
@@ -80,7 +81,7 @@ describe('issue 219 provider-to-DSH diagnostics', () => {
     const provider = createOpenAICodexProfile(openaiCodexProvider()).piProvider
     const model = provider.getModels().find(item => item.id === options.model)!
     await collect(streamWithCodexRequestDiagnostics(async function* () {
-      for await (const event of provider.streamSimple(model, { messages: [] }, {
+      for await (const event of provider.streamSimple(model, normalizeContext({ messages: [] }), {
         apiKey: token, transport: 'sse', sessionId: 'fixture-session', fetch: custom, onResponse: hook, onPayload: payload, maxRetries: 2,
       })) { if (event.type === 'error') yield failure }
     }, options))

@@ -44,8 +44,11 @@ export default [
       __CODEX_CONNECT_VERSION__: JSON.stringify(PACKAGE_VERSION),
     },
     deps: {
+      // The plugin always ships its own pi-ai 1.1.0 inside the bundle, so the result never depends on
+      // whichever pi-ai a DSH host or profile happens to resolve (hosts may provide 1.0.2).
+      // `partial-json` is pi-ai's own transitive dependency; it must travel with the bundle too.
+      alwaysBundle: [/^@earendil-works\/pi-ai(\/|$)/u, 'partial-json'],
       neverBundle: [
-        '@earendil-works/pi-ai',
         '@deepseek-ai/schemastery',
         '@deepseek-ai/cordis',
         '@deepseek-ai/dsh-agent',

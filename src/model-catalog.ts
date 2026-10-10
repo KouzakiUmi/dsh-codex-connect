@@ -3,6 +3,7 @@
 import type { Model, Provider } from '@earendil-works/pi-ai'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
 import type { OpenAICodexModelCatalogEntry } from './model-contract.ts'
+import { OFFICIAL_CODEX_REMOVED_MODEL_IDS } from './official-models.ts'
 import { openAICodexContextLimit } from './model-contract.ts'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
 
@@ -55,7 +56,9 @@ export function withOpenAICodexModels(
     if (index === -1) models.push({ ...OPENAI_CODEX_ASTRA_MODEL, id, name, thinkingLevelMap })
     else models[index] = { ...models[index]!, thinkingLevelMap: { ...models[index]!.thinkingLevelMap, ...thinkingLevelMap } }
   }
-  return { ...baseline, getModels: () => models }
+  // Drop ids the official catalog no longer lists; pi-ai may still ship them in its bundled data.
+  const current = models.filter(model => !OFFICIAL_CODEX_REMOVED_MODEL_IDS.includes(model.id))
+  return { ...baseline, getModels: () => current }
 }
 
 /** Return a detached copy of the effective Codex model catalog. */
