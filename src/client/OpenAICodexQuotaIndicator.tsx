@@ -12,8 +12,6 @@ const WEEK_SECONDS = 7 * 24 * 60 * 60
 const FIVE_HOUR_SECONDS = 5 * 60 * 60
 const USAGE_POLL_INTERVAL_MS = 60_000
 const CODEX_PROVIDER = 'openai-codex'
-const SPARK_MODEL = 'gpt-5.3-codex-spark'
-const SPARK_QUOTA_ID = 'codex_bengalfox'
 
 type Translate = (key: OpenAICodexSettingsKey, params?: Record<string, unknown>) => string
 
@@ -63,12 +61,10 @@ function usageFromStatus(value: unknown): OpenAICodexUsage | undefined {
 
 function quotaOf(
   usage: OpenAICodexUsage,
-  model: string | undefined,
   windowSeconds: number,
 ): OpenAICodexRateLimitWindow | undefined {
-  const quotaId = model === SPARK_MODEL ? SPARK_QUOTA_ID : 'codex'
   return usage.rateLimits
-    .find(limit => limit.id === quotaId)
+    .find(limit => limit.id === 'codex')
     ?.windows.find(window => window.windowSeconds === windowSeconds)
 }
 
@@ -186,8 +182,8 @@ export function OpenAICodexQuotaIndicator({ directory, t }: OpenAICodexQuotaIndi
 
   if (!eligible || request.status !== 'ready' || request.usage === undefined) return null
   const model = directoryState.current?.model
-  const fiveHour = quotaOf(request.usage, model, FIVE_HOUR_SECONDS)
-  const weekly = quotaOf(request.usage, model, WEEK_SECONDS)
+  const fiveHour = quotaOf(request.usage, FIVE_HOUR_SECONDS)
+  const weekly = quotaOf(request.usage, WEEK_SECONDS)
   const quotas = [
     ...fiveHour === undefined ? [] : [{
       kind: 'five-hour' as const,

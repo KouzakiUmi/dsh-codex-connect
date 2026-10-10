@@ -7,6 +7,7 @@ import LlmRuntime, { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createOpenAICodexAdapter, OPENAI_CODEX_ASTRA_MODEL_ID } from '../src/adapter.ts'
 import { OpenAICodexCredentialStore, OPENAI_CODEX_PROVIDER } from '../src/store.ts'
+import { officialCodexModel } from '../src/official-models.ts'
 
 let context: Context
 let root: string
@@ -85,8 +86,9 @@ describe.each(modelSelections)('%s reasoning selections', model => {
     for await (const chunk of prepared.stream({ ...prepared.config, messages: [] })) chunks.push(chunk)
     expect(fetch).toHaveBeenCalledOnce()
     expect(wire?.model).toBe(model)
-    if (effort === undefined) expect(wire).not.toHaveProperty('reasoning')
-    else expect(wire?.reasoning).toMatchObject({ effort })
+    // No requested effort sends the catalog default_reasoning_level; the default summary is none, so it is omitted.
+    expect(wire?.reasoning).toMatchObject({ effort: effort ?? officialCodexModel(model)?.defaultReasoningLevel })
+    expect(wire?.reasoning).not.toHaveProperty('summary')
     expect(chunks.find(chunk => chunk.type === 'finish')).toMatchObject({ reason: { kind: 'stop' } })
   })
 })

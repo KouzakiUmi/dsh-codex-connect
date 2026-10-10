@@ -62,6 +62,36 @@ export const OPENAI_CODEX_EXTENDED_CONTEXT_SOURCE = 'https://developers.openai.c
 /** Released behavior is unchanged unless a profile opts in. */
 export const DEFAULT_OPENAI_CODEX_ENABLE_EXTENDED_CONTEXT = false
 
+/**
+ * Output-detail level accepted by the Codex Responses API (`text.verbosity`),
+ * matching the official ChatGPT "output verbosity" choices. `default` omits
+ * the wire field entirely so the model preset decides.
+ */
+export type OpenAICodexOutputVerbosity = 'default' | 'low' | 'medium' | 'high'
+
+/** Official default: send the model's `default_verbosity` (low for every listed model). */
+export const DEFAULT_OPENAI_CODEX_OUTPUT_VERBOSITY: OpenAICodexOutputVerbosity = 'default'
+
+/**
+ * Reasoning-summary detail accepted by the Codex Responses API
+ * (`reasoning.summary`), matching the official ChatGPT reasoning-summary
+ * choices including `none` (codex-rs serializes the enum lowercase).
+ */
+export type OpenAICodexReasoningSummarySetting = 'auto' | 'concise' | 'detailed' | 'none'
+
+/** Official default: every catalog model sets `default_reasoning_summary` to `none`, so no summary is sent. */
+export const DEFAULT_OPENAI_CODEX_REASONING_SUMMARY: OpenAICodexReasoningSummarySetting = 'none'
+
+/** Whether a value is one of the official output-detail levels. */
+export function isValidOpenAICodexOutputVerbosity(value: unknown): value is OpenAICodexOutputVerbosity {
+  return value === 'default' || value === 'low' || value === 'medium' || value === 'high'
+}
+
+/** Whether a value is one of the official reasoning-summary levels. */
+export function isValidOpenAICodexReasoningSummary(value: unknown): value is OpenAICodexReasoningSummarySetting {
+  return value === 'auto' || value === 'concise' || value === 'detailed' || value === 'none'
+}
+
 /** Search modes accepted by the Codex standalone search endpoint. */
 export type OpenAICodexSearchMode = 'cached' | 'indexed' | 'live'
 
@@ -151,6 +181,10 @@ export interface OpenAICodexSettingsConfig {
   searchMode: OpenAICodexSearchMode
   searchContextSize: OpenAICodexSearchContextSize
   searchMaxOutputTokens: number
+  /** Output-detail level sent as `text.verbosity`; `default` omits the wire field. */
+  outputVerbosity: OpenAICodexOutputVerbosity
+  /** Reasoning-summary detail sent as `reasoning.summary`; effective only on explicit-effort requests. */
+  reasoningSummary: OpenAICodexReasoningSummarySetting
 }
 
 export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> = Object.freeze({
@@ -173,6 +207,8 @@ export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> 
   searchMode: DEFAULT_OPENAI_CODEX_SEARCH_MODE,
   searchContextSize: DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE,
   searchMaxOutputTokens: DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS,
+  outputVerbosity: DEFAULT_OPENAI_CODEX_OUTPUT_VERBOSITY,
+  reasoningSummary: DEFAULT_OPENAI_CODEX_REASONING_SUMMARY,
 })
 
 /** Input settings allow null to disable overrides inherited from a lower settings layer. */
@@ -200,6 +236,12 @@ export function resolveOpenAICodexSettings(
   parseOpenAICodexImageModelHint(resolved.imageModelHint)
   if (typeof resolved.enableExtendedContext !== 'boolean') {
     throw new TypeError('OpenAI Codex enableExtendedContext must be a boolean')
+  }
+  if (!isValidOpenAICodexOutputVerbosity(resolved.outputVerbosity)) {
+    throw new TypeError('OpenAI Codex outputVerbosity must be default, low, medium, or high')
+  }
+  if (!isValidOpenAICodexReasoningSummary(resolved.reasoningSummary)) {
+    throw new TypeError('OpenAI Codex reasoningSummary must be auto, concise, detailed, or none')
   }
   return { ...resolved, contextWindowOverrides: resolveOpenAICodexContextWindowOverrides(resolved.contextWindowOverrides) }
 }
@@ -248,6 +290,8 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   const searchMode = value['searchMode']
   const searchContextSize = value['searchContextSize']
   const searchMaxOutputTokens = value['searchMaxOutputTokens']
+  const outputVerbosity = value['outputVerbosity']
+  const reasoningSummary = value['reasoningSummary']
   if (models !== undefined && (!Array.isArray(models) || models.some(model => typeof model !== 'string'))) return undefined
   if (enableProxy !== undefined && typeof enableProxy !== 'boolean') return undefined
   if (proxyUrl !== undefined && (typeof proxyUrl !== 'string' || !isValidOpenAICodexProxyUrl(proxyUrl))) return undefined
@@ -270,6 +314,9 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   if (searchMode !== 'cached' && searchMode !== 'indexed' && searchMode !== 'live') return undefined
   if (searchContextSize !== 'low' && searchContextSize !== 'medium' && searchContextSize !== 'high') return undefined
   if (typeof searchMaxOutputTokens !== 'number' || !Number.isInteger(searchMaxOutputTokens) || searchMaxOutputTokens < 1) return undefined
+  // Older Host snapshots predate the output-style choices; absence maps to the released behavior.
+  if (outputVerbosity !== undefined && !isValidOpenAICodexOutputVerbosity(outputVerbosity)) return undefined
+  if (reasoningSummary !== undefined && !isValidOpenAICodexReasoningSummary(reasoningSummary)) return undefined
   const overrides = resolveOpenAICodexContextWindowOverrides(contextWindowOverrides)
   return {
     models: models === undefined ? undefined : [...new Set(models)],
@@ -291,5 +338,7 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
     searchMode,
     searchContextSize,
     searchMaxOutputTokens,
+    outputVerbosity: outputVerbosity ?? DEFAULT_OPENAI_CODEX_OUTPUT_VERBOSITY,
+    reasoningSummary: reasoningSummary ?? DEFAULT_OPENAI_CODEX_REASONING_SUMMARY,
   }
 }

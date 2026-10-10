@@ -16,7 +16,7 @@ const compatiblePackages = {
   '@deepseek-ai/dsh-llm': SUPPORTED_DSH_PLUGIN_API_VERSION,
   '@deepseek-ai/dsh-llm-pi-ai': SUPPORTED_DSH_PLUGIN_API_VERSION,
   '@deepseek-ai/dsh-compaction': SUPPORTED_DSH_PLUGIN_API_VERSION,
-  '@earendil-works/pi-ai': '0.85.1',
+  '@earendil-works/pi-ai': '1.1.0',
 } as const
 
 describe('compatibility contract', () => {
@@ -30,7 +30,7 @@ describe('compatibility contract', () => {
         '@deepseek-ai/dsh-llm': { supported: SUPPORTED_DSH_PLUGIN_API_RANGE, installed: SUPPORTED_DSH_PLUGIN_API_VERSION, status: 'compatible' },
         '@deepseek-ai/dsh-llm-pi-ai': { supported: SUPPORTED_DSH_PLUGIN_API_RANGE, installed: SUPPORTED_DSH_PLUGIN_API_VERSION, status: 'compatible' },
         '@deepseek-ai/dsh-compaction': { supported: SUPPORTED_DSH_PLUGIN_API_RANGE, installed: SUPPORTED_DSH_PLUGIN_API_VERSION, status: 'compatible' },
-        '@earendil-works/pi-ai': { supported: SUPPORTED_PI_AI_RANGE, installed: '0.85.1', status: 'compatible' },
+        '@earendil-works/pi-ai': { supported: SUPPORTED_PI_AI_RANGE, installed: '1.1.0', status: 'compatible' },
       },
     })
   })
@@ -50,7 +50,7 @@ describe('compatibility contract', () => {
       peerDependencies: Record<string, string>; devDependencies: Record<string, string>; exports: Record<string, unknown>
     }
     expect(pkg.peerDependencies).not.toHaveProperty('@deepseek-ai/dsh-invariants')
-    expect(pkg.devDependencies['@deepseek-ai/dsh-invariants']).toBe('0.1.7-rc.1')
+    expect(pkg.devDependencies).not.toHaveProperty('@deepseek-ai/dsh-invariants')
     expect(pkg.exports['./invariant']).toBeDefined()
     expect(COMPATIBILITY_CONTRACT.dshPluginApi.packages).not.toContain('@deepseek-ai/dsh-invariants')
   })
@@ -86,8 +86,12 @@ describe('compatibility contract', () => {
     },
   )
 
-  it('does not infer rc.3, alpha.2, or a new pi-ai pair from rc.2 support', () => {
-    for (const version of ['0.1.7-rc.3', '0.1.7-alpha.2', '0.2.0-rc.3', '0.2.0', '0.2.1-alpha.2', '0.2.1', '0.2.2-alpha.1']) {
+  it('accepts exact 0.2.1-alpha.2 and does not infer rc.3, other alphas, or a new pi-ai pair', () => {
+    expect(evaluateCompatibility({ nodeVersion: 'v24.15.0', packageVersions: {
+      ...compatiblePackages, '@deepseek-ai/dsh-llm': '0.2.1-alpha.2',
+      '@deepseek-ai/dsh-llm-pi-ai': '0.2.1-alpha.2', '@deepseek-ai/dsh-compaction': '0.2.1-alpha.2',
+    } }).status).toBe('compatible')
+    for (const version of ['0.1.7-rc.3', '0.1.7-alpha.2', '0.2.0-rc.3', '0.2.0', '0.2.1', '0.2.2-alpha.1']) {
       const packages = { ...compatiblePackages, '@deepseek-ai/dsh-llm': version,
         '@deepseek-ai/dsh-llm-pi-ai': version, '@deepseek-ai/dsh-compaction': version }
       expect(evaluateCompatibility({ nodeVersion: 'v24.15.0', packageVersions: packages }).status).toBe('unverified')
@@ -162,7 +166,7 @@ describe('compatibility contract', () => {
       await writeFile(hostPi, JSON.stringify({ name: '@earendil-works/pi-ai', version: '0.87.1' }))
       const ownedReport = await detectCompatibility({ nodeVersion: 'v22.19.0', installAnchor: anchor })
       expect(ownedReport.status).toBe('compatible')
-      expect(ownedReport.packages['@earendil-works/pi-ai'].installed).toBe('0.85.1')
+      expect(ownedReport.packages['@earendil-works/pi-ai'].installed).toBe('1.1.0')
 
       const llmManifest = join(host, 'node_modules', '@deepseek-ai', 'dsh-llm', 'package.json')
       await writeFile(llmManifest,
