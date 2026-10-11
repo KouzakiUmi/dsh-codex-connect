@@ -44,6 +44,16 @@ export const OFFICIAL_CODEX_REMOVED_MODEL_IDS: readonly string[] = Object.freeze
   'gpt-5.3-codex-spark',
 ])
 
+/**
+ * True for a saved `null` cleanup entry naming an id the official catalog retired. It was valid
+ * when it was written, it now restores a catalog default for a model that no longer exists, and it
+ * carries no budget — so dropping it must not reject the whole configuration. An unknown id with
+ * an actual budget, or one the catalog never listed, stays a configuration error.
+ */
+export function isRetiredOpenAICodexOverride(id: string, budget: number | null): boolean {
+  return budget === null && OFFICIAL_CODEX_REMOVED_MODEL_IDS.includes(id)
+}
+
 /** Official metadata for one model id, or undefined when the catalog does not list it. */
 export function officialCodexModel(id: string): OfficialCodexModel | undefined {
   return OFFICIAL_CODEX_MODELS.find(model => model.id === id)

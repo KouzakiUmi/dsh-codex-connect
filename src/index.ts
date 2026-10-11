@@ -129,6 +129,7 @@ import {
   parseOpenAICodexContextWindowOverrides,
 } from './settings-contract.ts'
 import type { OpenAICodexOutputVerbosity, OpenAICodexReasoningSummarySetting, OpenAICodexSettingsInput } from './settings-contract.ts'
+import { isRetiredOpenAICodexOverride } from './official-models.ts'
 
 export {
   decodeOpenAICodexSettings,
@@ -331,8 +332,12 @@ function parseSettingsContextWindowOverrides(
 ): Record<string, number | null> | null | undefined {
   if (value === null || value === undefined) return value
   const parsed = parseOpenAICodexContextWindowOverrides(value)
+  if (parsed === undefined) return undefined
   assertOpenAICodexContextWindowOverrides(parsed, openAICodexModelCatalog())
-  return parsed
+  // Drop stored cleanup entries for ids the official catalog retired, so a profile that still
+  // carries one keeps loading instead of failing this plugin's whole composition.
+  return Object.fromEntries(Object.entries(parsed)
+    .filter(([id, budget]) => !isRetiredOpenAICodexOverride(id, budget)))
 }
 
 const configSchema = z.object({
