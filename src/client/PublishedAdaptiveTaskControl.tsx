@@ -32,6 +32,8 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
   const text = words[language === 'zh' ? 'zh' : 'en']
   const [state, setState] = useState<AdaptiveTaskState>()
   const [failed, setFailed] = useState(false)
+  /** The host serves no route here at all, which differs from a route that cannot answer. */
+  const [absent, setAbsent] = useState(false)
   const [busy, setBusy] = useState(false)
   const [opened, setOpened] = useState(false)
   const generation = useRef(0)
@@ -49,6 +51,7 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
     const timer = setTimeout(() => operation.abort(), 15_000)
     try {
       let decoded: AdaptiveTaskState | undefined
+      let absentRoute = false
       // Only the read-only live-root readiness error may be retried, at most twice.
       for (let attempt = 0; attempt < (action === undefined ? 3 : 1); attempt++) {
         const response = await fetch(action === undefined
@@ -57,6 +60,9 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
           headers: { accept: 'application/json', ...(action === undefined ? {} : { 'content-type': 'application/json' }) },
           ...(action === undefined ? {} : { body: JSON.stringify({ sessionId, action, revision, operationId: crypto.randomUUID() }) }),
         })
+        // A missing route or method means this build serves no task controls at all: no session can
+        // hold a task, so the entry must not appear and the body is not read.
+        if (response.status === 404 || response.status === 405) { absentRoute = true; break }
         const body: unknown = await response.json()
         if (action === undefined && response.status === 409 && typeof body === 'object' && body !== null
           && 'error' in body && body.error === 'TASK_LIVE_ROOT_REQUIRED' && attempt < 2) {
@@ -71,8 +77,14 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
         decoded = response.ok ? decodeTaskState(body) : undefined
         break
       }
+      if (absentRoute) {
+        if (token !== generation.current || operation.signal.aborted) return
+        setAbsent(true); setState(undefined); setFailed(false); setOpened(false)
+        return
+      }
       if (decoded === undefined) throw new Error('Unconfirmed task state')
       if (token !== generation.current || operation.signal.aborted) return
+      setAbsent(false)
       setState(decoded)
       if (decoded.mode === 'off') setOpened(false)
     } catch {
@@ -91,9 +103,11 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
     return () => { dialog.current?.close() }
   }, [opened])
   const close = () => { setOpened(false); opener.current?.focus() }
-  // A confirmed ordinary conversation has no collaboration entry or selectable options.
-  // Unknown state is never represented as confirmed off; retain only a recovery/read path.
-  if (state?.mode === 'off' || (state === undefined && !failed && !opened)) return null
+  // A confirmed ordinary conversation has no collaboration entry or selectable options, and neither
+  // has a host that serves no such route: a missing route is "unavailable", not "unconfirmed".
+  // While the route answers, unknown state is never represented as confirmed off; only the recovery
+  // and re-read path is retained.
+  if (absent || state?.mode === 'off' || (state === undefined && !failed && !opened)) return null
   return <>
     <button ref={opener} type="button" style={buttonStyle} onClick={() => { setOpened(true); void request() }}>{text.button}</button>
     {opened ? <dialog ref={dialog} aria-label={text.title} onCancel={event => { event.preventDefault(); close() }}

@@ -105,6 +105,22 @@ describe('context windows through the real Host settings and LLM registry', () =
     }
   })
 
+  it('drops a stored cleanup entry for an officially retired model instead of refusing to load', async () => {
+    const runtime = await boot({ contextWindowOverrides: { 'gpt-5.3-codex-spark': null, 'gpt-5.4': null, [model]: 350_000 } })
+    expect(runtime.llm.listProviders().map(entry => entry.id)).toContain(provider)
+    expect((await runtime.llm.resolveModelInfo(provider, model)).context?.contextWindow).toBe(350_000)
+    expect(plugin.decodeOpenAICodexSettings(runtime.settings.describe().find(entry => entry.ns === ns)?.value)?.contextWindowOverrides)
+      .toEqual({ [model]: 350_000 })
+    expect(plugin.Config({ contextWindowOverrides: { 'gpt-5.3-codex-spark': null } }).contextWindowOverrides.get()).toEqual({})
+  })
+
+  it('still reports a retired id that carries a budget and any id the catalog never listed', async () => {
+    await expect(boot({ contextWindowOverrides: { 'gpt-5.3-codex-spark': 300_000 } }))
+      .rejects.toThrow('unknown model id "gpt-5.3-codex-spark"')
+    await expect(boot({ contextWindowOverrides: { 'never-listed-model': null } }))
+      .rejects.toThrow('unknown model id "never-listed-model"')
+  })
+
   it('removes one stored model override without changing another model or model visibility', async () => {
     const runtime = await boot({ contextWindowOverrides: { [model]: 350_000, [other]: 340_000 }, models: [other] })
     await runtime.settings.mutate(ns, [{ op: 'unset', path: ['contextWindowOverrides', model] }])

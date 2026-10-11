@@ -20,7 +20,7 @@ import type { OpenAICodexProxyManager } from './provider-proxy.ts'
 import type { OpenAICodexBackendRequests } from './backend-request.ts'
 import type { ReserveRequestPermits } from './reserve-state.ts'
 import { OPENAI_CODEX_RESERVE_MODEL, OPENAI_CODEX_RESERVE_NORMAL_MODEL } from './reserve-usage.ts'
-import { officialCodexModel } from './official-models.ts'
+import { isRetiredOpenAICodexOverride, officialCodexModel } from './official-models.ts'
 import { withServedModelObserver } from './served-model.ts'
 import { streamWithNativeCompactionScope, withOpenAICodexNativeCompaction } from './native-compaction.ts'
 import { streamWithCodexRequestDiagnostics, withCodexDiagnosticFetch } from './request-diagnostics.ts'
@@ -287,7 +287,13 @@ export function assertOpenAICodexContextWindowOverrides(
   const models = new Map(catalog.map(model => [model.id, model]))
   for (const [id, budget] of Object.entries(overrides ?? {})) {
     const model = models.get(id)
-    if (model === undefined) throw new TypeError(`OpenAI Codex contextWindowOverrides contains unknown model id "${id}"`)
+    if (model === undefined) {
+      // A stale `null` entry for an officially retired id is dropped rather than rejected: it
+      // carries no budget, and rejecting it kept the whole plugin from loading on a stored
+      // configuration the user can no longer edit from the UI. Unknown ids with a budget still fail.
+      if (isRetiredOpenAICodexOverride(id, budget)) continue
+      throw new TypeError(`OpenAI Codex contextWindowOverrides contains unknown model id "${id}"`)
+    }
     const { maxContextWindow } = openAICodexContextLimit(id, model.contextWindow)
     if (budget !== null && !isValidOpenAICodexContextBudget(budget, maxContextWindow)) {
       throw new TypeError(`OpenAI Codex contextWindowOverrides for "${id}" must be an integer from 1 to ${maxContextWindow} tokens; use null to restore the catalog default`)
