@@ -57,7 +57,9 @@ export async function claimControlledRun(directory, runId, caseName) {
   if (!/^[a-z0-9][a-z0-9_-]{0,63}$/u.test(runId) || !CASE_NAMES.includes(caseName)) fail('INVALID_MODE')
   await mkdir(directory, { mode: 0o700, recursive: true })
   const info = await lstat(directory)
-  if (!info.isDirectory() || info.isSymbolicLink() || (info.mode & 0o077) !== 0 || info.uid !== process.getuid()) fail('RUN_LEDGER_UNSAFE')
+  // Windows reports an owner-writable mode for every path and has no uid; only POSIX can assert these.
+  if (!info.isDirectory() || info.isSymbolicLink()
+    || (process.platform !== 'win32' && ((info.mode & 0o077) !== 0 || info.uid !== process.getuid()))) fail('RUN_LEDGER_UNSAFE')
   let handle
   try { handle = await open(join(directory, `${runId}.json`), 'wx', 0o600) }
   catch (error) { if (error.code === 'EEXIST') fail('RUN_ALREADY_CLAIMED_NO_RETRY'); throw error }

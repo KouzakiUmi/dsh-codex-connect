@@ -81,6 +81,9 @@ export class AtomicTaskDocumentStore<T> {
       const parent = await lstat(this.directory)
       if (!parent.isDirectory() || parent.isSymbolicLink()
         || (process.platform !== 'win32' && (parent.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
+      // O_NOFOLLOW is a no-op on Windows, so a replaced path is rejected from lstat instead.
+      const target = await lstat(filename)
+      if (target.isSymbolicLink()) taskFailure('TASK_STATE_UNAVAILABLE')
       const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
       try {
         const stat = await file.stat()
@@ -110,7 +113,8 @@ export class AtomicTaskDocumentStore<T> {
       const text = JSON.stringify(next)
       if (Buffer.byteLength(text) > MAX_BYTES) taskFailure('TASK_STATE_TOO_LARGE')
       await writeFileAtomic(filename, text + '\n', { mode: 0o600, dirMode: 0o700 })
-      const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW)
+      // Writable handle: Windows fails fsync (FlushFileBuffers) on a read-only one with EPERM.
+      const file = await open(filename, constants.O_RDWR | constants.O_NOFOLLOW)
       try { await file.sync() } finally { await file.close() }
       // Ensure the replacement name is committed before a request reservation may leave this process.
       if (process.platform !== 'win32') {
