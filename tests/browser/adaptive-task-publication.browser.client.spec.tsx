@@ -93,3 +93,18 @@ it('cancels an old session read and never lets its late response create controls
   await new Promise(resolve => setTimeout(resolve, 40))
   expect(element!.querySelectorAll('button,input')).toHaveLength(0)
 })
+it.each(['en', 'zh'])('keeps a host with no task route entry-free and never retries it in %s', async language => {
+  const fetch = vi.fn(async () => new Response('', { status: 404 }))
+  vi.stubGlobal('fetch', fetch); mount(language)
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  await new Promise(resolve => setTimeout(resolve, 30))
+  expect(element!.querySelectorAll('button,input,select,dialog')).toHaveLength(0)
+  expect(fetch).toHaveBeenCalledTimes(1)
+})
+it('treats a method-not-allowed answer like a missing route', async () => {
+  const fetch = vi.fn(async () => new Response('', { status: 405 }))
+  vi.stubGlobal('fetch', fetch); mount()
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  await new Promise(resolve => setTimeout(resolve, 30))
+  expect(element!.querySelectorAll('button,input,select,dialog')).toHaveLength(0)
+})
