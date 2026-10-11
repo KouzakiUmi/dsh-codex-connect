@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Provider } from '@earendil-works/pi-ai'
 import type { TaskRoute } from './adaptive-task-contract.ts'
 import { taskFailure } from './adaptive-task-store.ts'
+import { officialCodexModel } from './official-models.ts'
 export interface TaskDispatchScope {
   readonly route: TaskRoute
   readonly cacheKey: string
@@ -23,6 +24,9 @@ export function withAdaptiveTaskProvider(provider: Provider): Provider {
     if (task === undefined) return provider.streamSimple(model, context, options)
     task.signal.throwIfAborted()
     if (model.provider !== 'openai-codex' || model.id !== task.route.model) taskFailure('TASK_ROUTE_CHANGED')
+    // An unnamed effort is filled by withOpenAICodexDefaultEffort from the official catalog; for
+    // the host-owned auxiliary calls below, that default is not a task change.
+    const officialDefaultEffort = officialCodexModel(model.id)?.defaultReasoningLevel
     const before = options?.onPayload
     return provider.streamSimple(model, context, { ...options, transport: 'sse', maxRetries: 0,
       sessionId: task.cacheKey, signal: options?.signal === undefined ? task.signal : AbortSignal.any([options.signal, task.signal]),
@@ -34,7 +38,8 @@ export function withAdaptiveTaskProvider(provider: Provider): Provider {
         const reasoning = 'reasoning' in next ? next.reasoning : undefined
         const effort = reasoning !== null && typeof reasoning === 'object' && 'effort' in reasoning ? reasoning.effort : undefined
         if (task.hostDefaultEfforts === undefined ? effort !== task.route.effort
-          : effort !== undefined && !task.hostDefaultEfforts.includes(String(effort))) taskFailure('TASK_ROUTE_CHANGED')
+          : effort !== undefined && effort !== officialDefaultEffort
+            && !task.hostDefaultEfforts.includes(String(effort))) taskFailure('TASK_ROUTE_CHANGED')
         return next
       },
     })

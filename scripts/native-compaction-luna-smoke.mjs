@@ -49,8 +49,9 @@ async function readCodexLogin() {
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
     const stat = await handle.stat()
-    if (!stat.isFile() || (stat.mode & 0o077) !== 0
-      || (process.getuid !== undefined && stat.uid !== process.getuid()) || stat.size > 512 * 1024) stop('CODEX_LOGIN_FILE_UNSAFE')
+    if (!stat.isFile() || stat.size > 512 * 1024
+      || (process.platform !== 'win32' && ((stat.mode & 0o077) !== 0
+        || (process.getuid !== undefined && stat.uid !== process.getuid())))) stop('CODEX_LOGIN_FILE_UNSAFE')
     const bytes = await handle.readFile()
     if (bytes.byteLength > 512 * 1024) stop('CODEX_LOGIN_FILE_UNSAFE')
     return codexCredential(JSON.parse(bytes.toString('utf8')))

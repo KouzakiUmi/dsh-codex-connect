@@ -1,12 +1,22 @@
 import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 
-const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+import { resolveCommandInvocation } from './bounded-command.mjs'
+
+// npm is a .cmd shim on Windows; run it through cmd.exe like the other checkers do.
+const npmArguments = ['pack', '--dry-run', '--json', '--ignore-scripts']
+const invocation = resolveCommandInvocation(process.platform === 'win32' ? 'npm.cmd' : 'npm', npmArguments)
+const result = spawnSync(invocation.command, invocation.args, {
   cwd: new URL('..', import.meta.url),
   encoding: 'utf8',
+  windowsVerbatimArguments: invocation.windowsVerbatimArguments,
 })
+if (result.error !== undefined) {
+  process.stderr.write(`${result.error.message}\n`)
+  process.exit(1)
+}
 if (result.status !== 0) {
-  process.stderr.write(result.stderr)
+  process.stderr.write(result.stderr ?? '')
   process.exit(result.status ?? 1)
 }
 

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { attributionHeaders } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { createOpenAICodexAdapter, createOpenAICodexProfile } from '../src/adapter.ts'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
@@ -105,7 +106,9 @@ describe('issue 219 provider-to-DSH diagnostics', () => {
       expect(error(chunks).code).toBe('PI_AI_ERROR')
       const headers = new Headers(fetch.mock.calls[0]?.[1]?.headers)
       expect(headers.get('originator')).toBe('pi')
-      expect(headers.get('user-agent')).toContain('pi')
+      // The host PiAiAdapter forces its standard attribution header on every provider request;
+      // the pi identity itself is the originator above, not the User-Agent.
+      expect(headers.get('user-agent')).toBe(attributionHeaders()['user-agent'])
       expect(headers.get('x-client-request-id')).toBe(diagnostic(chunks)['clientRequestId'])
     } finally { requests.dispose() }
   })

@@ -141,10 +141,14 @@ it('artifacts reject symlink directories, hardlinks, public modes, traversal and
   const digest = await store.put({ ok: true }), file = join(path, digest + '.json')
   await link(file, join(f.root, 'copy.json'))
   await expect(store.get(digest)).rejects.toThrow('TASK_ARTIFACT_UNSAFE')
-  await rm(join(f.root, 'copy.json')); await chmod(file, 0o644)
-  await expect(store.get(digest)).rejects.toThrow('TASK_ARTIFACT_UNSAFE')
-  await chmod(file, 0o600); await chmod(path, 0o755)
-  await expect(store.get(digest)).rejects.toThrow('TASK_ARTIFACT_UNSAFE')
+  await rm(join(f.root, 'copy.json'))
+  // Windows reports owner-writable mode bits for every path, so only POSIX can prove this.
+  if (process.platform !== 'win32') {
+    await chmod(file, 0o644)
+    await expect(store.get(digest)).rejects.toThrow('TASK_ARTIFACT_UNSAFE')
+    await chmod(file, 0o600); await chmod(path, 0o755)
+    await expect(store.get(digest)).rejects.toThrow('TASK_ARTIFACT_UNSAFE')
+  }
   await symlink(path, join(f.root, 'alias'))
   await expect(new TaskDelegationArtifacts(join(f.root, 'alias')).put({ ok: true })).rejects.toThrow('TASK_ARTIFACT_UNSAFE')
   expect(await readFile(file, 'utf8')).toBe('{"ok":true}')

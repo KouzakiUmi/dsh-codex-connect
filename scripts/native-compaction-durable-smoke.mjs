@@ -31,7 +31,8 @@ async function readLogin() {
   const handle = await open(authPath(), constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
     const info = await handle.stat()
-    if (!info.isFile() || (info.mode & 0o077) !== 0 || info.uid !== process.getuid() || info.size > 512 * 1024) fail('CREDENTIAL_FILE_UNSAFE')
+    if (!info.isFile() || info.size > 512 * 1024
+      || (process.platform !== 'win32' && ((info.mode & 0o077) !== 0 || info.uid !== process.getuid()))) fail('CREDENTIAL_FILE_UNSAFE')
     const bytes = await handle.readFile()
     if (bytes.length > 512 * 1024) fail('CREDENTIAL_FILE_UNSAFE')
     const doc = JSON.parse(bytes.toString('utf8'))
@@ -305,7 +306,7 @@ async function main() {
     if (LIVE && caseName !== 'oversized-user') await claimControlledRun(fileURLToPath(new URL('../.remember-acceptance-runs', import.meta.url)), runId, caseName)
     fingerprint = LIVE ? (await readLogin()).fingerprint : undefined
     root = await mkdtemp(join(tmpdir(), 'codex-native-durable-'))
-    if (((await stat(root)).mode & 0o077) !== 0) fail('TEMP_DIRECTORY_UNSAFE')
+    if (process.platform !== 'win32' && ((await stat(root)).mode & 0o077) !== 0) fail('TEMP_DIRECTORY_UNSAFE')
     // A fixed synthetic label guarantees the case-only fixture has letters; live targets stay random.
     await save(join(root, 'state.json'), { live: LIVE, caseName, fault, runId, runtime_versions: result.runtime_versions,
       label: caseName === 'assistant-origin' ? null : caseName === 'retained-user' ? `A${randomBytes(6).toString('hex').toUpperCase().slice(0, 11)}` : recallCase === undefined ? randomBytes(6).toString('hex').toUpperCase() : 'A1B2C3D4E5F6',
