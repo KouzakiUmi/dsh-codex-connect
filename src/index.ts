@@ -123,7 +123,6 @@ import {
   DEFAULT_OPENAI_CODEX_REASONING_SUMMARY,
   parseOpenAICodexImageModelHint,
   OPENAI_CODEX_SETTINGS_NAMESPACE,
-  resolveOpenAICodexExtendedContextWindow,
   resolveOpenAICodexProxyUrl,
   resolveOpenAICodexSettings,
   parseOpenAICodexContextWindowOverrides,
@@ -278,13 +277,6 @@ export interface Config {
    * Whole-map or per-model null disables inherited overrides; omitted keys inherit lower layers.
    */
   contextWindowOverrides?: Record<string, number | null> | null | undefined
-  /**
-   * Opt-in switch. While it is on, every catalog model whose default budget is
-   * smaller advertises the official maximum input (922,000 tokens) instead,
-   * above the model's Codex catalog ceiling when needed, so this profile can
-   * measure the real account or route limit. Client budgeting only.
-   */
-  enableExtendedContext?: boolean
   /** Register the optional standalone Codex search provider. */
   enableSearch?: boolean
   /** Automatically follow server-authorized Luna Reserve transitions, never generic rate limits. */
@@ -353,7 +345,6 @@ const configSchema = z.object({
     z.union([z.const(undefined), z.const(null), z.dict(z.union([z.const(null), z.number()]))]),
     parseSettingsContextWindowOverrides,
   ).volatile(),
-  enableExtendedContext: z.boolean().default(false).volatile(),
   enableSearch: z.boolean().default(false).volatile(),
   enableReserveFallback: z.boolean().default(false).volatile(),
   enableNewSessionFastMode: z.boolean().default(false).volatile(),
@@ -383,7 +374,6 @@ export interface VolatileConfig {
   enableProxy: Volatile<boolean>
   proxyUrl: Volatile<string>
   contextWindowOverrides: Volatile<Record<string, number | null> | null | undefined>
-  enableExtendedContext: Volatile<boolean>
   enableSearch: Volatile<boolean>
   enableReserveFallback: Volatile<boolean>
   enableNewSessionFastMode: Volatile<boolean>
@@ -417,9 +407,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
   const catalog = openAICodexModelCatalog()
   const current = (): OpenAICodexSettingsInput => Object.fromEntries(Object.entries({
     models: configValue(config.models), enableProxy: configValue(config.enableProxy), proxyUrl: configValue(config.proxyUrl),
-    contextWindowOverrides: configValue(config.contextWindowOverrides),
-    enableExtendedContext: configValue(config.enableExtendedContext),
-    enableSearch: configValue(config.enableSearch),
+    contextWindowOverrides: configValue(config.contextWindowOverrides), enableSearch: configValue(config.enableSearch),
     enableReserveFallback: configValue(config.enableReserveFallback), enableNativeCompaction: configValue(config.enableNativeCompaction),
     enableNewSessionFastMode: configValue(config.enableNewSessionFastMode),
     enableNewSubagentFastMode: configValue(config.enableNewSubagentFastMode),
@@ -509,7 +497,6 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       backendRequests,
       taskRuntime,
       () => resolveOpenAICodexSettings(current()).enableImageGeneration,
-      () => resolveOpenAICodexExtendedContextWindow(current()),
       (): OpenAICodexOutputStyle => {
         const resolved = resolveOpenAICodexSettings(current())
         return { verbosity: resolved.outputVerbosity, reasoningSummary: resolved.reasoningSummary }

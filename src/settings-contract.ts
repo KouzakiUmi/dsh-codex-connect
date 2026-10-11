@@ -48,21 +48,6 @@ export function isValidOpenAICodexProxyUrl(value: unknown): value is string {
 }
 
 /**
- * Maximum extended context the switch applies. The official Codex model pages
- * publish a 1,050,000-token window with a 922,000-token maximum input, while
- * the Codex client catalog ships a 272,000 default and an 872,000 configuration
- * ceiling. The switch declares that official input ceiling as this profile's
- * local budget so one deployment can measure where the account or route clamps.
- */
-export const OPENAI_CODEX_EXTENDED_CONTEXT_MAX = 922_000
-
-/** Official source of the extended ceiling: the current Codex model page (maximum input tokens). */
-export const OPENAI_CODEX_EXTENDED_CONTEXT_SOURCE = 'https://developers.openai.com/api/docs/models/gpt-6-astra'
-
-/** Released behavior is unchanged unless a profile opts in. */
-export const DEFAULT_OPENAI_CODEX_ENABLE_EXTENDED_CONTEXT = false
-
-/**
  * Output-detail level accepted by the Codex Responses API (`text.verbosity`),
  * matching the official ChatGPT "output verbosity" choices. `default` omits
  * the wire field entirely so the model preset decides.
@@ -152,14 +137,6 @@ export interface OpenAICodexSettingsConfig {
    * output-token limits, or the deployment's compaction policy.
    */
   contextWindowOverrides: Readonly<Record<string, number>> | undefined
-  /**
-   * Opt-in switch: when on, every catalog model whose default budget is
-   * smaller advertises the official maximum input (922,000 tokens) instead,
-   * above the model's Codex catalog ceiling when needed. This changes client
-   * budgeting and compaction only; it neither grants nor verifies server
-   * capacity, and requests can still be rejected by the account or route.
-   */
-  enableExtendedContext: boolean
   enableSearch: boolean
   /** Follow explicit server-authorized Luna Reserve transitions for agent requests. */
   enableReserveFallback: boolean
@@ -197,7 +174,6 @@ export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> 
   enableProxy: false,
   proxyUrl: DEFAULT_OPENAI_CODEX_PROXY_URL,
   contextWindowOverrides: undefined,
-  enableExtendedContext: DEFAULT_OPENAI_CODEX_ENABLE_EXTENDED_CONTEXT,
   enableSearch: false,
   enableReserveFallback: false,
   enableNewSessionFastMode: false,
@@ -240,9 +216,6 @@ export function resolveOpenAICodexSettings(
     throw new TypeError('OpenAI Codex proxyUrl must be an HTTP(S) origin without credentials or a path')
   }
   parseOpenAICodexImageModelHint(resolved.imageModelHint)
-  if (typeof resolved.enableExtendedContext !== 'boolean') {
-    throw new TypeError('OpenAI Codex enableExtendedContext must be a boolean')
-  }
   if (!isValidOpenAICodexOutputVerbosity(resolved.outputVerbosity)) {
     throw new TypeError('OpenAI Codex outputVerbosity must be default, low, medium, or high')
   }
@@ -260,16 +233,6 @@ export function resolveOpenAICodexProxyUrl(
   return resolved.enableProxy ? normalizeOpenAICodexProxyUrl(resolved.proxyUrl) : undefined
 }
 
-/**
- * Resolve the extended-context budget for the adapter, or undefined when the
- * switch is off. Per-model `contextWindowOverrides` stay authoritative; this
- * value only raises models that have no explicit override.
- */
-export function resolveOpenAICodexExtendedContextWindow(value: OpenAICodexSettingsInput): number | undefined {
-  const resolved = resolveOpenAICodexSettings(value)
-  return resolved.enableExtendedContext ? OPENAI_CODEX_EXTENDED_CONTEXT_MAX : undefined
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -281,7 +244,6 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   const enableProxy = value['enableProxy']
   const proxyUrl = value['proxyUrl']
   const contextWindowOverrides = value['contextWindowOverrides']
-  const enableExtendedContext = value['enableExtendedContext']
   const enableSearch = value['enableSearch']
   const enableReserveFallback = value['enableReserveFallback']
   const enableNewSessionFastMode = value['enableNewSessionFastMode']
@@ -308,8 +270,6 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   if (enableNewSessionFastMode !== undefined && typeof enableNewSessionFastMode !== 'boolean') return undefined
   if (enableNewSubagentFastMode !== undefined && typeof enableNewSubagentFastMode !== 'boolean') return undefined
   if (enableNativeCompaction !== undefined && typeof enableNativeCompaction !== 'boolean') return undefined
-  // Older Host snapshots predate the maximum-extended-context switch; absence maps to its safe default.
-  if (enableExtendedContext !== undefined && typeof enableExtendedContext !== 'boolean') return undefined
   // Older Host snapshots predate image generation; absence maps to its safe default.
   if (enableImageGeneration !== undefined && typeof enableImageGeneration !== 'boolean') return undefined
   if (imageModelHint !== undefined && !isValidOpenAICodexImageModelHint(imageModelHint)) return undefined
@@ -332,7 +292,6 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
     enableProxy: enableProxy ?? false,
     proxyUrl: proxyUrl === undefined ? DEFAULT_OPENAI_CODEX_PROXY_URL : normalizeOpenAICodexProxyUrl(proxyUrl)!,
     contextWindowOverrides: overrides === undefined ? undefined : Object.freeze(overrides),
-    enableExtendedContext: enableExtendedContext ?? DEFAULT_OPENAI_CODEX_ENABLE_EXTENDED_CONTEXT,
     enableSearch,
     enableReserveFallback: enableReserveFallback ?? false,
     enableNewSessionFastMode: enableNewSessionFastMode ?? false,

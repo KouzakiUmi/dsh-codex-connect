@@ -101,7 +101,6 @@ const UNAVAILABLE_SNAPSHOT = {
 const CONFIG_FIELDS = [
   'models',
   'contextWindowOverrides',
-  'enableExtendedContext',
   'enableProxy',
   'enableReserveFallback',
   'enableNewSessionFastMode',
@@ -598,12 +597,6 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
               })}
             </div>
           )}
-          <label style={{ ...toggleRowStyle, paddingTop: 2 }}>
-            <input type="checkbox" checked={draft.enableExtendedContext} disabled={!editable}
-              aria-label={t('extendedEnable')}
-              onChange={event => { update('enableExtendedContext', event.currentTarget.checked) }} />
-            <span style={labelStyle}>{t('extendedEnable')}</span>
-          </label>
           <p style={bodyStyle}>{t('contextWarning')}</p>
           {!validContexts ? <p style={errorStyle} role="alert">{t('contextInvalid')}</p> : null}
           </div>

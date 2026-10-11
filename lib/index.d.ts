@@ -759,14 +759,6 @@ interface OpenAICodexSettingsConfig {
    * output-token limits, or the deployment's compaction policy.
    */
   contextWindowOverrides: Readonly<Record<string, number>> | undefined;
-  /**
-   * Opt-in switch: when on, every catalog model whose default budget is
-   * smaller advertises the official maximum input (922,000 tokens) instead,
-   * above the model's Codex catalog ceiling when needed. This changes client
-   * budgeting and compaction only; it neither grants nor verifies server
-   * capacity, and requests can still be rejected by the account or route.
-   */
-  enableExtendedContext: boolean;
   enableSearch: boolean;
   /** Follow explicit server-authorized Luna Reserve transitions for agent requests. */
   enableReserveFallback: boolean;
@@ -1103,13 +1095,6 @@ export interface Config {
    * Whole-map or per-model null disables inherited overrides; omitted keys inherit lower layers.
    */
   contextWindowOverrides?: Record<string, number | null> | null | undefined;
-  /**
-   * Opt-in switch. While it is on, every catalog model whose default budget is
-   * smaller advertises the official maximum input (922,000 tokens) instead,
-   * above the model's Codex catalog ceiling when needed, so this profile can
-   * measure the real account or route limit. Client budgeting only.
-   */
-  enableExtendedContext?: boolean;
   /** Register the optional standalone Codex search provider. */
   enableSearch?: boolean;
   /** Automatically follow server-authorized Luna Reserve transitions, never generic rate limits. */
@@ -1156,7 +1141,6 @@ export interface VolatileConfig {
   enableProxy: Volatile<boolean>;
   proxyUrl: Volatile<string>;
   contextWindowOverrides: Volatile<Record<string, number | null> | null | undefined>;
-  enableExtendedContext: Volatile<boolean>;
   enableSearch: Volatile<boolean>;
   enableReserveFallback: Volatile<boolean>;
   enableNewSessionFastMode: Volatile<boolean>;
