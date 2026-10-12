@@ -9,7 +9,7 @@ const entrypoints = [
   ['native-compaction-luna-smoke.mjs', 'readCodexLogin', 'CODEX_LOGIN_FILE_UNSAFE'],
 ]
 const info = (ino = 1n, dev = 1n, link = false, file = true) => ({
-  ino, dev, size: 1, mode: 0o600, uid: 1000,
+  ino, dev, nlink: 1n, size: 1, mode: 0o600, uid: 1000,
   isFile: () => file, isSymbolicLink: () => link,
 })
 
@@ -23,6 +23,11 @@ for (const [filename, name, unsafe] of entrypoints) {
   for (const platform of ['win32', 'linux']) {
     for (const [scenario, before, opened, after, accepted] of [
       ['regular file', info(), info(), info(), true],
+      ['initial hardlink', { ...info(), nlink: 2n }, info(), info(), false],
+      ['hardlink on opened handle', info(), { ...info(), nlink: 2n }, info(), false],
+      ['hardlink after open', info(), info(), { ...info(), nlink: 2n }, false],
+      ['hardlink just before read', info(), info(), info(), false],
+      ['unlinked opened handle', info(), { ...info(), nlink: 0n }, info(), false],
       ['initial symlink', info(1n, 1n, true, false), info(), info(), false],
       ['initial non-file', info(1n, 1n, false, false), info(), info(), false],
       ['replaced before open', info(), info(2n), info(2n), false],
@@ -48,7 +53,7 @@ for (const [filename, name, unsafe] of entrypoints) {
           authPath: () => 'synthetic-auth', join: () => 'synthetic-auth', homedir: () => 'synthetic-home',
           lstat: async (_path, options) => { assert.equal(options.bigint, true); return stats++ === 0 ? before : after },
           open: async () => { opens++; return {
-            stat: async () => opened,
+            stat: async options => options?.bigint ? opened : { ...opened, nlink: scenario === 'hardlink just before read' ? 2 : Number(opened.nlink) },
             readFile: async () => { reads++; return bytes },
             close: async () => { closes++ },
           } },
@@ -58,7 +63,7 @@ for (const [filename, name, unsafe] of entrypoints) {
         else await assert.rejects(reader(), { message: unsafe })
         assert.equal(reads, accepted ? 1 : 0)
         assert.equal(closes, opens)
-        if (!before.isFile() || before.isSymbolicLink()) assert.equal(opens, 0)
+        if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n) assert.equal(opens, 0)
       })
     }
   }

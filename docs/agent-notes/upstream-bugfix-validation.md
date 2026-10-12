@@ -264,3 +264,20 @@ request scenarios and asserted the package/full-check wiring. This does not
 claim React rendering/browser acceptance. Full Vitest/browser/pack execution
 remains unverified locally due to the previously documented environment blockers;
 no bypass or live request was performed. The client bundle was rebuilt, not edited.
+
+## Automated review follow-up: login hardlinks — 2026-10-13
+
+Starting source: `336076f26ee53b90d99065faa9e359215459f59a`. Both probe login
+readers now require a single link on the pre-open path, opened bigint identity,
+post-open path and final handle stat before reading. A hardlinked or unlinked
+file is rejected with the existing redacted unsafe-file error. Normal single-link
+files remain accepted; no credential format, account selection, refresh behavior,
+platform permissions or network dispatch logic changed.
+
+The normal-check regression suite now passes 60/60 synthetic cases, adding initial
+hardlinks, handle/post-open hardlinks, a link added at the final stat and unlinked
+handles for both readers and mocked Windows/Linux. Every rejection performs zero
+reads and closes any opened handle. Existing identity, symlink, size and POSIX
+permission scenarios also pass. Both script syntax checks and `git diff --check`
+pass. These are synthetic reader tests, not real-account or live-probe acceptance.
+Only scripts/tests and this record changed; product source/bundles need no rebuild.

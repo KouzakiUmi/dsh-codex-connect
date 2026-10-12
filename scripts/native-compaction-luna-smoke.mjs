@@ -47,16 +47,16 @@ function codexCredential(document) {
 async function readCodexLogin() {
   const path = join(process.env.CODEX_HOME?.trim() || join(homedir(), '.codex'), 'auth.json')
   const before = await lstat(path, { bigint: true })
-  if (!before.isFile() || before.isSymbolicLink()) stop('CODEX_LOGIN_FILE_UNSAFE')
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n) stop('CODEX_LOGIN_FILE_UNSAFE')
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
     const identity = await handle.stat({ bigint: true })
     const after = await lstat(path, { bigint: true })
-    if (!after.isFile() || after.isSymbolicLink()
+    if (!after.isFile() || after.isSymbolicLink() || identity.nlink !== 1n || after.nlink !== 1n
       || before.dev !== identity.dev || before.ino !== identity.ino
       || after.dev !== identity.dev || after.ino !== identity.ino) stop('CODEX_LOGIN_FILE_UNSAFE')
     const stat = await handle.stat()
-    if (!stat.isFile() || stat.size > 512 * 1024
+    if (!stat.isFile() || stat.nlink !== 1 || stat.size > 512 * 1024
       || (process.platform !== 'win32' && ((stat.mode & 0o077) !== 0
         || (process.getuid !== undefined && stat.uid !== process.getuid())))) stop('CODEX_LOGIN_FILE_UNSAFE')
     const bytes = await handle.readFile()

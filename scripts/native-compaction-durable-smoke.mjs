@@ -30,16 +30,16 @@ const checkpoint = session => session.deriveMessages().find(message => isCompact
 async function readLogin() {
   const path = authPath()
   const before = await lstat(path, { bigint: true })
-  if (!before.isFile() || before.isSymbolicLink()) fail('CREDENTIAL_FILE_UNSAFE')
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n) fail('CREDENTIAL_FILE_UNSAFE')
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
     const identity = await handle.stat({ bigint: true })
     const after = await lstat(path, { bigint: true })
-    if (!after.isFile() || after.isSymbolicLink()
+    if (!after.isFile() || after.isSymbolicLink() || identity.nlink !== 1n || after.nlink !== 1n
       || before.dev !== identity.dev || before.ino !== identity.ino
       || after.dev !== identity.dev || after.ino !== identity.ino) fail('CREDENTIAL_FILE_UNSAFE')
     const info = await handle.stat()
-    if (!info.isFile() || info.size > 512 * 1024
+    if (!info.isFile() || info.nlink !== 1 || info.size > 512 * 1024
       || (process.platform !== 'win32' && ((info.mode & 0o077) !== 0 || info.uid !== process.getuid()))) fail('CREDENTIAL_FILE_UNSAFE')
     const bytes = await handle.readFile()
     if (bytes.length > 512 * 1024) fail('CREDENTIAL_FILE_UNSAFE')
