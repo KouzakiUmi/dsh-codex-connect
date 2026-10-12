@@ -111,3 +111,42 @@ On the repaired working tree:
 No temporary-directory, npm-store or Windows permission repair was performed.
 A clean CI environment must run the full check and relevant browser suite before
 merge. No historical passing head is used as evidence for the repaired tree.
+
+## CI follow-up: synchronize the test harness and exact inventories
+
+[The first PR CI run](https://github.com/franksong2702/dsh-codex-connect/actions/runs/38228519538)
+on `7eb79e4` exposed three omissions in that commit, not runner failures:
+
+- Both validate jobs reported ten HTTP publication failures because their mock
+  context lacked the newly required `effect` factory and registration disposer.
+- The authenticated-browser acceptance wrapper still required six tests after
+  the lifecycle regression increased its successful report to seven.
+- Both Phase 2 jobs rejected an otherwise successful first-host test report
+  because the exact case inventory omitted the two new artifact-link cases.
+
+The baseline [main CI run](https://github.com/franksong2702/dsh-codex-connect/actions/runs/38038162968)
+passed all six corresponding jobs. On the PR head, the HTTP suite (six tests),
+artifact suite (30 tests) and browser UI test step passed; later acceptance
+steps were blocked by the omissions above. This does not prove that the later,
+unexecuted steps pass.
+
+The follow-up changes only the unit mock, authenticated UI totals (exactly seven
+passed, zero pending/todo) and the two named inventory entries. No runtime,
+bundle, release gate or safety assertion is removed or relaxed.
+
+Local follow-up verification, using the same installed Node runtime:
+
+```text
+node node_modules/typescript/bin/tsc -p tsconfig.json       exit 0
+node node_modules/typescript/bin/tsc -p tsconfig.client.json exit 0
+node --check scripts/check-adaptive-task-ui.mjs            exit 0
+git diff --check                                          exit 0
+```
+
+Supplemental inline checks also exited zero: the original updated unit harness
+ran ten HTTP activation/exit/read/authentication scenarios against the real
+handler; the actual matrix report inspector accepted the complete synthetic
+inventory and rejected missing/extra/failed/pending/todo evidence. The UI wrapper
+still requires exactly seven total and passed tests. These are not a Vitest,
+browser or installed-host matrix rerun. The earlier local temporary-directory
+blocker was not bypassed; exact follow-up-head CI acceptance remains pending.
