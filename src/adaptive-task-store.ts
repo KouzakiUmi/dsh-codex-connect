@@ -81,11 +81,17 @@ export class AtomicTaskDocumentStore<T> {
       const parent = await lstat(this.directory)
       if (!parent.isDirectory() || parent.isSymbolicLink()
         || (process.platform !== 'win32' && (parent.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
-      // O_NOFOLLOW is a no-op on Windows, so a replaced path is rejected from lstat instead.
-      const target = await lstat(filename)
+      // O_NOFOLLOW is a no-op on Windows; verify path/handle identity before reading.
+      const target = await lstat(filename, { bigint: true })
       if (target.isSymbolicLink()) taskFailure('TASK_STATE_UNAVAILABLE')
+      if (!target.isFile()) taskFailure('TASK_STATE_UNSAFE')
       const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
       try {
+        const identity = await file.stat({ bigint: true })
+        const current = await lstat(filename, { bigint: true }).catch(() => taskFailure('TASK_STATE_UNAVAILABLE'))
+        if (current.isSymbolicLink()) taskFailure('TASK_STATE_UNAVAILABLE')
+        if (!current.isFile() || target.dev !== identity.dev || target.ino !== identity.ino
+          || current.dev !== identity.dev || current.ino !== identity.ino) taskFailure('TASK_STATE_UNSAFE')
         const stat = await file.stat()
         if (!stat.isFile() || stat.nlink !== 1 || stat.size > MAX_BYTES
           || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')

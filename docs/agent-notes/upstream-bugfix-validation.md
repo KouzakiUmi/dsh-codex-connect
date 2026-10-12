@@ -212,3 +212,30 @@ for this local build follow-up; earlier temporary-directory/cache blockers were
 not bypassed. A new exact-head Ubuntu CI run is still required after separately
 authorized commit and push. No live credentials, requests, services or profile
 installation were used or changed.
+
+## Automated review follow-up: state-file identity — 2026-10-12
+
+Starting source: `49865b0ee2085a3251c3d88329ffcd906989005e`. The new P2 review
+identified a separate Windows race in `AtomicTaskDocumentStore.read`: a path
+checked before opening could be replaced before the handle was read. This is
+not a recurrence of the already-fixed probe login readers.
+
+The reader now compares bigint device/inode identities across pre-open `lstat`,
+the opened handle and post-open `lstat`. Links retain `TASK_STATE_UNAVAILABLE`;
+non-regular files and identity mismatches fail with `TASK_STATE_UNSAFE`. A path
+that disappears after opening fails unavailable instead of being interpreted
+as absent state. Rejections close the handle before any read or document parse.
+Existing hardlink, size, POSIX permission and document checks remain intact.
+
+Added `tests/adaptive-task-store-identity.spec.ts` with ten deterministic mocked
+cases, including large inode values and post-open disappearance. Project typing
+and source ESLint passed. A supplemental in-memory harness transpiled the actual
+store source and passed twenty scenarios across mocked Windows/Linux behavior;
+it verifies no read/parse on rejection and handle cleanup. This is not a Vitest
+run, real filesystem race acceptance or installed-host acceptance. No temporary
+paths, permissions or caches were changed to bypass prior local runner blockers.
+
+The standard tsdown build passed and regenerated the host bundle; generated files
+were not hand-edited. `git diff --check` passed. Full check, browser/pack and live
+acceptance were not rerun locally; exact-head CI remains separate evidence.
+No real credentials, live requests, profiles or daily services were used.
