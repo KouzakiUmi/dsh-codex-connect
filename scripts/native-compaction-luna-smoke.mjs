@@ -1,7 +1,7 @@
 /** Bounded provider-acceptance probe. Default is offline; --live permits one three-dispatch run. */
 import assert from 'node:assert/strict'
 import { randomUUID, createHash } from 'node:crypto'
-import { open, readFile } from 'node:fs/promises'
+import { open, readFile, lstat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -46,8 +46,15 @@ function codexCredential(document) {
 
 async function readCodexLogin() {
   const path = join(process.env.CODEX_HOME?.trim() || join(homedir(), '.codex'), 'auth.json')
+  const before = await lstat(path, { bigint: true })
+  if (!before.isFile() || before.isSymbolicLink()) stop('CODEX_LOGIN_FILE_UNSAFE')
   const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
+    const identity = await handle.stat({ bigint: true })
+    const after = await lstat(path, { bigint: true })
+    if (!after.isFile() || after.isSymbolicLink()
+      || before.dev !== identity.dev || before.ino !== identity.ino
+      || after.dev !== identity.dev || after.ino !== identity.ino) stop('CODEX_LOGIN_FILE_UNSAFE')
     const stat = await handle.stat()
     if (!stat.isFile() || stat.size > 512 * 1024
       || (process.platform !== 'win32' && ((stat.mode & 0o077) !== 0

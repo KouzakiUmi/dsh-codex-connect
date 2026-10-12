@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { createHash, randomBytes } from 'node:crypto'
 import { constants } from 'node:fs'
-import { open, readFile, writeFile, mkdtemp, rm, readdir, stat } from 'node:fs/promises'
+import { open, readFile, writeFile, mkdtemp, rm, readdir, stat, lstat } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -28,8 +28,16 @@ const authPath = () => join(process.env.CODEX_HOME?.trim() || join(homedir(), '.
 const checkpoint = session => session.deriveMessages().find(message => isCompactCheckpointSource(message.source))
 
 async function readLogin() {
-  const handle = await open(authPath(), constants.O_RDONLY | constants.O_NOFOLLOW)
+  const path = authPath()
+  const before = await lstat(path, { bigint: true })
+  if (!before.isFile() || before.isSymbolicLink()) fail('CREDENTIAL_FILE_UNSAFE')
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
+    const identity = await handle.stat({ bigint: true })
+    const after = await lstat(path, { bigint: true })
+    if (!after.isFile() || after.isSymbolicLink()
+      || before.dev !== identity.dev || before.ino !== identity.ino
+      || after.dev !== identity.dev || after.ino !== identity.ino) fail('CREDENTIAL_FILE_UNSAFE')
     const info = await handle.stat()
     if (!info.isFile() || info.size > 512 * 1024
       || (process.platform !== 'win32' && ((info.mode & 0o077) !== 0 || info.uid !== process.getuid()))) fail('CREDENTIAL_FILE_UNSAFE')
