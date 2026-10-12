@@ -42,7 +42,7 @@
     "lint:metadata": "node scripts/lint.mjs",
     "lint:source": "eslint src --max-warnings=0 && node scripts/check-source-lint.mjs",
     "build": "tsdown",
-    "test": "vitest run",
+    "test": "node --test scripts/native-compaction-login-tests.mjs && vitest run",
     "test:browser": "vitest run --config vitest.browser.config.ts",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
     "check:compatibility": "node scripts/check-compatibility.mjs",

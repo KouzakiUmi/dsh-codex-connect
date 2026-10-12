@@ -239,3 +239,28 @@ The standard tsdown build passed and regenerated the host bundle; generated file
 were not hand-edited. `git diff --check` passed. Full check, browser/pack and live
 acceptance were not rerun locally; exact-head CI remains separate evidence.
 No real credentials, live requests, profiles or daily services were used.
+
+## Automated review follow-up: transient route gaps and test wiring — 2026-10-13
+
+Starting source: `f66cd4141632f36752f027a7cf8be90eab382a12`.
+The client now treats 404/405 as a routeless host only on the first completed
+read response. Subsequent refresh or Stop/manual failures clear unconfirmed
+state but retain the recovery dialog and explicit re-read path, including
+repeated gaps after the confirmed state was cleared. Stale/aborted responses
+cannot update the response-history ref; the session-keyed component resets it.
+POSTs still dispatch once, and only read-only readiness failures retain bounded
+retries. Initial missing routes remain entry-free without parsing their bodies.
+
+Browser regression coverage exercises both statuses for refresh, Stop and manual
+takeover, repeated gaps, restored state and no mutation replay. The existing
+session-switch and initial-routeless tests remain. The standalone login tests
+are now the first part of `pnpm run test`, so normal CI, full check and release
+check invoke them before Vitest without changing its included inventory.
+
+Local outcomes: login-reader tests 40/40; project/client typing, source ESLint,
+metadata checks, standard build and diff whitespace checks all exit 0. An
+in-memory synthetic-hook harness of the actual transpiled component passed eight
+request scenarios and asserted the package/full-check wiring. This does not
+claim React rendering/browser acceptance. Full Vitest/browser/pack execution
+remains unverified locally due to the previously documented environment blockers;
+no bypass or live request was performed. The client bundle was rebuilt, not edited.

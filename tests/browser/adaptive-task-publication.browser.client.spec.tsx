@@ -101,6 +101,40 @@ it.each(['en', 'zh'])('keeps a host with no task route entry-free and never retr
   expect(element!.querySelectorAll('button,input,select,dialog')).toHaveLength(0)
   expect(fetch).toHaveBeenCalledTimes(1)
 })
+it.each([404, 405])('retains re-read recovery after transient %s on refresh, Stop and manual takeover', async status => {
+  let gap = false
+  let writes = 0
+  let reads = 0
+  const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    if (init?.method === 'POST') writes++
+    else reads++
+    return gap ? new Response('', { status }) : Response.json(state('interrupted'))
+  })
+  vi.stubGlobal('fetch', fetch); mount()
+  await page.getByRole('button', { name: 'Existing task controls', exact: true }).click()
+  const refresh = page.getByRole('button', { name: 'Read state again', exact: true })
+  for (const action of ['Read state again', 'Stop this task', 'Take over manually']) {
+    await expect.element(page.getByRole('button', { name: 'Stop this task', exact: true })).toBeEnabled()
+    const beforeReads = reads, beforeWrites = writes
+    gap = true
+    await page.getByRole('button', { name: action, exact: true }).click()
+    await expect.element(page.getByRole('alert')).toBeVisible()
+    await expect.element(refresh).toBeEnabled()
+    expect(element!.querySelector('dialog')?.open).toBe(true)
+    expect(element!.textContent).not.toContain('Recorded state: interrupted')
+    expect(await page.getByRole('button', { name: 'Stop this task', exact: true }).elements()).toHaveLength(0)
+    expect(reads - beforeReads).toBe(action === 'Read state again' ? 1 : 0)
+    expect(writes - beforeWrites).toBe(action === 'Read state again' ? 0 : 1)
+    // Repeated gaps must not erase the recovery path after the known state was cleared.
+    await refresh.click()
+    await expect.element(page.getByRole('alert')).toBeVisible()
+    await expect.element(refresh).toBeEnabled()
+    gap = false
+    await refresh.click()
+    await expect.element(page.getByRole('button', { name: 'Stop this task', exact: true })).toBeEnabled()
+  }
+  expect(writes).toBe(2)
+})
 it('treats a method-not-allowed answer like a missing route', async () => {
   const fetch = vi.fn(async () => new Response('', { status: 405 }))
   vi.stubGlobal('fetch', fetch); mount()

@@ -38,6 +38,7 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
   const [opened, setOpened] = useState(false)
   const generation = useRef(0)
   const working = useRef(false)
+  const receivedResponse = useRef(false)
   const controller = useRef<AbortController>()
   const dialog = useRef<HTMLDialogElement>(null)
   const opener = useRef<HTMLButtonElement>(null)
@@ -60,9 +61,15 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
           headers: { accept: 'application/json', ...(action === undefined ? {} : { 'content-type': 'application/json' }) },
           ...(action === undefined ? {} : { body: JSON.stringify({ sessionId, action, revision, operationId: crypto.randomUUID() }) }),
         })
-        // A missing route or method means this build serves no task controls at all: no session can
-        // hold a task, so the entry must not appear and the body is not read.
-        if (response.status === 404 || response.status === 405) { absentRoute = true; break }
+        if (token !== generation.current || operation.signal.aborted) return
+        const initialRead = action === undefined && !receivedResponse.current
+        receivedResponse.current = true
+        // Only the first read can identify a routeless host. Later route gaps must retain
+        // the unconfirmed recovery/re-read path; mutations are never automatically retried.
+        if (response.status === 404 || response.status === 405) {
+          if (!initialRead) throw new Error('Unconfirmed task state')
+          absentRoute = true; break
+        }
         const body: unknown = await response.json()
         if (action === undefined && response.status === 409 && typeof body === 'object' && body !== null
           && 'error' in body && body.error === 'TASK_LIVE_ROOT_REQUIRED' && attempt < 2) {
