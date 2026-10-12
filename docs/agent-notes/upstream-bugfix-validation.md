@@ -150,3 +150,65 @@ inventory and rejected missing/extra/failed/pending/todo evidence. The UI wrappe
 still requires exactly seven total and passed tests. These are not a Vitest,
 browser or installed-host matrix rerun. The earlier local temporary-directory
 blocker was not bypassed; exact follow-up-head CI acceptance remains pending.
+
+## Build follow-up: platform-independent CLI source labels
+
+[CI on the test-harness follow-up](https://github.com/franksong2702/dsh-codex-connect/actions/runs/38233614225)
+finished with five successful checks and two failed validate jobs. Both validate
+jobs passed tests, persistence/crash checks, package validation and declared-host
+matrices, then failed only the final committed-build check with `M lib/bin.js`.
+
+The installed pnpm layout records version 10.33.0 and a maximum virtual-store
+directory length of 60. CI uses pnpm 10.30.3 on Ubuntu, whose default is 120;
+both pnpm versions use the same platform-dependent defaults and shortening
+algorithm. Seven committed region labels match the shortened directory names.
+Restoring just those labels in memory produces 310,551 bytes / 83,114 gzip bytes,
+matching CI's displayed 310.55 kB / 83.11 kB. The CI run uploaded no build artifact,
+so the actual Ubuntu blob was not available for a complete byte comparison.
+
+Starting from `0d27be5`, only the existing standalone CLI configuration adds
+`inputOptions.experimental.attachDebugInfo: 'none'`. Installed tsdown 0.23.0 and
+Rolldown 1.2.8 types and runtime bindings support the setting. The default comment
+policy is unchanged: this is not `comments: false`, minification, a handwritten
+bundle patch, a dependency reinstall or a relaxed CI check. The option is
+experimental and should be revalidated when the bundler is upgraded.
+
+Authorized local verification on Node v24.21.0 / Windows:
+
+- The normal tsdown build ran three times; all builds exited zero and the complete
+  nine-file output inventory and SHA-256 hashes were identical across runs. The
+  additional standalone repeat-build assertion also exited zero.
+- A full JavaScript AST comparison against the source baseline matched every
+  output after normalizing only references to the owned renamed helper chunks.
+  All 1,565 parsed non-region comments were unchanged; declarations, host,
+  client and Undici output were byte-identical. CLI region labels were removed.
+- An initial context-free scanner probe exited one because it did not handle
+  JavaScript regex/template context correctly. It was replaced by the complete
+  parser comparison above, which exited zero; no product check was weakened.
+- The real CLI help exited zero. A keyless capability invocation against a
+  verified nonexistent synthetic home returned the expected exit one / rejected
+  OAuth state with `probe: not-requested`, then exited naturally without creating
+  a profile. This is a passing offline assertion, not a live-provider probe.
+- A separate virtual-module in-memory check on Rolldown 1.2.8 showed that changing
+  the pnpm directory ID changes default region labels; disabling debug attachment
+  made the outputs identical while retaining `@license`, `@preserve` and JSDoc.
+
+```text
+node node_modules/typescript/bin/tsc --noEmit --strict --target es2024 --module nodenext --moduleResolution nodenext --skipLibCheck tsdown.config.ts  exit 0
+node node_modules/typescript/bin/tsc -p tsconfig.json        exit 0
+node node_modules/typescript/bin/tsc -p tsconfig.client.json exit 0
+node node_modules/eslint/bin/eslint.js src --max-warnings=0 exit 0
+node scripts/check-source-lint.mjs                         exit 0
+node scripts/lint.mjs                                      exit 0
+node scripts/check-env-proxy-import.mjs                    exit 0
+node scripts/check-compatibility.mjs                       exit 0
+```
+
+Only the CLI and its two generated helper chunks changed; their content-derived
+filenames and owned imports were regenerated together. Runtime source, locks,
+licenses/notices, versions, host/client configuration and the CI gate are
+unchanged. No full Vitest/browser/pack or installed-host matrix rerun is claimed
+for this local build follow-up; earlier temporary-directory/cache blockers were
+not bypassed. A new exact-head Ubuntu CI run is still required after separately
+authorized commit and push. No live credentials, requests, services or profile
+installation were used or changed.
