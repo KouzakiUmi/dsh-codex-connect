@@ -44,10 +44,16 @@ export class TaskDelegationArtifacts {
   async get(digest: string): Promise<unknown> {
     if (!ledgerHash(digest)) taskFailure('TASK_ARTIFACT_INVALID')
     await this.safe(false)
-    const file = await open(join(this.directory, digest + '.json'), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
+    const filename = join(this.directory, digest + '.json')
+    // O_NOFOLLOW is a no-op on Windows; reject links and verify the opened identity.
+    const before = await lstat(filename)
+    if (!before.isFile() || before.isSymbolicLink()) taskFailure('TASK_ARTIFACT_UNSAFE')
+    const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
     try {
       const stat = await file.stat()
-      if (!stat.isFile() || stat.nlink !== 1 || stat.size > MAX_BYTES || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) taskFailure('TASK_ARTIFACT_UNSAFE')
+      if (!stat.isFile() || stat.nlink !== 1 || stat.size > MAX_BYTES
+        || stat.dev !== before.dev || stat.ino !== before.ino
+        || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) taskFailure('TASK_ARTIFACT_UNSAFE')
       const bytes = Buffer.alloc(MAX_BYTES + 1)
       const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
       const after = await file.stat()

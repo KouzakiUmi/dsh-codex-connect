@@ -20,7 +20,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import * as Product from '../src/index.ts'
 import { OpenAICodexCredentialStore } from '../src/store.ts'
 import { ADAPTIVE_TASK_PATH, ADAPTIVE_TASK_MODELS, ADAPTIVE_TASK_TOOL } from '../src/adaptive-task-contract.ts'
-import { adaptiveBrowserPrincipal } from '../src/adaptive-task-http.ts'
+import { adaptiveBrowserPrincipal, registerAdaptiveTaskHttp } from '../src/adaptive-task-http.ts'
 import { AdaptiveTaskStore, taskIdentity } from '../src/adaptive-task-store.ts'
 import { ADAPTIVE_TASK_RELEASE_PAUSED } from '../src/adaptive-task-publication.ts'
 import type { IncomingMessage } from 'node:http'
@@ -34,6 +34,29 @@ it('matches the host canonical cookie authority across case, default ports and I
     const request = (host: string) => ({ headers: { host, cookie } }) as IncomingMessage
     expect(adaptiveBrowserPrincipal(request(raw!))).toBe(adaptiveBrowserPrincipal(request(canonical!)))
   }
+})
+it('removes only its task route on consumer disposal and permits re-registration on the same WebServer', async () => {
+  const host = new Context(); ctx = host
+  // Construct the real service without listening or initializing an account.
+  const server = new WebServer(host, { host: '127.0.0.1', port: 0 })
+  const runtime = { state: vi.fn(async () => { throw new Error('No requests in lifecycle fixture') }),
+    command: vi.fn(async () => { throw new Error('No requests in lifecycle fixture') }) }
+  const feature = (consumer: Context) => { registerAdaptiveTaskHttp(consumer, runtime) }
+  const probe = { kind: 'exact' as const, path: ADAPTIVE_TASK_PATH, handler: () => undefined }
+  const unrelated = { ...probe, path: '/fixture/unrelated' }
+  const unregisterUnrelated = server.register(unrelated)
+  const first = await host.plugin(feature)
+  expect(() => server.register(probe)).toThrow('duplicate exact route')
+  await first.dispose()
+  server.register(probe)()
+  expect(() => server.register(unrelated)).toThrow('duplicate exact route')
+  const second = await host.plugin(feature)
+  expect(() => server.register(probe)).toThrow('duplicate exact route')
+  await second.dispose()
+  server.register(probe)()
+  expect(() => server.register(unrelated)).toThrow('duplicate exact route')
+  unregisterUnrelated()
+  expect(runtime.state).not.toHaveBeenCalled(); expect(runtime.command).not.toHaveBeenCalled()
 })
 function http(url: URL | string, options: { method?: string; headers?: Record<string, string>; body?: string } = {}) {
   return new Promise<{ status: number; headers: IncomingHttpHeaders; text: string }>((resolve, reject) => {
