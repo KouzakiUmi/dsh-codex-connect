@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { createHash, randomBytes } from 'node:crypto'
 import { constants } from 'node:fs'
-import { open, readFile, writeFile, mkdtemp, rm, readdir, stat } from 'node:fs/promises'
+import { open, readFile, writeFile, mkdtemp, rm, readdir, stat, lstat } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -28,13 +28,35 @@ const authPath = () => join(process.env.CODEX_HOME?.trim() || join(homedir(), '.
 const checkpoint = session => session.deriveMessages().find(message => isCompactCheckpointSource(message.source))
 
 async function readLogin() {
-  const handle = await open(authPath(), constants.O_RDONLY | constants.O_NOFOLLOW)
+  const path = authPath()
+  const before = await lstat(path, { bigint: true })
+  if (!before.isFile() || before.isSymbolicLink() || before.nlink !== 1n) fail('CREDENTIAL_FILE_UNSAFE')
+  const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW)
   try {
+    const identity = await handle.stat({ bigint: true })
+    const after = await lstat(path, { bigint: true })
+    if (!after.isFile() || after.isSymbolicLink() || identity.nlink !== 1n || after.nlink !== 1n
+      || before.dev !== identity.dev || before.ino !== identity.ino
+      || after.dev !== identity.dev || after.ino !== identity.ino) fail('CREDENTIAL_FILE_UNSAFE')
     const info = await handle.stat()
-    if (!info.isFile() || info.size > 512 * 1024
+    if (!info.isFile() || info.nlink !== 1 || info.size > 512 * 1024
       || (process.platform !== 'win32' && ((info.mode & 0o077) !== 0 || info.uid !== process.getuid()))) fail('CREDENTIAL_FILE_UNSAFE')
-    const bytes = await handle.readFile()
-    if (bytes.length > 512 * 1024) fail('CREDENTIAL_FILE_UNSAFE')
+    const buffer = Buffer.alloc(512 * 1024 + 1)
+    let count = 0
+    while (count < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, count, buffer.length - count, count)
+      if (bytesRead === 0) break
+      count += bytesRead
+    }
+    const final = await handle.stat({ bigint: true })
+    const current = await lstat(path, { bigint: true })
+    const stable = snapshot => snapshot.isFile() && !snapshot.isSymbolicLink() && snapshot.nlink === 1n
+      && snapshot.dev === identity.dev && snapshot.ino === identity.ino && snapshot.size === identity.size
+      && snapshot.mtimeNs === identity.mtimeNs && snapshot.ctimeNs === identity.ctimeNs
+      && snapshot.mode === identity.mode && snapshot.uid === identity.uid
+    if (count > 512 * 1024 || BigInt(count) !== identity.size
+      || !stable(before) || !stable(after) || !stable(final) || !stable(current)) fail('CREDENTIAL_FILE_UNSAFE')
+    const bytes = buffer.subarray(0, count)
     const doc = JSON.parse(bytes.toString('utf8'))
     const tokens = doc?.tokens
     if (doc?.auth_mode !== 'chatgpt' || typeof tokens?.access_token !== 'string') fail('CREDENTIAL_INVALID')
@@ -50,6 +72,15 @@ async function readLogin() {
 function syntheticCredential() {
   const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url')
   return { type: 'oauth', access: `${encode({ alg: 'none' })}.${encode({ 'https://api.openai.com/auth': { chatgpt_account_id: 'offline-durable' } })}.synthetic`, accountId: 'offline-durable', expires: Date.now() + 3600000, refresh: 'synthetic-only' }
+}
+/** Bind separately stable child reads to the parent's original selection, before any provider setup. */
+async function childCredential() {
+  if (!LIVE) return syntheticCredential()
+  const expected = process.env.DSH_NATIVE_COMPACTION_EXPECTED_LOGIN
+  if (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected)) fail('INVALID_CHILD_MODE')
+  const login = await readLogin()
+  if (login.fingerprint !== expected) fail('CREDENTIAL_CHANGED_STOP')
+  return login.credential
 }
 function offlineResponse(stage, label, scenario, body, caseName, fault) {
   if (caseName !== 'oversized-user') return fixtureResponse(stage, controlledFixtureItem(stage, body, caseName, fault))
@@ -86,7 +117,7 @@ async function child(phase, root) {
   const stages = stagesForCase(state.caseName)
   const runtimeVersions = await readVerifiedDurableRuntime()
   if (JSON.stringify(runtimeVersions) !== JSON.stringify(state.runtime_versions)) fail('DURABLE_RUNTIME_CHANGED')
-  const credential = LIVE ? (await readLogin()).credential : syntheticCredential()
+  const credential = await childCredential()
   const undici = await import('undici')
   const dispatcher = LIVE ? new undici.EnvHttpProxyAgent() : undefined
   const ledgerPath = join(root, 'ledger.json')
@@ -315,7 +346,7 @@ async function main() {
     for (const phase of ['write', 'resume']) {
       if (LIVE && (await readLogin()).fingerprint !== fingerprint) fail('CREDENTIAL_CHANGED_STOP')
       const childResult = spawnSync(process.execPath, ['--experimental-transform-types', '--disable-warning=ExperimentalWarning', SELF, '--child', phase, root, ...process.argv.slice(2)], {
-        encoding: 'utf8', timeout: 210000, maxBuffer: 1024 * 1024, env: { ...process.env, OTEL_SDK_DISABLED: 'true', DSH_TELEMETRY_MODE: 'DISABLED' },
+        encoding: 'utf8', timeout: 210000, maxBuffer: 1024 * 1024, env: { ...process.env, DSH_NATIVE_COMPACTION_EXPECTED_LOGIN: fingerprint ?? '', OTEL_SDK_DISABLED: 'true', DSH_TELEMETRY_MODE: 'DISABLED' },
       })
       if (childResult.error || childResult.signal) fail('CHILD_DID_NOT_COMPLETE')
       let report

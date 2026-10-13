@@ -1,11 +1,11 @@
 /** Private immutable artifacts contain evidence/results, never grant authority. */
-import { constants } from 'node:fs'
+import { constants, type BigIntStats } from 'node:fs'
 import { lstat, mkdir, open } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import { ledgerHash } from './adaptive-task-delegation-contract.ts'
 import { taskSafeDirectories } from './adaptive-task-evidence.ts'
-import { taskFailure, taskIdentity } from './adaptive-task-store.ts'
+import { syncTaskFile, taskFailure, taskIdentity } from './adaptive-task-store.ts'
 
 const MAX_BYTES = 2 * 1024 * 1024 // Includes JSON escaping of a bounded 256 KiB snapshot.
 export class TaskDelegationArtifacts {
@@ -27,33 +27,51 @@ export class TaskDelegationArtifacts {
     const filename = join(this.directory, digest + '.json')
     await withFileLock(filename, async () => {
       await this.safe(false)
-      try { await this.get(digest); return } catch (error) {
+      try { await this.get(digest) } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+        await writeFileAtomic(filename, text, { mode: 0o600, dirMode: 0o700 })
       }
-      await writeFileAtomic(filename, text, { mode: 0o600, dirMode: 0o700 })
-      // Writable handle: Windows fails fsync (FlushFileBuffers) on a read-only one with EPERM.
-      const file = await open(filename, constants.O_RDWR | constants.O_NOFOLLOW)
-      try { await file.sync() } finally { await file.close() }
-      if (process.platform !== 'win32') {
-        const directory = await open(this.directory, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
-        try { await directory.sync() } finally { await directory.close() }
-      }
+      // Reuse also completes durability and final identity/content checks; never rewrite a rejected target.
+      await syncTaskFile(filename, text, 'TASK_ARTIFACT_UNSAFE')
     })
     return digest
   }
   async get(digest: string): Promise<unknown> {
     if (!ledgerHash(digest)) taskFailure('TASK_ARTIFACT_INVALID')
     await this.safe(false)
-    const file = await open(join(this.directory, digest + '.json'), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
+    const filename = join(this.directory, digest + '.json')
+    // O_NOFOLLOW is a no-op on Windows; reject links and verify the opened identity.
+    const before = await lstat(filename, { bigint: true })
+    const safe = (stat: BigIntStats): boolean => stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1n
+      && stat.size <= BigInt(MAX_BYTES) && (process.platform === 'win32' || (stat.mode & 0o077n) === 0n)
+    const matches = (stat: BigIntStats, expected: BigIntStats): boolean => safe(stat)
+      && stat.dev === expected.dev && stat.ino === expected.ino && stat.size === expected.size
+      && stat.mtimeNs === expected.mtimeNs && stat.ctimeNs === expected.ctimeNs
+      && stat.mode === expected.mode && stat.uid === expected.uid
+    if (!safe(before)) taskFailure('TASK_ARTIFACT_UNSAFE')
     try {
-      const stat = await file.stat()
-      if (!stat.isFile() || stat.nlink !== 1 || stat.size > MAX_BYTES || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) taskFailure('TASK_ARTIFACT_UNSAFE')
-      const bytes = Buffer.alloc(MAX_BYTES + 1)
-      const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
-      const after = await file.stat()
-      if (bytesRead !== stat.size || after.size !== stat.size || after.mtimeMs !== stat.mtimeMs
-        || after.ctimeMs !== stat.ctimeMs || taskIdentity(bytes.subarray(0, bytesRead).toString('utf8')) !== digest) taskFailure('TASK_ARTIFACT_CORRUPT')
-      return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, bytesRead))) as unknown
-    } finally { await file.close() }
+      const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
+      let identity: BigIntStats, value: unknown
+      try {
+        identity = await file.stat({ bigint: true })
+        if (!matches(identity, before)) taskFailure('TASK_ARTIFACT_UNSAFE')
+        const bytes = Buffer.alloc(MAX_BYTES + 1)
+        let count = 0
+        while (count < bytes.length) {
+          const { bytesRead } = await file.read(bytes, count, bytes.length - count, count)
+          if (bytesRead === 0) break
+          count += bytesRead
+        }
+        if (BigInt(count) !== identity.size || !matches(await file.stat({ bigint: true }), identity)
+          || taskIdentity(bytes.subarray(0, count).toString('utf8')) !== digest) taskFailure('TASK_ARTIFACT_CORRUPT')
+        value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, count))) as unknown
+      } finally { await file.close() }
+      if (!matches(await lstat(filename, { bigint: true }), identity)) taskFailure('TASK_ARTIFACT_UNSAFE')
+      return value
+    } catch (error) {
+      // Only the first lstat may signal absence to put(); never overwrite a target lost after observation.
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') taskFailure('TASK_ARTIFACT_UNSAFE')
+      throw error
+    }
   }
 }

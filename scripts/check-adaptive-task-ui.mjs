@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { runBoundedCommand } from './bounded-command.mjs'
+import { assertAdaptiveTaskUiReport } from './adaptive-task-ui-report.mjs'
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const require = createRequire(join(root, 'package.json'))
 const cli = join(dirname(require.resolve('vitest/package.json')), 'vitest.mjs')
@@ -20,11 +21,7 @@ process.stdout.write(result.stdout); process.stderr.write(result.stderr)
 assert.equal(result.status, 0, 'Actual authenticated task-control test failed')
 assert.equal(result.error, undefined); assert.equal(result.cleanupError, undefined)
 const report = JSON.parse(await readFile(join(directory, 'report.json'), 'utf8'))
-assert.equal(report.success, true)
-assert.equal(report.numTotalTests, 6)
-assert.equal(report.numPassedTests, 6)
-assert.equal(report.numPendingTests, 0)
-assert.equal(report.numTodoTests, 0)
+assertAdaptiveTaskUiReport(report, root)
 console.log(JSON.stringify({ kind: 'adaptive-task-authenticated-control', syntheticProvider: true,
   realHostAuthentication: true, realProductEndpoint: true, realProductControl: true,
   fullDailyProfileAcceptance: false, realProviderRequests: 0, passed: true }))

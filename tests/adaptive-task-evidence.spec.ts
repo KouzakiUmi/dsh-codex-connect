@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, writeFile, readFile, rm, realpath, symlink, link, chmod } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm, realpath, symlink, link, chmod, lstat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
@@ -117,6 +117,18 @@ it('artifacts survive new store instances, are private and detect tampering', as
   await writeFile(join(path, digest + '.json'), '{}')
   await expect(store.get(digest)).rejects.toThrow('TASK_ARTIFACT_CORRUPT')
   await expect(store.put(value)).rejects.toThrow('TASK_ARTIFACT_CORRUPT')
+})
+it.each(['matching', 'missing'])('artifacts reject a %s file symlink on read and put without replacing it', async kind => {
+  const f = await setup(), path = join(f.root, 'artifacts'), store = new TaskDelegationArtifacts(path)
+  const value = { ok: true }, digest = await store.put(value), file = join(path, digest + '.json')
+  const target = join(f.root, 'outside.json')
+  if (kind === 'matching') await writeFile(target, JSON.stringify(value), { mode: 0o600 })
+  await rm(file); await symlink(target, file)
+  await expect(store.get(digest)).rejects.toThrow('TASK_ARTIFACT_UNSAFE')
+  await expect(store.put(value)).rejects.toThrow('TASK_ARTIFACT_UNSAFE')
+  expect((await lstat(file)).isSymbolicLink()).toBe(true)
+  if (kind === 'matching') expect(await readFile(target, 'utf8')).toBe(JSON.stringify(value))
+  else await expect(readFile(target)).rejects.toMatchObject({ code: 'ENOENT' })
 })
 it('restores the exact approved manifest from a digest-bound artifact, without issuing new source IDs', async () => {
   const f = await setup(), manifest = await f.approve(), store = new TaskDelegationArtifacts(join(f.root, 'artifacts'))

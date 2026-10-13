@@ -9,6 +9,8 @@
   "authorizes an explicitly selected gpt-6-sol child route without widening the default start",
   "an unavailable installed model is rejected without fallback, dispatch or a new debit",
   "an unobserved but correct file hash is not an observed citation",
+  "artifacts reject a matching file symlink on read and put without replacing it",
+  "artifacts reject a missing file symlink on read and put without replacing it",
   "artifacts reject symlink directories, hardlinks, public modes, traversal and oversize",
   "artifacts survive new store instances, are private and detect tampering",
   "binds exact child identity/route and rejects replayed attempts without a second permit",

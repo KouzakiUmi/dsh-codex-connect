@@ -1,6 +1,6 @@
 /** Owner-only task grants and conservative request reservations; never contains OAuth or prompt content. */
 import { createHash } from 'node:crypto'
-import { constants } from 'node:fs'
+import { constants, type BigIntStats } from 'node:fs'
 import { lstat, mkdir, open } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
@@ -67,6 +67,40 @@ export function parseTaskDocument(value: unknown, sessionId: string): TaskDocume
   if (!allowsTaskRoute(document.capabilities, document.route)) taskFailure('TASK_STATE_INVALID')
   return document
 }
+/** Flush only a regular, single-link file containing the exact atomic replacement; fail closed on races. */
+export async function syncTaskFile(filename: string, text: string, failure: string): Promise<void> {
+  const expected = Buffer.from(text)
+  const before = await lstat(filename, { bigint: true })
+  const stable = (stat: BigIntStats): boolean => stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1n
+    && stat.dev === before.dev && stat.ino === before.ino && stat.size === BigInt(expected.length)
+    && stat.mtimeNs === before.mtimeNs && stat.ctimeNs === before.ctimeNs
+    && stat.mode === before.mode && stat.uid === before.uid
+    && (process.platform === 'win32' || (stat.mode & 0o077n) === 0n)
+  if (!stable(before)) taskFailure(failure)
+  // Windows requires a writable flush handle and ignores O_NOFOLLOW; verify both identities.
+  const file = await open(filename, constants.O_RDWR | constants.O_NOFOLLOW | constants.O_NONBLOCK)
+  let after: BigIntStats
+  try {
+    if (!stable(await file.stat({ bigint: true })) || !stable(await lstat(filename, { bigint: true }))) taskFailure(failure)
+    const bytes = Buffer.alloc(expected.length + 1)
+    let count = 0
+    while (count < bytes.length) {
+      const { bytesRead } = await file.read(bytes, count, bytes.length - count, count)
+      if (bytesRead === 0) break
+      count += bytesRead
+    }
+    if (count !== expected.length || !bytes.subarray(0, count).equals(expected)) taskFailure(failure)
+    await file.sync()
+    // Commit the replacement name before final validation, while still holding the writer lock.
+    if (process.platform !== 'win32') {
+      const directory = await open(dirname(filename), constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
+      try { await directory.sync() } finally { await directory.close() }
+    }
+    after = await file.stat({ bigint: true })
+  } finally { await file.close() }
+  if (!stable(after) || !stable(await lstat(filename, { bigint: true }))) taskFailure(failure)
+}
+
 /** One private file/lock per root. Codecs cannot change identity or storage safety checks. */
 export class AtomicTaskDocumentStore<T> {
   constructor(private readonly directory: string, private readonly parse: (value: unknown, sessionId: string) => T) {}
@@ -76,26 +110,56 @@ export class AtomicTaskDocumentStore<T> {
   }
   /** Reads do not create a directory or grant anything. */
   async read(sessionId: string): Promise<T | undefined> {
+    return this.readCurrent(sessionId, true)
+  }
+  private async readCurrent(sessionId: string, retryReplacement: boolean, previouslyObserved = false): Promise<T | undefined> {
     const filename = this.filename(sessionId)
+    let observed = previouslyObserved
     try {
       const parent = await lstat(this.directory)
       if (!parent.isDirectory() || parent.isSymbolicLink()
         || (process.platform !== 'win32' && (parent.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
-      // O_NOFOLLOW is a no-op on Windows, so a replaced path is rejected from lstat instead.
-      const target = await lstat(filename)
+      // O_NOFOLLOW is a no-op on Windows; verify path/handle identity before reading.
+      const target = await lstat(filename, { bigint: true })
+      observed = true
       if (target.isSymbolicLink()) taskFailure('TASK_STATE_UNAVAILABLE')
+      if (!target.isFile()) taskFailure('TASK_STATE_UNSAFE')
       const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
+      let identity: BigIntStats, after: BigIntStats, bytes: Buffer, bytesRead: number
       try {
+        identity = await file.stat({ bigint: true })
+        const current = await lstat(filename, { bigint: true }).catch(() => taskFailure('TASK_STATE_UNAVAILABLE'))
+        if (current.isSymbolicLink()) taskFailure('TASK_STATE_UNAVAILABLE')
+        if (!current.isFile() || target.dev !== identity.dev || target.ino !== identity.ino
+          || current.dev !== identity.dev || current.ino !== identity.ino) taskFailure('TASK_STATE_UNSAFE')
         const stat = await file.stat()
         if (!stat.isFile() || stat.nlink !== 1 || stat.size > MAX_BYTES
           || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
-        const bytes = Buffer.alloc(MAX_BYTES + 1)
-        const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
+        bytes = Buffer.alloc(MAX_BYTES + 1)
+        const read = await file.read(bytes, 0, bytes.length, 0)
+        bytesRead = read.bytesRead
         if (bytesRead > MAX_BYTES || bytesRead !== stat.size) taskFailure('TASK_STATE_INVALID')
-        return this.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, bytesRead))), sessionId)
+        after = await file.stat({ bigint: true })
       } finally { await file.close() }
+      const current = await lstat(filename, { bigint: true })
+      const stable = (stat: BigIntStats): boolean => stat.dev === identity.dev && stat.ino === identity.ino
+        && stat.nlink === identity.nlink && stat.size === identity.size && stat.mode === identity.mode && stat.uid === identity.uid
+        && stat.mtimeNs === identity.mtimeNs && stat.ctimeNs === identity.ctimeNs
+      // Atomic replacement may unlink this fd or happen after the final fd stat, during close.
+      // Retry the new private regular inode once; never consume stale authority or replay a mutation.
+      const replacedSnapshot = stable(after) || (after.nlink === 0n && after.dev === identity.dev && after.ino === identity.ino
+        && after.size === identity.size && after.mode === identity.mode && after.uid === identity.uid && after.mtimeNs === identity.mtimeNs)
+      if (retryReplacement && replacedSnapshot
+        && current.isFile() && !current.isSymbolicLink() && current.nlink === 1n
+        && current.dev === identity.dev && current.ino !== identity.ino && current.uid === identity.uid
+        && current.size <= BigInt(MAX_BYTES) && (process.platform === 'win32' || (current.mode & 0o077n) === 0n)) {
+        return this.readCurrent(sessionId, false, true)
+      }
+      if (!current.isFile() || current.isSymbolicLink() || !stable(after) || !stable(current)) taskFailure('TASK_STATE_UNAVAILABLE')
+      return this.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, bytesRead))), sessionId)
     } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+      // Only initial absence means no saved state. Never select a fallback after observing a target.
+      if (!observed && (error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
       if (error instanceof AdaptiveTaskError) throw error
       taskFailure('TASK_STATE_UNAVAILABLE')
     }
@@ -113,14 +177,7 @@ export class AtomicTaskDocumentStore<T> {
       const text = JSON.stringify(next)
       if (Buffer.byteLength(text) > MAX_BYTES) taskFailure('TASK_STATE_TOO_LARGE')
       await writeFileAtomic(filename, text + '\n', { mode: 0o600, dirMode: 0o700 })
-      // Writable handle: Windows fails fsync (FlushFileBuffers) on a read-only one with EPERM.
-      const file = await open(filename, constants.O_RDWR | constants.O_NOFOLLOW)
-      try { await file.sync() } finally { await file.close() }
-      // Ensure the replacement name is committed before a request reservation may leave this process.
-      if (process.platform !== 'win32') {
-        const directory = await open(this.directory, constants.O_RDONLY)
-        try { await directory.sync() } finally { await directory.close() }
-      }
+      await syncTaskFile(filename, text + '\n', 'TASK_STATE_UNSAFE')
       return structuredClone(next)
     })
   }

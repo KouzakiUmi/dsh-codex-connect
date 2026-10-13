@@ -74,6 +74,8 @@ export default [
     fixedExtension: false,
     dts: false,
     clean: false,
+    // pnpm's platform-specific store paths must not leak into generated source labels.
+    inputOptions: { experimental: { attachDebugInfo: 'none' } },
     deps: { alwaysBundle: [/.*/u] },
     define: {
       __CODEX_CONNECT_VERSION__: JSON.stringify(PACKAGE_VERSION),

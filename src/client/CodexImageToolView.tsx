@@ -22,6 +22,7 @@ import type { OpenAICodexSettingsKey } from './locales.ts'
 import { CodexImageGallery } from './CodexImageGallery.tsx'
 import type { CodexImageGalleryLabels } from './CodexImageGallery.tsx'
 import type { OpenAICodexConfigForm } from './config-form.ts'
+import { requestBody } from './request-json.ts'
 
 
 export interface CodexImageToolViewInjected {
@@ -139,21 +140,29 @@ function triggerDownload(url: string, name: string): void {
 
 function DownloadButton({ label, onDownload, t }: {
   label: string
-  onDownload: () => Promise<void>
+  onDownload: (signal: AbortSignal) => Promise<void>
   t: Translate<OpenAICodexSettingsKey>
 }) {
   const [state, setState] = useState<DownloadState>('idle')
   const alive = useRef(true)
-  useEffect(() => () => { alive.current = false }, [])
+  const request = useRef<AbortController | undefined>(undefined)
+  useEffect(() => {
+    alive.current = true
+    return () => { alive.current = false; request.current?.abort() }
+  }, [])
 
   async function download(): Promise<void> {
-    if (state === 'pending') return
+    if (request.current !== undefined) return
+    const controller = new AbortController()
+    request.current = controller
     setState('pending')
     try {
-      await onDownload()
-      if (alive.current) setState('idle')
+      await onDownload(controller.signal)
+      if (alive.current && !controller.signal.aborted) setState('idle')
     } catch {
-      if (alive.current) setState('failed')
+      if (alive.current && !controller.signal.aborted) setState('failed')
+    } finally {
+      if (request.current === controller) request.current = undefined
     }
   }
 
@@ -174,14 +183,17 @@ function DownloadButton({ label, onDownload, t }: {
   </>
 }
 
-async function downloadOriginal(sessionId: string, original: OpenAICodexOriginalImageRef): Promise<void> {
-  const response = await fetch(openAICodexOriginalImageUrl(sessionId, original.assetId), {
+async function downloadOriginal(sessionId: string, original: OpenAICodexOriginalImageRef, signal: AbortSignal): Promise<void> {
+  const { value: blob } = await requestBody(openAICodexOriginalImageUrl(sessionId, original.assetId), {
     method: 'GET',
     headers: { accept: original.mediaType },
     credentials: 'same-origin',
+    signal,
+  }, async response => {
+    if (!response.ok) throw new Error('Original image download failed')
+    return response.blob()
   })
-  if (!response.ok) throw new Error('Original image download failed')
-  const blob = await response.blob()
+  if (signal.aborted) throw signal.reason
   if (blob.size !== original.bytes) throw new Error('Original image download was incomplete')
   const url = URL.createObjectURL(blob)
   try {
@@ -273,10 +285,13 @@ function useImageLoader(sessionId: string, sessions: ISessions) {
   const activeSession = useRef(sessionId)
   const disposed = useRef(false)
   activeSession.current = sessionId
-  useEffect(() => () => {
-    disposed.current = true
-    for (const entry of urls.current.values()) URL.revokeObjectURL(entry.url)
-    urls.current.clear()
+  useEffect(() => {
+    disposed.current = false
+    return () => {
+      disposed.current = true
+      for (const entry of urls.current.values()) URL.revokeObjectURL(entry.url)
+      urls.current.clear()
+    }
   }, [])
   useEffect(() => () => {
     for (const [key, entry] of urls.current) {
@@ -491,14 +506,17 @@ function ImageResultCard({ decoded, sessionId, load, sessionActions, galleryLabe
         const suffix = image.preview.name ?? String(index + 1)
         const exactOriginal = image.original
         const original = exactOriginal === undefined ? [] : [<DownloadButton
-          key={`${exactOriginal.assetId}:${index}:original`}
-          onDownload={() => downloadOriginal(sessionId, exactOriginal)}
+          key={`${sessionId}:${JSON.stringify(exactOriginal)}:${index}:original`}
+          onDownload={signal => downloadOriginal(sessionId, exactOriginal, signal)}
           t={t}
           label={decoded.images.length === 1 ? t('downloadOriginal') : t('downloadOriginalNamed', { name: exactOriginal.name })}
         />]
         return [...original, <DownloadButton
-          key={`${image.preview.attachmentId as string}:${index}:preview`}
-          onDownload={async () => { triggerDownload(await load(image.preview), image.preview.name ?? t('image')) }}
+          key={`${sessionId}:${image.preview.attachmentId as string}:${index}:preview`}
+          onDownload={async signal => {
+            const url = await load(image.preview)
+            if (!signal.aborted) triggerDownload(url, image.preview.name ?? t('image'))
+          }}
           t={t}
           label={image.original === undefined
             ? decoded.images.length === 1 ? t('download') : t('downloadNamed', { name: suffix })

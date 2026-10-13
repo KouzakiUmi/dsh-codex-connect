@@ -5,6 +5,7 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import { OPENAI_CODEX_FAST_MODE_PATH } from '../fast-mode-paths.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
+import { requestJson } from './request-json.ts'
 
 const CODEX_PROVIDER = 'openai-codex'
 const FAST_MODE_ACTIVE_COLOR = '#f97316'
@@ -17,7 +18,7 @@ export interface OpenAICodexFastModeToggleInjected {
 }
 
 interface FastModeState {
-  readonly status: 'loading' | 'ready' | 'error'
+  readonly status: 'loading' | 'ready' | 'error' | 'unconfirmed'
   readonly enabled: boolean
 }
 
@@ -64,6 +65,7 @@ export function OpenAICodexFastModeToggle({
   const eligible = isEligible(directoryState)
   const [state, setState] = useState<FastModeState>({ status: 'loading', enabled: false })
   const [tooltipVisible, setTooltipVisible] = useState(false)
+  const [readAttempt, setReadAttempt] = useState(0)
   const controllerRef = useRef<AbortController | undefined>(undefined)
   const tooltipId = useId()
 
@@ -82,13 +84,13 @@ export function OpenAICodexFastModeToggle({
     setState({ status: 'loading', enabled: false })
     void (async () => {
       try {
-        const response = await fetch(requestUrl(sessionId), {
+        const { response, value } = await requestJson(requestUrl(sessionId), {
           method: 'GET',
           credentials: 'same-origin',
           headers: { accept: 'application/json' },
           signal: controller.signal,
         })
-        const enabled = response.ok ? readEnabled(await response.json().catch(() => undefined)) : undefined
+        const enabled = response.ok ? readEnabled(value) : undefined
         if (!disposed && !controller.signal.aborted) {
           setState(enabled === undefined
             ? { status: 'error', enabled: false }
@@ -105,29 +107,36 @@ export function OpenAICodexFastModeToggle({
       controller.abort()
       if (controllerRef.current === controller) controllerRef.current = undefined
     }
-  }, [eligible, sessionId])
+  }, [eligible, sessionId, readAttempt])
 
   if (!eligible) return null
 
-  const busy = state.status !== 'ready'
+  const busy = state.status === 'loading'
   const title = state.status === 'loading'
     ? t('fastModeLoadingTitle')
-    : state.status === 'error'
-      ? t('fastModeUnavailableTitle')
-      : state.enabled
-        ? t('fastModeEnabledTitle')
-        : t('fastModeDisabledTitle')
+    : state.status === 'unconfirmed'
+      ? t('fastModeUnconfirmedTitle')
+      : state.status === 'error'
+        ? t('fastModeUnavailableTitle')
+        : state.enabled
+          ? t('fastModeEnabledTitle')
+          : t('fastModeDisabledTitle')
 
   const toggle = (): void => {
-    if (state.status !== 'ready' || busy) return
-    controllerRef.current?.abort()
+    if (controllerRef.current !== undefined || busy) return
+    if (state.status === 'error' || state.status === 'unconfirmed') {
+      // Recover by reading Host state, never by replaying an uncertain POST.
+      setState(current => ({ ...current, status: 'loading' }))
+      setReadAttempt(attempt => attempt + 1)
+      return
+    }
     const controller = new AbortController()
     controllerRef.current = controller
     const next = !state.enabled
     setState(current => ({ ...current, status: 'loading' }))
     void (async () => {
       try {
-        const response = await fetch(OPENAI_CODEX_FAST_MODE_PATH, {
+        const { response, value } = await requestJson(OPENAI_CODEX_FAST_MODE_PATH, {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
@@ -137,14 +146,14 @@ export function OpenAICodexFastModeToggle({
           body: JSON.stringify({ sessionId, enabled: next }),
           signal: controller.signal,
         })
-        const enabled = response.ok ? readEnabled(await response.json().catch(() => undefined)) : undefined
+        const enabled = response.ok ? readEnabled(value) : undefined
         if (!controller.signal.aborted) {
           setState(enabled === undefined
-            ? { status: 'error', enabled: state.enabled }
+            ? { status: 'unconfirmed', enabled: state.enabled }
             : { status: 'ready', enabled })
         }
       } catch {
-        if (!controller.signal.aborted) setState({ status: 'error', enabled: state.enabled })
+        if (!controller.signal.aborted) setState({ status: 'unconfirmed', enabled: state.enabled })
       } finally {
         if (controllerRef.current === controller) controllerRef.current = undefined
       }

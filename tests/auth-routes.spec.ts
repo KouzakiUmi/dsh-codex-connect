@@ -1,10 +1,11 @@
-import type { Context } from '@deepseek-ai/cordis'
 import type { AuthInteraction } from '@earendil-works/pi-ai'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { httpRouteTestContext, rejectedHttpAdmissions } from './http-route-test-context.ts'
+import type { CapturedHttpRoute, TestHttpAdmission } from './http-route-test-context.ts'
 import {
   OPENAI_CODEX_AUTH_LOGIN_PATH,
   OPENAI_CODEX_AUTH_CALLBACK_PATH,
@@ -13,6 +14,7 @@ import {
   OPENAI_CODEX_AUTH_STATUS_PATH,
   OPENAI_CODEX_AUTH_CANCEL_PATH,
   OPENAI_CODEX_AUTH_ACCOUNTS_PATH,
+  OPENAI_CODEX_FAST_MODE_PATH,
   REMOTE_WEB_ORIGIN_NOT_TRUSTED,
   registerOpenAICodexAuthRoutes,
   trustedRequestDecision,
@@ -73,26 +75,13 @@ function abortableLogin(interaction: AuthInteraction): Promise<void> {
   })
 }
 
-interface CapturedRoute {
-  path: string
-  handler(req: IncomingMessage, res: ServerResponse): Promise<void> | void
-}
-
-function captureRoutes(trustedOrigins: OpenAICodexTrustedOriginsStore = emptyTrustedOrigins): CapturedRoute[] {
-  const routes: CapturedRoute[] = []
-  const ctx = {
-    webServer: {
-      register(route: CapturedRoute) {
-        routes.push(route)
-        return () => undefined
-      },
-    },
-    effect(factory: () => void | (() => void | Promise<void>)) {
-      return factory()
-    },
-  } as unknown as Context
+function captureRoutes(
+  trustedOrigins: OpenAICodexTrustedOriginsStore = emptyTrustedOrigins,
+  admission: TestHttpAdmission = 'allow',
+): CapturedHttpRoute[] {
+  const { ctx, routes } = httpRouteTestContext({ admission })
   registerOpenAICodexAuthRoutes(ctx, store, trustedOrigins)
-  return routes
+  return [...routes.values()]
 }
 
 function request(options: {
@@ -144,11 +133,159 @@ beforeEach(() => {
 })
 
 afterEach(async () => {
+  vi.restoreAllMocks()
   if (root !== undefined) await rm(root, { recursive: true, force: true })
   root = undefined
 })
 
 describe('OpenAI Codex Web OAuth boundary', () => {
+  it.each(rejectedHttpAdmissions)('rejects $admission before every account operation or Origin sidecar read', async ({ admission, status, error }) => {
+    const has = vi.fn(async () => true)
+    const routes = captureRoutes({ has } as unknown as OpenAICodexTrustedOriginsStore, admission)
+    const authCalls = [
+      vi.spyOn(OpenAICodexWebAuth.prototype, 'status'),
+      vi.spyOn(OpenAICodexWebAuth.prototype, 'signIn'),
+      vi.spyOn(OpenAICodexWebAuth.prototype, 'submitCallback'),
+      vi.spyOn(OpenAICodexWebAuth.prototype, 'cancel'),
+      vi.spyOn(OpenAICodexWebAuth.prototype, 'signOut'),
+      vi.spyOn(OpenAICodexWebAuth.prototype, 'activateAccount'),
+      vi.spyOn(OpenAICodexWebAuth.prototype, 'removeAccount'),
+    ]
+    for (const [path, method] of [
+      [OPENAI_CODEX_AUTH_STATUS_PATH, 'GET'],
+      [OPENAI_CODEX_AUTH_LOGIN_PATH, 'POST'],
+      [OPENAI_CODEX_AUTH_CALLBACK_PATH, 'POST'],
+      [OPENAI_CODEX_AUTH_CANCEL_PATH, 'POST'],
+      [OPENAI_CODEX_AUTH_LOGOUT_PATH, 'POST'],
+      [OPENAI_CODEX_AUTH_ACCOUNTS_PATH, 'GET'],
+      [OPENAI_CODEX_AUTH_ACCOUNTS_PATH, 'POST'],
+      [OPENAI_CODEX_AUTH_ACCOUNTS_PATH, 'DELETE'],
+    ] as const) {
+      const route = routes.find(candidate => candidate.path === path)!
+      for (const location of [
+        { remoteAddress: '127.0.0.1', host: '127.0.0.1:3081', origin: 'http://127.0.0.1:3081' },
+        { remoteAddress: '192.168.1.8', host: '192.168.1.20:3081', origin: 'http://192.168.1.20:3081' },
+      ]) {
+        const req = request({ method, contentType: 'application/json', ...location })
+        const readBody = vi.fn(async function* () { yield Buffer.from('{}') })
+        Object.defineProperty(req, Symbol.asyncIterator, { value: readBody })
+        const res = response()
+        await route.handler(req, res)
+        expect(res.observed.status).toBe(status)
+        expect(JSON.parse(res.observed.body!)).toEqual({ error })
+        expect(readBody).not.toHaveBeenCalled()
+      }
+    }
+    expect(has).not.toHaveBeenCalled()
+    for (const call of [...authCalls, ...Object.values(storeMethods), ...Object.values(mocked)]) {
+      expect(call).not.toHaveBeenCalled()
+    }
+  })
+
+  it('resolves the current Connection admission on every status request', async () => {
+    const fixture = httpRouteTestContext()
+    registerOpenAICodexAuthRoutes(fixture.ctx, store, emptyTrustedOrigins)
+    const route = fixture.routes.get(`exact:${OPENAI_CODEX_AUTH_STATUS_PATH}`)!
+    fixture.requestRejection.mockReturnValueOnce(401)
+    const denied = response()
+    await route.handler(request({}), denied)
+    expect(denied.observed.status).toBe(401)
+    expect(storeMethods.captureActiveAccount).not.toHaveBeenCalled()
+    const allowed = response()
+    await route.handler(request({}), allowed)
+    expect(allowed.observed.status).toBe(200)
+    expect(storeMethods.captureActiveAccount).toHaveBeenCalledOnce()
+    fixture.ctx.set('connection', undefined)
+    const unavailable = response()
+    await route.handler(request({}), unavailable)
+    expect(unavailable.observed.status).toBe(503)
+    expect(storeMethods.captureActiveAccount).toHaveBeenCalledOnce()
+  })
+
+  it.each([1, 2, 3, 4, 5, 6, 7])('rolls back failed auth registration %s before releasing auth, preserving unrelated routes', async nth => {
+    const fixture = httpRouteTestContext({ failRegistrationAt: nth + 1 })
+    const unrelated: CapturedHttpRoute = { kind: 'exact', path: '/unrelated', handler: () => undefined }
+    fixture.webServer.register(unrelated)
+    const originalDispose = OpenAICodexWebAuth.prototype.dispose
+    const dispose = vi.spyOn(OpenAICodexWebAuth.prototype, 'dispose').mockImplementation(function (this: OpenAICodexWebAuth) {
+      expect([...fixture.routes.values()]).toEqual([unrelated])
+      return originalDispose.call(this)
+    })
+    expect(() => registerOpenAICodexAuthRoutes(fixture.ctx, store, emptyTrustedOrigins))
+      .toThrow('synthetic HTTP route registration failure')
+    expect([...fixture.routes.values()]).toEqual([unrelated])
+    expect(dispose).toHaveBeenCalledOnce()
+    await fixture.ctx.fiber.dispose()
+    expect([...fixture.routes.values()]).toEqual([unrelated])
+    expect(fixture.disposedPaths).toEqual([
+      OPENAI_CODEX_AUTH_STATUS_PATH,
+      OPENAI_CODEX_AUTH_LOGIN_PATH,
+      OPENAI_CODEX_AUTH_CALLBACK_PATH,
+      OPENAI_CODEX_AUTH_CANCEL_PATH,
+      OPENAI_CODEX_AUTH_LOGOUT_PATH,
+      OPENAI_CODEX_AUTH_ACCOUNTS_PATH,
+      OPENAI_CODEX_FAST_MODE_PATH,
+    ].slice(0, nth - 1).reverse())
+    expect(dispose).toHaveBeenCalledOnce()
+    expect(mocked.login).not.toHaveBeenCalled()
+    expect(mocked.logout).not.toHaveBeenCalled()
+  })
+
+  it('rolls back a duplicate auth route without deleting its unrelated owner', async () => {
+    const fixture = httpRouteTestContext()
+    const occupied: CapturedHttpRoute = { kind: 'exact', path: OPENAI_CODEX_AUTH_LOGIN_PATH, handler: () => undefined }
+    fixture.webServer.register(occupied)
+    const dispose = vi.spyOn(OpenAICodexWebAuth.prototype, 'dispose')
+    expect(() => registerOpenAICodexAuthRoutes(fixture.ctx, store, emptyTrustedOrigins)).toThrow(/duplicate HTTP route/u)
+    expect([...fixture.routes.values()]).toEqual([occupied])
+    expect(dispose).toHaveBeenCalledOnce()
+    await fixture.ctx.fiber.dispose()
+    expect([...fixture.routes.values()]).toEqual([occupied])
+    expect(fixture.disposedPaths).toEqual([OPENAI_CODEX_AUTH_STATUS_PATH])
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
+  it('removes all owned routes before cancelling synthetic OAuth on normal effect disposal', async () => {
+    const fixture = httpRouteTestContext()
+    const unrelated: CapturedHttpRoute = { kind: 'exact', path: '/unrelated', handler: () => undefined }
+    fixture.webServer.register(unrelated)
+    let observedSignal: AbortSignal | undefined
+    let closed = false
+    mocked.login.mockImplementation(async (interaction: AuthInteraction) => {
+      observedSignal = interaction.signal
+      const pending = abortableLogin(interaction)
+      interaction.notify({ type: 'auth_url', url: 'https://auth.openai.com/authorize' })
+      try { await pending } finally { closed = true }
+    })
+    const originalDispose = OpenAICodexWebAuth.prototype.dispose
+    const dispose = vi.spyOn(OpenAICodexWebAuth.prototype, 'dispose').mockImplementation(function (this: OpenAICodexWebAuth) {
+      expect([...fixture.routes.values()]).toEqual([unrelated])
+      return originalDispose.call(this)
+    })
+    registerOpenAICodexAuthRoutes(fixture.ctx, store, emptyTrustedOrigins)
+    const login = response()
+    await fixture.routes.get(`exact:${OPENAI_CODEX_AUTH_LOGIN_PATH}`)!.handler(request({ method: 'POST' }), login)
+    expect(login.observed.status).toBe(200)
+    expect(observedSignal?.aborted).toBe(false)
+    await fixture.ctx.fiber.dispose()
+    expect([...fixture.routes.values()]).toEqual([unrelated])
+    expect(fixture.disposedPaths).toEqual([
+      OPENAI_CODEX_FAST_MODE_PATH,
+      OPENAI_CODEX_AUTH_ACCOUNTS_PATH,
+      OPENAI_CODEX_AUTH_LOGOUT_PATH,
+      OPENAI_CODEX_AUTH_CANCEL_PATH,
+      OPENAI_CODEX_AUTH_CALLBACK_PATH,
+      OPENAI_CODEX_AUTH_LOGIN_PATH,
+      OPENAI_CODEX_AUTH_STATUS_PATH,
+    ])
+    expect(observedSignal?.aborted).toBe(true)
+    expect(closed).toBe(true)
+    expect(mocked.logout).not.toHaveBeenCalled()
+    expect(dispose).toHaveBeenCalledOnce()
+    await fixture.ctx.fiber.dispose()
+    expect(dispose).toHaveBeenCalledOnce()
+  })
+
   it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2_147_483_648])('rejects invalid authorization timeout %s', authorizationTimeoutMs => {
     expect(() => new OpenAICodexWebAuth(store, { authorizationTimeoutMs })).toThrow(/authorization timeout/u)
   })
@@ -183,6 +320,9 @@ describe('OpenAI Codex Web OAuth boundary', () => {
 
     await origins.trust('http://192.168.1.20:3081')
     await expect(trustedRequestDecision(remote, origins)).resolves.toEqual({ trusted: true })
+    const allowed = response()
+    await captureRoutes(origins).find(route => route.path === OPENAI_CODEX_AUTH_STATUS_PATH)!.handler(remote, allowed)
+    expect(allowed.observed.status).toBe(200)
     await expect(trustedRequestDecision(request({
       remoteAddress: '192.168.1.8',
       host: '192.168.1.20:3081',
@@ -204,6 +344,8 @@ describe('OpenAI Codex Web OAuth boundary', () => {
     ['cancel', OPENAI_CODEX_AUTH_CANCEL_PATH, 'POST'],
     ['callback', OPENAI_CODEX_AUTH_CALLBACK_PATH, 'POST'],
     ['accounts', OPENAI_CODEX_AUTH_ACCOUNTS_PATH, 'GET'],
+    ['account activation', OPENAI_CODEX_AUTH_ACCOUNTS_PATH, 'POST'],
+    ['account removal', OPENAI_CODEX_AUTH_ACCOUNTS_PATH, 'DELETE'],
   ] as const)('applies the remote-origin boundary to %s', async (_label, path, method) => {
     const route = captureRoutes().find(candidate => candidate.path === path)
     if (route === undefined) throw new Error(`${path} route was not registered`)

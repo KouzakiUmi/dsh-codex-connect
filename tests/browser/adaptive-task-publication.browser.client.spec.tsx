@@ -93,18 +93,92 @@ it('cancels an old session read and never lets its late response create controls
   await new Promise(resolve => setTimeout(resolve, 40))
   expect(element!.querySelectorAll('button,input')).toHaveLength(0)
 })
-it.each(['en', 'zh'])('keeps a host with no task route entry-free and never retries it in %s', async language => {
-  const fetch = vi.fn(async () => new Response('', { status: 404 }))
+it.each(['en', 'zh'])('keeps a persistently routeless host entry-free after bounded reads in %s', async language => {
+  const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    expect(init?.method).toBe('GET')
+    return new Response('', { status: 404 })
+  })
   vi.stubGlobal('fetch', fetch); mount(language)
-  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
   await new Promise(resolve => setTimeout(resolve, 30))
   expect(element!.querySelectorAll('button,input,select,dialog')).toHaveLength(0)
-  expect(fetch).toHaveBeenCalledTimes(1)
+  expect(fetch).toHaveBeenCalledTimes(3)
 })
-it('treats a method-not-allowed answer like a missing route', async () => {
+it.each([404, 405])('retains re-read recovery after transient %s on refresh, Stop and manual takeover', async status => {
+  let gap = false
+  let writes = 0
+  let reads = 0
+  const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    if (init?.method === 'POST') writes++
+    else reads++
+    return gap ? new Response('', { status }) : Response.json(state('interrupted'))
+  })
+  vi.stubGlobal('fetch', fetch); mount()
+  await page.getByRole('button', { name: 'Existing task controls', exact: true }).click()
+  const refresh = page.getByRole('button', { name: 'Read state again', exact: true })
+  for (const action of ['Read state again', 'Stop this task', 'Take over manually']) {
+    await expect.element(page.getByRole('button', { name: 'Stop this task', exact: true })).toBeEnabled()
+    const beforeReads = reads, beforeWrites = writes
+    gap = true
+    await page.getByRole('button', { name: action, exact: true }).click()
+    await expect.element(page.getByRole('alert')).toBeVisible()
+    await expect.element(refresh).toBeEnabled()
+    expect(element!.querySelector('dialog')?.open).toBe(true)
+    expect(element!.textContent).not.toContain('Recorded state: interrupted')
+    expect(await page.getByRole('button', { name: 'Stop this task', exact: true }).elements()).toHaveLength(0)
+    expect(reads - beforeReads).toBe(action === 'Read state again' ? 1 : 0)
+    expect(writes - beforeWrites).toBe(action === 'Read state again' ? 0 : 1)
+    // Repeated gaps must not erase the recovery path after the known state was cleared.
+    await refresh.click()
+    await expect.element(page.getByRole('alert')).toBeVisible()
+    await expect.element(refresh).toBeEnabled()
+    gap = false
+    await refresh.click()
+    await expect.element(page.getByRole('button', { name: 'Stop this task', exact: true })).toBeEnabled()
+  }
+  expect(writes).toBe(2)
+})
+it('bounds repeated method-not-allowed reads before hiding a routeless entry', async () => {
   const fetch = vi.fn(async () => new Response('', { status: 405 }))
   vi.stubGlobal('fetch', fetch); mount()
-  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3))
   await new Promise(resolve => setTimeout(resolve, 30))
+  expect(element!.querySelectorAll('button,input,select,dialog')).toHaveLength(0)
+  expect(fetch).toHaveBeenCalledTimes(3)
+})
+it.each([[404, 1], [404, 2], [405, 1], [405, 2]])('recovers an existing task after initial %s route gaps (%s missing reads)', async (status, missing) => {
+  let reads = 0
+  const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    expect(init?.method).toBe('GET')
+    return ++reads <= missing ? new Response('', { status }) : Response.json(state('interrupted'))
+  })
+  vi.stubGlobal('fetch', fetch); mount()
+  const entry = page.getByRole('button', { name: 'Existing task controls', exact: true })
+  await expect.element(entry).toBeVisible()
+  expect(reads).toBe(missing + 1)
+  await entry.click()
+  await expect.element(page.getByRole('button', { name: 'Stop this task', exact: true })).toBeEnabled()
+})
+it('keeps a confirmed ordinary conversation entry-free after an initial route gap', async () => {
+  let reads = 0
+  const fetch = vi.fn(async () => ++reads === 1 ? new Response('', { status: 404 }) : Response.json(state()))
+  vi.stubGlobal('fetch', fetch); mount()
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+  await new Promise(resolve => setTimeout(resolve, 30))
+  expect(element!.querySelectorAll('button,input,select,dialog')).toHaveLength(0)
+})
+it('cancels the initial route-gap backoff when the session changes', async () => {
+  let oldSignal: AbortSignal | undefined
+  const fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
+    if (String(url).includes('sessionId=old')) { oldSignal = init?.signal as AbortSignal; return new Response('', { status: 404 }) }
+    return Response.json(state())
+  })
+  vi.stubGlobal('fetch', fetch); mount('en', 'old')
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  root!.render(createElement(PublishedAdaptiveTaskControl, { language: 'en', sessionId: 'new' }))
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+  expect(oldSignal!.aborted).toBe(true)
+  await new Promise(resolve => setTimeout(resolve, 800))
+  expect(fetch).toHaveBeenCalledTimes(2)
   expect(element!.querySelectorAll('button,input,select,dialog')).toHaveLength(0)
 })

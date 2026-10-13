@@ -7,6 +7,7 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { OpenAICodexQuotaIndicator } from '../src/client/OpenAICodexQuotaIndicator.tsx'
 import type { OpenAICodexConfigForm } from '../src/client/config-form.ts'
 import { en } from '../src/client/locales.ts'
+import { BROWSER_REQUEST_TIMEOUT_MS } from '../src/client/request-json.ts'
 import { DEFAULT_OPENAI_CODEX_SETTINGS } from '../src/settings-contract.ts'
 import type { OpenAICodexSettingsConfig } from '../src/settings-contract.ts'
 
@@ -77,7 +78,8 @@ describe('issue 219 quota browser scheduling', () => {
       signal?.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')), { once: true })
     }))
     vi.stubGlobal('fetch', fetch)
-    await mount(); await tick(600_000); expect(fetch).toHaveBeenCalledTimes(1)
+    await mount(); await tick(BROWSER_REQUEST_TIMEOUT_MS - 1); expect(fetch).toHaveBeenCalledTimes(1)
+    visibility(true); visibility(false); await tick(0); expect(fetch).toHaveBeenCalledTimes(1)
     cleanup(); expect(signal?.aborted).toBe(true)
     visibility(true); visibility(false); await tick(600_000)
     expect(fetch).toHaveBeenCalledTimes(1)
