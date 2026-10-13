@@ -417,8 +417,16 @@ export function createOpenAICodexAdapter(
       return taskDispatch?.stream(options, dispatch) ?? dispatch(options)
     }
 
+    override async resolveModel(providerId: string, model: string, signal?: AbortSignal) {
+      // Host pressure goes through llm.resolveModelInfo, not prepareCall. Only the
+      // step/request-bound route receives a larger window; unbound catalog reads stay baseline.
+      return providerId === OPENAI_CODEX_PROVIDER && extendedContext?.forRequest(signal, model) === true
+        ? expansionAdapter(model).resolveModel(providerId, model, signal)
+        : super.resolveModel(providerId, model, signal)
+    }
+
     override async prepareCall(providerId: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall> {
-      const extended = extendedContext?.forRequest(signal, model) === true
+      const extended = providerId === OPENAI_CODEX_PROVIDER && extendedContext?.forRequest(signal, model) === true
       const prepared = extended
         ? await expansionAdapter(model).prepareCall(providerId, model, signal)
         : await super.prepareCall(providerId, model, signal)
