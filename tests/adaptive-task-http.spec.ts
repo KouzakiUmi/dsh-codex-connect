@@ -25,6 +25,9 @@ import { AdaptiveTaskStore, taskIdentity } from '../src/adaptive-task-store.ts'
 import { ADAPTIVE_TASK_RELEASE_PAUSED } from '../src/adaptive-task-publication.ts'
 import type { IncomingMessage } from 'node:http'
 import { createHash } from 'node:crypto'
+import { OPENAI_CODEX_AUTH_ACCOUNTS_PATH } from '../src/auth-paths.ts'
+import { OPENAI_CODEX_MODEL_CATALOG_PATH } from '../src/model-contract.ts'
+import { OPENAI_CODEX_RUNTIME_PATH, OPENAI_CODEX_UPDATE_PATH } from '../src/update-paths.ts'
 
 let ctx: Context | undefined
 let directory: string | undefined
@@ -74,8 +77,24 @@ async function fixture() {
     const next = await mutate(records.get(key)); if (next !== undefined) records.set(key, next); return records.get(key)
   } } as never)
   await host.plugin(WebServer, { host: '127.0.0.1', port: 0 })
-  await host.plugin(Connection)
-  await host.plugin(Product, {})
+  let connection = await host.plugin(Connection)
+  const webServer = host.webServer
+  const register = webServer.register
+  const taskRoutes: Array<{ route: Parameters<typeof register>[0]; disposed: number }> = []
+  let taskRegistrationAttempts = 0
+  vi.spyOn(webServer, 'register').mockImplementation(route => {
+    const isTask = route.kind === 'exact' && route.path === ADAPTIVE_TASK_PATH
+    if (isTask) taskRegistrationAttempts++
+    const unregister = register.call(webServer, route)
+    if (!isTask) return unregister
+    const tracked = { route, disposed: 0 }; taskRoutes.push(tracked)
+    return () => { tracked.disposed++; unregister() }
+  })
+  let product = await host.plugin(Product, {})
+  const settle = async () => {
+    for (const runtime of host.registry.values()) for (const fiber of runtime.fibers) await fiber.await()
+  }
+  await settle()
   let html = 'Synthetic authenticated index'
   const assets = new Map<string, Buffer>()
   host.webServer.register({ kind: 'exact', path: '/', handler(req, res) {
@@ -87,7 +106,7 @@ async function fixture() {
     const data = assets.get(req.url!.slice('/fixture/assets/'.length))
     res.writeHead(data === undefined ? 404 : 200, { 'content-type': 'text/javascript' }); res.end(data)
   } })
-  const { agent } = await host.agents.create({ sessionId: SessionId('authenticated-task-fixture'),
+  const { agent } = await host.agents.create({ sessionId: SessionId('authenticated-task-fixture'), meta: { cwd: directory },
     agentOptions: { provider: 'openai-codex', model: 'gpt-5.6-terra', reasoningEffort: ReasoningEffortId('low') } })
   const origin = `http://127.0.0.1:${host.webServer.port}`
   const authorized = await http(host.connection.authenticatedUrl(origin))
@@ -115,13 +134,24 @@ async function fixture() {
         receipts: [{ id: randomUUID(), digest: taskIdentity('prior-consent') }] }
     })
   }
-  return { host, agent, origin, cookie, headers, read, body, wires, seedLegacy,
+  return { host, agent, origin, cookie, headers, read, body, wires, seedLegacy, taskRoutes,
+    taskRegistrationAttempts: () => taskRegistrationAttempts,
+    async unloadConnection() { await connection.dispose(); await settle() },
+    async reloadConnection() { connection = await host.plugin(Connection); await settle() },
+    async unloadProduct() { await product.dispose(); await settle() },
+    async reloadProduct() { product = await host.plugin(Product, {}); await settle() },
+    async reloadTaskRoute() {
+      const fiber = [...host.registry.values()].flatMap(runtime => [...runtime.fibers])
+        .find(candidate => candidate.getEffects().some(effect => effect.label === 'dsh-codex-connect: task route'))
+      if (fiber === undefined) throw new Error('Synthetic fixture missing Task route fiber')
+      await fiber.restart(); await settle()
+    },
     setPage(value: string, entries: Array<[string, Buffer]>) { html = value; for (const [name, bytes] of entries) assets.set(name, bytes) },
     post: (content = body(), override: Record<string, string> = {}) => http(origin + ADAPTIVE_TASK_PATH, { method: 'POST', headers: { ...headers, ...override }, body: content }) }
 }
 afterEach(async () => {
   try { await ctx?.fiber.dispose() } finally {
-    ctx = undefined; vi.unstubAllGlobals(); vi.unstubAllEnvs()
+    ctx = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs()
     if (directory !== undefined) await rm(directory, { recursive: true, force: true }); directory = undefined
   }
 })
@@ -177,7 +207,107 @@ it('rejects oversize, wrong-content-type, extra authority and stale mutation req
   expect(f.wires).toHaveLength(0)
 })
 
-// The dedicated browser CI job installs Chromium; ordinary unit jobs exercise the four HTTP cases above.
+it('removes and remounts exactly one product Task route when Connection is replaced on the same WebServer', async () => {
+  const f = await fixture(); await f.seedLegacy()
+  const port = f.host.webServer.port
+  const oldVerifier = vi.spyOn(f.host.connection, 'requestRejection')
+  const initial = await f.read()
+  expect(initial.status).toBe(200)
+  expect(JSON.parse(initial.text)).toMatchObject({ mode: 'interrupted', reserved: 3, maximumRequests: 10 })
+  expect(f.taskRoutes).toHaveLength(1)
+  const originalHandler = f.taskRoutes[0]!.route.handler
+  // Exercise the actual Product inject grouping, not only a hand-composed route fixture.
+  const accounts = () => http(f.origin + OPENAI_CODEX_AUTH_ACCOUNTS_PATH, { headers: f.headers })
+  const publicMetadata = () => Promise.all([OPENAI_CODEX_MODEL_CATALOG_PATH, OPENAI_CODEX_RUNTIME_PATH, OPENAI_CODEX_UPDATE_PATH]
+    .map(path => http(f.origin + path)))
+  expect((await accounts()).status).toBe(200)
+  for (let cycle = 1; cycle <= 2; cycle++) {
+    await f.unloadConnection()
+    expect(f.host.get('connection')).toBeUndefined()
+    expect(f.host.webServer.port).toBe(port)
+    expect((await f.read()).status).toBe(404)
+    expect((await f.post(f.body('manual'))).status).toBe(404)
+    expect((await accounts()).status).toBe(404)
+    expect((await publicMetadata()).map(response => response.status)).toEqual([200, 200, 200])
+    expect(f.taskRoutes.every(entry => entry.disposed === 1)).toBe(true)
+    await f.reloadConnection()
+    expect(f.host.webServer.port).toBe(port)
+    expect(f.taskRoutes).toHaveLength(cycle + 1)
+    expect(f.taskRegistrationAttempts()).toBe(cycle + 1)
+    expect(f.taskRoutes.filter(entry => entry.disposed === 0)).toHaveLength(1)
+    expect(f.taskRoutes.at(-1)!.route.handler).not.toBe(originalHandler)
+    expect((await accounts()).status).toBe(200)
+    const verifier = vi.spyOn(f.host.connection, 'requestRejection')
+    const read = await f.read()
+    expect(read.status).toBe(200)
+    expect(JSON.parse(read.text)).toMatchObject({ mode: 'interrupted', reserved: 3, maximumRequests: 10, canStart: false })
+    const paused = await f.post(f.body('start'))
+    expect(paused.status).toBe(409)
+    expect(JSON.parse(paused.text)).toEqual({ error: ADAPTIVE_TASK_RELEASE_PAUSED })
+    expect(verifier).toHaveBeenCalledTimes(2)
+  }
+  expect(oldVerifier).toHaveBeenCalledTimes(2)
+  expect(f.wires).toHaveLength(0)
+})
+
+it('owns Task route cleanup across Task and Product reloads without reopening activation or resetting recovery', async () => {
+  const f = await fixture(); await f.seedLegacy()
+  const initial = JSON.parse((await f.read()).text)
+  expect(initial).toMatchObject({ mode: 'interrupted', reserved: 3, maximumRequests: 10 })
+  const port = f.host.webServer.port
+  const firstRoute = f.taskRoutes[0]!
+  await f.reloadTaskRoute()
+  expect(firstRoute.disposed).toBe(1)
+  expect(f.taskRoutes).toHaveLength(2)
+  expect(f.taskRoutes.filter(entry => entry.disposed === 0)).toHaveLength(1)
+  expect(f.taskRoutes.at(-1)!.route.handler).not.toBe(firstRoute.route.handler)
+  expect((await f.read()).status).toBe(200)
+  for (let cycle = 1; cycle <= 2; cycle++) {
+    await f.unloadProduct()
+    expect(f.host.webServer.port).toBe(port)
+    expect((await f.read()).status).toBe(404)
+    expect((await f.post(f.body('stop', initial.revision))).status).toBe(404)
+    expect(f.taskRoutes.every(entry => entry.disposed === 1)).toBe(true)
+    await f.reloadProduct()
+    expect(f.host.webServer.port).toBe(port)
+    expect(f.taskRoutes).toHaveLength(cycle + 2)
+    expect(f.taskRegistrationAttempts()).toBe(cycle + 2)
+    expect(f.taskRoutes.filter(entry => entry.disposed === 0)).toHaveLength(1)
+    const read = await f.read()
+    expect(read.status).toBe(200)
+    const state = JSON.parse(read.text)
+    expect(state).toMatchObject({ mode: 'interrupted', reserved: 3, maximumRequests: 10, canStart: false })
+    expect((await f.post(f.body('manual', state.revision), { cookie: f.cookie + 'tampered' })).status).toBe(401)
+    const paused = await f.post(f.body('start', state.revision))
+    expect(paused.status).toBe(409)
+    expect(JSON.parse(paused.text)).toEqual({ error: ADAPTIVE_TASK_RELEASE_PAUSED })
+  }
+  const restored = JSON.parse((await f.read()).text)
+  const stopped = await f.post(f.body('stop', restored.revision))
+  expect(stopped.status).toBe(200)
+  const stoppedState = JSON.parse(stopped.text)
+  expect(stoppedState).toMatchObject({ mode: 'stopped', reserved: 3, maximumRequests: 10 })
+  const manual = await f.post(f.body('manual', stoppedState.revision))
+  expect(manual.status).toBe(200)
+  expect(JSON.parse(manual.text)).toMatchObject({ mode: 'manual', reserved: 3, maximumRequests: 10 })
+  expect(f.wires).toHaveLength(0)
+})
+
+it('returns a structured unavailable response when the live Connection verifier throws', async () => {
+  const f = await fixture()
+  const verifier = vi.spyOn(f.host.connection, 'requestRejection').mockImplementation(() => { throw new Error('Synthetic verifier failure') })
+  for (const result of [await f.read(), await f.post(f.body('manual'))]) {
+    expect(result.status).toBe(503)
+    expect(result.headers['content-type']).toBe('application/json; charset=utf-8')
+    expect(result.headers['cache-control']).toBe('no-store')
+    expect(JSON.parse(result.text)).toEqual({ error: 'TASK_OPERATION_FAILED' })
+  }
+  verifier.mockRestore()
+  expect(JSON.parse((await f.read()).text)).toMatchObject({ mode: 'off', reserved: 0, canStart: false })
+  expect(f.wires).toHaveLength(0)
+})
+
+// The dedicated browser CI job installs Chromium; ordinary unit jobs exercise the HTTP cases above.
 if (process.env.ADAPTIVE_TASK_UI === '1') it('runs the paused public control over authenticated HTTP and reconciles a lost manual-exit reply', async () => {
   const f = await fixture()
   const { build } = await import('tsdown')

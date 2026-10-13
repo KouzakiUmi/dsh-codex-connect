@@ -75,7 +75,7 @@ it.each(['usage', 'search', 'images'])('keeps %s on expired account A when B is 
 it('returns account labels from the same snapshot as quota during a concurrent switch', async () => {
   const root = await mkdtemp(join(tmpdir(), 'codex-status-snapshot-'))
   const store = new OpenAICodexCredentialStore(join(root, 'auth.json'))
-  const disposers: Array<() => void | Promise<void>> = []
+  const ctx = new Context()
   try {
     for (const id of ['b', 'a']) await store.modify(OPENAI_CODEX_PROVIDER, async () => ({
       type: 'oauth', accountId: id, access: access(id), refresh: 'fixture-refresh', expires: Date.now() + 3_600_000,
@@ -92,10 +92,9 @@ it('returns account labels from the same snapshot as quota during a concurrent s
       return Response.json({ rate_limit: { primary_window: { used_percent: 17, limit_window_seconds: 18_000 } } })
     })
     const routes: Array<{ path: string; handler(req: IncomingMessage, res: ServerResponse): void | Promise<void> }> = []
-    const ctx = {
-      webServer: { register: (route: typeof routes[number]) => { routes.push(route); return () => {} } },
-      effect: (factory: () => (() => void | Promise<void>)) => { disposers.push(factory()) },
-    } as unknown as Context
+    ctx.provide('webServer', { register: (route: typeof routes[number]) => { routes.push(route); return () => {} } } as never)
+    // This fixture isolates quota/account snapshot consistency, not Host authentication.
+    ctx.provide('connection', { requestRejection: () => undefined } as never)
     registerOpenAICodexAuthRoutes(ctx, store)
     let body = ''
     const res = { writeHead: () => res, end: (value: string) => { body = value } } as unknown as ServerResponse
@@ -109,7 +108,7 @@ it('returns account labels from the same snapshot as quota during a concurrent s
   } finally {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
-    for (const dispose of disposers) await dispose()
+    await ctx.fiber.dispose()
     await rm(root, { recursive: true, force: true })
   }
 })

@@ -6,6 +6,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { OpenAICodexTrustedOriginsStore } from './trusted-origins.ts'
 import { trustedRequestDecision } from './auth-routes.ts'
+import { harnessHttpRejection } from './http-auth.ts'
 import { OPENAI_CODEX_IMAGE_ASSET_ID_PATTERN, OPENAI_CODEX_ORIGINAL_IMAGE_PATH } from './image-assets-contract.ts'
 import type { OpenAICodexImageAssetStore } from './image-assets.ts'
 import { inheritedImageOriginal } from './image-history.ts'
@@ -47,6 +48,8 @@ export function registerOpenAICodexOriginalImageRoute(
     path: OPENAI_CODEX_ORIGINAL_IMAGE_PATH,
     handler: async (req: IncomingMessage, res: ServerResponse) => {
       if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' })
+      const rejection = harnessHttpRejection(ctx, req)
+      if (rejection !== undefined) return json(res, rejection.status, { error: rejection.error })
       const decision = await trustedRequestDecision(req, trustedOrigins)
       if (!decision.trusted) return json(res, 403, { error: decision.error })
       const requested = query(req)

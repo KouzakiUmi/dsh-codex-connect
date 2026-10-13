@@ -43,8 +43,8 @@ export function registerOpenAICodexUpdateRoutes(
   options: UpdateRouteOptions,
   trustedOrigins: OpenAICodexTrustedOriginsStore,
 ): void {
-  ctx.effect(() => {
-    const disposeRuntime = ctx.webServer.register({
+  ctx.effect(function* () {
+    yield ctx.webServer.register({
       kind: 'exact',
       path: OPENAI_CODEX_RUNTIME_PATH,
       handler: async (req: IncomingMessage, res: ServerResponse) => {
@@ -59,7 +59,7 @@ export function registerOpenAICodexUpdateRoutes(
         }
       },
     })
-    const disposeUpdate = ctx.webServer.register({
+    yield ctx.webServer.register({
       kind: 'exact',
       path: OPENAI_CODEX_UPDATE_PATH,
       handler: async (req: IncomingMessage, res: ServerResponse) => {
@@ -83,9 +83,5 @@ export function registerOpenAICodexUpdateRoutes(
         return json(res, 200, result)
       },
     })
-    return () => {
-      disposeUpdate()
-      disposeRuntime()
-    }
   }, 'dsh-codex-connect: update route')
 }

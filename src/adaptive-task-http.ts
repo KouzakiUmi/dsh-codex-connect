@@ -8,6 +8,7 @@ import { ADAPTIVE_TASK_PATH, decodeTaskCommand, validTaskSessionId } from './ada
 import { AdaptiveTaskError, taskFailure, taskIdentity } from './adaptive-task-store.ts'
 import type { AdaptiveTaskCommand, AdaptiveTaskState } from './adaptive-task-contract.ts'
 import { ADAPTIVE_TASK_RELEASE_PAUSED, publicTaskCommandAllowed, publicTaskState } from './adaptive-task-publication.ts'
+import { harnessHttpRejection } from './http-auth.ts'
 
 const BODY_LIMIT = 8192
 function reply(res: ServerResponse, status: number, value: unknown): void {
@@ -52,11 +53,14 @@ export function registerAdaptiveTaskHttp(ctx: Context, runtime: {
   state(sessionId: string, principal: string): Promise<AdaptiveTaskState>
   command(command: AdaptiveTaskCommand, principal: string): Promise<AdaptiveTaskState>
 }): void {
-  ctx.webServer.register({ kind: 'exact', path: ADAPTIVE_TASK_PATH, async handler(req, res) {
-    const rejected = ctx.connection.requestRejection(req)
-    if (rejected !== undefined) { reply(res, rejected, { error: 'TASK_BROWSER_AUTH_REQUIRED' }); return }
-    if (req.headers['sec-fetch-site'] === 'cross-site') { reply(res, 403, { error: 'TASK_BROWSER_AUTH_REQUIRED' }); return }
+  ctx.effect(() => ctx.webServer.register({ kind: 'exact', path: ADAPTIVE_TASK_PATH, async handler(req, res) {
     try {
+      const rejected = harnessHttpRejection(ctx, req)
+      if (rejected !== undefined) {
+        reply(res, rejected.status, { error: rejected.status === 503 ? 'TASK_OPERATION_FAILED' : 'TASK_BROWSER_AUTH_REQUIRED' })
+        return
+      }
+      if (req.headers['sec-fetch-site'] === 'cross-site') { reply(res, 403, { error: 'TASK_BROWSER_AUTH_REQUIRED' }); return }
       const principal = adaptiveBrowserPrincipal(req)
       const url = new URL(req.url ?? '', 'http://localhost')
       if (req.method === 'GET') {
@@ -74,5 +78,5 @@ export function registerAdaptiveTaskHttp(ctx: Context, runtime: {
       const code = error instanceof AdaptiveTaskError ? error.code : 'TASK_OPERATION_FAILED'
       reply(res, code === 'TASK_OWNER_MISMATCH' || code === 'TASK_BROWSER_AUTH_REQUIRED' ? 403 : 409, { error: code })
     }
-  } })
+  } }), 'dsh-codex-connect: task route')
 }

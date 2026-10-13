@@ -5,7 +5,9 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { httpRouteTestContext, rejectedHttpAdmissions } from './http-route-test-context.ts'
+import type { CapturedHttpRoute, TestHttpAdmission } from './http-route-test-context.ts'
 import { OpenAICodexImageAssetStore } from '../src/image-assets.ts'
 import { OPENAI_CODEX_ORIGINAL_IMAGE_PATH } from '../src/image-assets-contract.ts'
 import type { OpenAICodexOriginalImageRef } from '../src/image-assets-contract.ts'
@@ -26,23 +28,15 @@ afterEach(async () => {
   root = undefined
 })
 
-interface CapturedRoute {
-  path: string
-  handler(req: IncomingMessage, res: ServerResponse): Promise<void> | void
-}
-
-function capture(store: OpenAICodexImageAssetStore, sessions?: SessionStore): CapturedRoute {
-  let route: CapturedRoute | undefined
-  const ctx = {
-    webServer: { register(value: CapturedRoute) { route = value; return () => undefined } },
-    effect(factory: () => void | (() => void)) { return factory() },
-    get: () => sessions,
-  } as unknown as Context
-  registerOpenAICodexOriginalImageRoute(
-    ctx,
-    { has: async () => false } as unknown as OpenAICodexTrustedOriginsStore,
-    store,
-  )
+function capture(
+  store: OpenAICodexImageAssetStore,
+  sessions?: SessionStore,
+  admission: TestHttpAdmission = 'allow',
+  trustedOrigins = { has: async () => false } as unknown as OpenAICodexTrustedOriginsStore,
+): CapturedHttpRoute {
+  const { ctx, routes } = httpRouteTestContext({ admission, ...sessions === undefined ? {} : { sessions } })
+  registerOpenAICodexOriginalImageRoute(ctx, trustedOrigins, store)
+  const route = routes.get(`exact:${OPENAI_CODEX_ORIGINAL_IMAGE_PATH}`)
   if (route === undefined) throw new Error('original image route was not registered')
   return route
 }
@@ -65,14 +59,17 @@ function recordImage(session: Session, ref: OpenAICodexOriginalImageRef): void {
   }, { surfaceOp: 'append' })
 }
 
-async function download(route: CapturedRoute, sessionId: string, assetId: string) {
+async function download(route: CapturedHttpRoute, sessionId: string, assetId: string) {
   const res = response()
   await route.handler(request('GET', `${OPENAI_CODEX_ORIGINAL_IMAGE_PATH}?${new URLSearchParams({ sessionId, assetId })}`), res)
   return res
 }
 
-function request(method: string, url: string, remoteAddress = '127.0.0.1'): IncomingMessage {
-  return { method, url, socket: { remoteAddress }, headers: { host: '127.0.0.1:3081' } } as unknown as IncomingMessage
+function request(method: string, url: string, remoteAddress = '127.0.0.1', origin?: string): IncomingMessage {
+  return { method, url, socket: { remoteAddress }, headers: {
+    host: '127.0.0.1:3081',
+    ...origin === undefined ? {} : { origin },
+  } } as unknown as IncomingMessage
 }
 
 function response(): ServerResponse & { status?: number; headers?: Record<string, string>; body?: Uint8Array | string } {
@@ -91,6 +88,49 @@ function response(): ServerResponse & { status?: number; headers?: Record<string
 }
 
 describe('OpenAI Codex original image download route', () => {
+  it.each(rejectedHttpAdmissions)('rejects $admission before reading Origin, sessions, or original assets', async ({ admission, status, error }) => {
+    const read = vi.fn()
+    const get = vi.fn()
+    const has = vi.fn(async () => true)
+    const route = capture(
+      { read } as unknown as OpenAICodexImageAssetStore,
+      { get } as unknown as SessionStore,
+      admission,
+      { has } as unknown as OpenAICodexTrustedOriginsStore,
+    )
+    for (const remoteAddress of ['127.0.0.1', '192.168.1.8']) {
+      const res = response()
+      await route.handler(request('GET', `${OPENAI_CODEX_ORIGINAL_IMAGE_PATH}?sessionId=s&assetId=img_${'a'.repeat(32)}`, remoteAddress), res)
+      expect(res.status).toBe(status)
+      expect(JSON.parse(res.body as string)).toEqual({ error })
+    }
+    expect(has).not.toHaveBeenCalled()
+    expect(get).not.toHaveBeenCalled()
+    expect(read).not.toHaveBeenCalled()
+  })
+
+  it('rejects a different Origin after Host admission before resolving sessions or reading assets', async () => {
+    const read = vi.fn()
+    const get = vi.fn()
+    const route = capture({ read } as unknown as OpenAICodexImageAssetStore, { get } as unknown as SessionStore)
+    const res = response()
+    await route.handler(request('GET', `${OPENAI_CODEX_ORIGINAL_IMAGE_PATH}?sessionId=s&assetId=img_${'a'.repeat(32)}`, '127.0.0.1', 'http://127.0.0.1:9999'), res)
+    expect(res.status).toBe(403)
+    expect(JSON.parse(res.body as string)).toEqual({ error: 'forbidden' })
+    expect(get).not.toHaveBeenCalled()
+    expect(read).not.toHaveBeenCalled()
+  })
+
+  it('releases the original image route without deleting an unrelated route', async () => {
+    const fixture = httpRouteTestContext()
+    const unrelated: CapturedHttpRoute = { kind: 'exact', path: '/unrelated', handler: () => undefined }
+    fixture.webServer.register(unrelated)
+    registerOpenAICodexOriginalImageRoute(fixture.ctx, { has: async () => false } as unknown as OpenAICodexTrustedOriginsStore, { read: vi.fn() } as unknown as OpenAICodexImageAssetStore)
+    await fixture.ctx.fiber.dispose()
+    expect([...fixture.routes.values()]).toEqual([unrelated])
+    expect(fixture.disposedPaths).toEqual([OPENAI_CODEX_ORIGINAL_IMAGE_PATH])
+  })
+
   it.each(['tool/code-dispatch', 'tool/ptc-dispatch'])('authorizes only inherited successful %s original references', async (type) => {
     root = await mkdtemp(join(tmpdir(), 'codex-image-ptc-'))
     const store = new OpenAICodexImageAssetStore(root)

@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
+import { validateLibArtifactInventory } from './pack-lib-inventory.mjs'
 
 const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
   cwd: new URL('..', import.meta.url),
@@ -25,6 +26,8 @@ if (names.includes('docs/design/codex-connect-images-v4.md')) {
 if (names.some(name => /^lib\/(?:anthropic-messages|openai-completions)[^/]*\.js$/u.test(name))) {
   throw new Error('standalone Codex CLI must not bundle unrelated model providers')
 }
+
+validateLibArtifactInventory(names)
 
 const declaration = await readFile(new URL('../lib/index.d.ts', import.meta.url), 'utf8')
 if (!/declare module ['"]@deepseek-ai\/cordis['"]/u.test(declaration)) {
