@@ -379,3 +379,25 @@ regressions, pack/inventory/build and authenticated UI evidence passed. Addition
 focused store/consent/stream/auxiliary suite: 53/53 passed with project typing.
 No live accounts/provider or deployment. Final documentation-only evidence append
 does not change tested source or generated output.
+
+## Initial route-gap review repair — 2026-10-13
+
+Starting source `c2e234a`; repair commit `4b30858`. Initial 404/405 no longer hides
+recovery after one response: at most three GET reads use abortable 250/500 ms
+backoff within the existing request deadline. Persistent absence remains entry-free;
+returning routes expose existing recovery controls. Later gaps require explicit
+readback, POSTs are not replayed, and session changes cancel the retry wait.
+This bounded window is not perpetual polling or arbitrary-delay acceptance.
+
+Focused Chromium recovery suite: 19/19 passed. Full Chromium: 12 files / 69 passed.
+`pnpm run check && node scripts/check-adaptive-task-ui.mjs`: exit 0, 140 non-browser
+files / 1,774 passed and 5 Windows-gated skipped, 60 login tests, build/pack and
+authenticated UI report passed. Initial route-gap, recovered off state, later
+repeated gaps, Stop/manual single-dispatch and session-backoff cancellation are covered.
+Client output rebuilt, not manually edited. No live-provider or daily-profile check.
+
+The [selective adoption guide](upstream-bugfix-adoption.md) maps historical commits
+to issues/behaviors, explicit prerequisites and final source/test groups. It warns
+against blind merge-commit cherry-picks, obsolete fixed totals and overwriting
+current upstream authentication. Subset/cherry-pick combinations were not executed
+or certified; only the complete tested source is accepted by these local checks.
