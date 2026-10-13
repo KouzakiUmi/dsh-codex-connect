@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path'
 import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import { ledgerHash } from './adaptive-task-delegation-contract.ts'
 import { taskSafeDirectories } from './adaptive-task-evidence.ts'
-import { taskFailure, taskIdentity } from './adaptive-task-store.ts'
+import { syncTaskFile, taskFailure, taskIdentity } from './adaptive-task-store.ts'
 
 const MAX_BYTES = 2 * 1024 * 1024 // Includes JSON escaping of a bounded 256 KiB snapshot.
 export class TaskDelegationArtifacts {
@@ -31,9 +31,7 @@ export class TaskDelegationArtifacts {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       }
       await writeFileAtomic(filename, text, { mode: 0o600, dirMode: 0o700 })
-      // Writable handle: Windows fails fsync (FlushFileBuffers) on a read-only one with EPERM.
-      const file = await open(filename, constants.O_RDWR | constants.O_NOFOLLOW)
-      try { await file.sync() } finally { await file.close() }
+      await syncTaskFile(filename, text, 'TASK_ARTIFACT_UNSAFE')
       if (process.platform !== 'win32') {
         const directory = await open(this.directory, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
         try { await directory.sync() } finally { await directory.close() }

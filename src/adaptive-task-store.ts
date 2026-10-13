@@ -1,6 +1,6 @@
 /** Owner-only task grants and conservative request reservations; never contains OAuth or prompt content. */
 import { createHash } from 'node:crypto'
-import { constants } from 'node:fs'
+import { constants, type BigIntStats } from 'node:fs'
 import { lstat, mkdir, open } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
@@ -67,6 +67,33 @@ export function parseTaskDocument(value: unknown, sessionId: string): TaskDocume
   if (!allowsTaskRoute(document.capabilities, document.route)) taskFailure('TASK_STATE_INVALID')
   return document
 }
+/** Flush only a regular, single-link file containing the exact atomic replacement; fail closed on races. */
+export async function syncTaskFile(filename: string, text: string, failure: string): Promise<void> {
+  const expected = Buffer.from(text)
+  const before = await lstat(filename, { bigint: true })
+  const stable = (stat: BigIntStats): boolean => stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1n
+    && stat.dev === before.dev && stat.ino === before.ino && stat.size === BigInt(expected.length)
+    && stat.mtimeNs === before.mtimeNs && stat.ctimeNs === before.ctimeNs
+    && stat.mode === before.mode && stat.uid === before.uid
+    && (process.platform === 'win32' || (stat.mode & 0o077n) === 0n)
+  if (!stable(before)) taskFailure(failure)
+  // Windows requires a writable flush handle and ignores O_NOFOLLOW; verify both identities.
+  const file = await open(filename, constants.O_RDWR | constants.O_NOFOLLOW | constants.O_NONBLOCK)
+  try {
+    if (!stable(await file.stat({ bigint: true })) || !stable(await lstat(filename, { bigint: true }))) taskFailure(failure)
+    const bytes = Buffer.alloc(expected.length + 1)
+    let count = 0
+    while (count < bytes.length) {
+      const { bytesRead } = await file.read(bytes, count, bytes.length - count, count)
+      if (bytesRead === 0) break
+      count += bytesRead
+    }
+    if (count !== expected.length || !bytes.subarray(0, count).equals(expected)) taskFailure(failure)
+    await file.sync()
+    if (!stable(await file.stat({ bigint: true })) || !stable(await lstat(filename, { bigint: true }))) taskFailure(failure)
+  } finally { await file.close() }
+}
+
 /** One private file/lock per root. Codecs cannot change identity or storage safety checks. */
 export class AtomicTaskDocumentStore<T> {
   constructor(private readonly directory: string, private readonly parse: (value: unknown, sessionId: string) => T) {}
@@ -122,9 +149,7 @@ export class AtomicTaskDocumentStore<T> {
       const text = JSON.stringify(next)
       if (Buffer.byteLength(text) > MAX_BYTES) taskFailure('TASK_STATE_TOO_LARGE')
       await writeFileAtomic(filename, text + '\n', { mode: 0o600, dirMode: 0o700 })
-      // Writable handle: Windows fails fsync (FlushFileBuffers) on a read-only one with EPERM.
-      const file = await open(filename, constants.O_RDWR | constants.O_NOFOLLOW)
-      try { await file.sync() } finally { await file.close() }
+      await syncTaskFile(filename, text + '\n', 'TASK_STATE_UNSAFE')
       // Ensure the replacement name is committed before a request reservation may leave this process.
       if (process.platform !== 'win32') {
         const directory = await open(this.directory, constants.O_RDONLY)
