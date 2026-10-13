@@ -4,11 +4,21 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ToolCallId } from '@deepseek-ai/dsh-llm'
 import type { ApprovalRequestEvent } from '@deepseek-ai/dsh-user-approval/types'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
-import type { AutoReviewBackend, AutoReviewBackendResult } from '../src/auto-review-backend.ts'
+import { Response as UndiciResponse } from 'undici'
+import { OpenAICodexAutoReviewBackend, type AutoReviewBackend, type AutoReviewBackendResult } from '../src/auto-review-backend.ts'
 import { OpenAICodexAutoReviewAnswerer, registerOpenAICodexAutoReview } from '../src/auto-review.ts'
 import { AutoReviewState, resolveAutoReviewAction } from '../src/auto-review-contract.ts'
 import { OpenAICodexCredentialStore } from '../src/store.ts'
 import { OpenAICodexProxyManager } from '../src/provider-proxy.ts'
+import { OpenAICodexBackendRequests } from '../src/backend-request.ts'
+import { fetch as reviewFetch } from '../src/undici-runtime.ts'
+
+vi.mock('../src/auth.ts', () => ({
+  readOpenAICodexRequestAuth: vi.fn(async () => ({ access: 'fixture-access', accountId: 'fixture-account' })),
+}))
+vi.mock('../src/undici-runtime.ts', async original => ({
+  ...await original<typeof import('../src/undici-runtime.ts')>(), fetch: vi.fn(),
+}))
 
 function fixture(): {
   agent: Agent
@@ -66,6 +76,43 @@ describe('Auto-review approval answerer', () => {
     const second = fixture()
     await expect(new OpenAICodexAutoReviewAnswerer(backend({ status: 'unavailable' }))
       .answer(second.request('call-1', 1), async () => 'rejected')).resolves.toBe('rejected')
+  })
+
+  it.each([
+    { risk_level: ['low'], user_authorization: ['high'], outcome: 'allow', rationale: 'Malformed arrays.' },
+    { risk_level: {}, user_authorization: 'high', outcome: 'allow', rationale: 'Malformed object.' },
+    { risk_level: 'low', user_authorization: null, outcome: 'allow', rationale: 'Malformed null.' },
+    { risk_level: 'low', outcome: 'allow', rationale: 'Missing authorization.' },
+  ])('returns a malformed completed SSE assessment to the human next chain: %j', async assessment => {
+    const target = fixture()
+    const proxy = new OpenAICodexProxyManager()
+    const requests = new OpenAICodexBackendRequests(proxy)
+    // Auth and fetch are mocked; no credential-store method or real network runs.
+    const store = new OpenAICodexCredentialStore('/fixture-unused-auto-review-auth.json')
+    const capture = vi.spyOn(store, 'captureActiveAccount')
+    const next = vi.fn(async () => 'rejected' as const)
+    vi.mocked(reviewFetch).mockResolvedValue(new UndiciResponse(`data: ${JSON.stringify({
+      type: 'response.completed',
+      response: {
+        status: 'completed',
+        output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(assessment) }] }],
+      },
+    })}\n\ndata: [DONE]\n\n`, { headers: { 'content-type': 'text/event-stream' } }))
+    try {
+      const reviewer = new OpenAICodexAutoReviewBackend(store, proxy, () => undefined, store, requests)
+      await expect(new OpenAICodexAutoReviewAnswerer(reviewer)
+        .answer(target.request('malformed-call', 1), next)).resolves.toBe('rejected')
+      expect(next).toHaveBeenCalledOnce()
+      expect(reviewFetch).toHaveBeenCalledOnce()
+      expect(capture).not.toHaveBeenCalled()
+      expect(target.injected).toHaveLength(0)
+      expect(target.cancel).not.toHaveBeenCalled()
+    } finally {
+      requests.dispose()
+      await proxy.dispose()
+      capture.mockRestore()
+      vi.mocked(reviewFetch).mockReset()
+    }
   })
 
   it('never reviews approval requests owned by another model provider', async () => {

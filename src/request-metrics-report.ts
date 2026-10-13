@@ -35,15 +35,13 @@ export interface MetricJournal {
 }
 /** Bounded regular-file reads; a live/crashed final partial line is disclosed, not silently counted. */
 export async function readMetricJournal(filename: string): Promise<MetricJournal> {
-  // O_NOFOLLOW is not honored on Windows, so a symlink is rejected from lstat and the opened
-  // handle is re-checked against the recorded identity before any content is trusted.
+  // O_NOFOLLOW is not available on Windows. Reject links before opening and bind the read to that file identity.
   const before = await lstat(filename)
-  if (before.isSymbolicLink()) throw new Error('Invalid metrics journal file type')
+  if (!before.isFile() || before.isSymbolicLink() || before.size > 64 * 1024 * 1024) throw new Error('Invalid metrics journal size or file type')
   const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
   try {
     const stat = await file.stat()
-    if (!stat.isFile() || stat.size > 64 * 1024 * 1024
-      || stat.dev !== before.dev || stat.ino !== before.ino) throw new Error('Invalid metrics journal size or file type')
+    if (!stat.isFile() || stat.size > 64 * 1024 * 1024 || stat.dev !== before.dev || stat.ino !== before.ino) throw new Error('Invalid metrics journal size or file type')
     const buffer = Buffer.alloc(stat.size)
     let read = 0
     while (read < buffer.length) {
@@ -51,6 +49,8 @@ export async function readMetricJournal(filename: string): Promise<MetricJournal
       if (bytesRead === 0) break
       read += bytesRead
     }
+    const after = await lstat(filename)
+    if (!after.isFile() || after.isSymbolicLink() || after.dev !== stat.dev || after.ino !== stat.ino) throw new Error('Metrics journal changed during read')
     const contents = buffer.toString('utf8', 0, read)
     const lines = contents.split('\n')
     const truncatedTail = lines.pop() !== ''

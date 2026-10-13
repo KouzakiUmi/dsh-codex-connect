@@ -15,12 +15,15 @@ const secondaryStyle: CSSProperties = { fontSize: 12, lineHeight: '18px', color:
 function ConfigurationDialog({ t, configScope, onClose }: Pick<OpenAICodexModelsCardInjected, 't' | 'configScope'> & { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const titleId = useId()
+  const pending = useRef({ dirty: false, busy: false })
   useEffect(() => {
     const element = dialog.current
     element?.showModal()
     return () => { element?.close() }
   }, [])
   const close = (): void => {
+    if (pending.current.busy) return
+    if (pending.current.dirty && !window.confirm(t('settingsDiscardConfirm'))) return
     dialog.current?.close()
     onClose()
   }
@@ -55,6 +58,7 @@ function ConfigurationDialog({ t, configScope, onClose }: Pick<OpenAICodexModels
     <p style={secondaryStyle}>{t('settingsSaveHint')}</p>
     <OpenAICodexConfiguration
       t={t}
+      onPendingChange={state => { pending.current = state }}
       {...configScope === undefined ? {} : { scope: configScope }}
     />
   </dialog>

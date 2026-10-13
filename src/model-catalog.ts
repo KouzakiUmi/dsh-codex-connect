@@ -4,7 +4,7 @@ import type { Model, Provider } from '@earendil-works/pi-ai'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
 import type { OpenAICodexModelCatalogEntry } from './model-contract.ts'
 import { OFFICIAL_CODEX_REMOVED_MODEL_IDS } from './official-models.ts'
-import { openAICodexContextLimit } from './model-contract.ts'
+import { openAICodexContextLimit, openAICodexDefaultContextWindow } from './model-contract.ts'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
 
 /** Official Codex id supplied when the installed pi-ai catalog predates Astra. */
@@ -58,6 +58,7 @@ export function withOpenAICodexModels(
   }
   // Drop ids the official catalog no longer lists; pi-ai may still ship them in its bundled data.
   const current = models.filter(model => !OFFICIAL_CODEX_REMOVED_MODEL_IDS.includes(model.id))
+    .map(model => ({ ...model, contextWindow: openAICodexDefaultContextWindow(model.id, model.contextWindow) }))
   return { ...baseline, getModels: () => current }
 }
 

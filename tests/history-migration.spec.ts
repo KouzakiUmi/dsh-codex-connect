@@ -72,7 +72,7 @@ afterEach(async () => {
 })
 
 describe('legacy Codex search history migration', () => {
-  it.skipIf(process.platform === 'win32')('dry-runs, backs up, repairs, and remains idempotent across concatenated frames', async () => {
+  it('dry-runs concatenated frames without changing history on every platform', async () => {
     const artifact = await createLegacyArtifact('session-fixture')
 
     await expect(migrateOpenAICodexSearchHistory({ root: currentRoot() })).resolves.toMatchObject({
@@ -82,7 +82,11 @@ describe('legacy Codex search history migration', () => {
       files: [{ path: artifact.path, changedEvents: 1 }],
     })
     await expect(readFile(artifact.path)).resolves.toEqual(artifact.original)
+    await expect(readFile(artifact.path + OPENAI_CODEX_HISTORY_BACKUP_SUFFIX)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
 
+  it.skipIf(process.platform === 'win32')('backs up, repairs, and remains idempotent across concatenated frames', async () => {
+    const artifact = await createLegacyArtifact('session-fixture')
     await expect(migrateOpenAICodexSearchHistory({ root: currentRoot(), apply: true, confirmStopped: true })).resolves.toMatchObject({
       mode: 'apply',
       changedFiles: 1,

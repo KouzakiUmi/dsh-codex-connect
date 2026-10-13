@@ -331,6 +331,28 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     expect(signal?.aborted).toBe(true)
   })
 
+  it('does not render or request quota when the configuration scope is missing', () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const rendered = render(<OpenAICodexQuotaIndicator directory={directoryStore(directoryState('gpt-5'))} t={t} />)
+    expect(rendered.container.textContent).toBe('')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('aborts an in-flight request when the profile switches the pill off', async () => {
+    let signal: AbortSignal | undefined
+    vi.stubGlobal('fetch', vi.fn((_input: unknown, init?: RequestInit) => {
+      signal = init?.signal ?? undefined
+      return new Promise<Response>(() => {})
+    }))
+    const directory = directoryStore(directoryState('gpt-5'))
+    const rendered = render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
+    await waitFor(() => { expect(signal).toBeDefined() })
+    rendered.rerender(<OpenAICodexQuotaIndicator directory={directory} configScope={pillScope(false)} t={t} />)
+    expect(signal?.aborted).toBe(true)
+    expect(rendered.container.textContent).toBe('')
+  })
+
   it('stays off without polling until the profile enables the pill', async () => {
     const fetchMock = vi.fn(async () => json({ status: 'signed-in', usage: usage(1_735_689_600) }))
     vi.stubGlobal('fetch', fetchMock)

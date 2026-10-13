@@ -78,8 +78,8 @@ export function parseAutoReviewAssessment(text: string): AutoReviewAssessment | 
   let value: unknown
   try { value = JSON.parse(text) } catch { return undefined }
   if (!record(value) || Object.keys(value).some(key => !['risk_level', 'user_authorization', 'outcome', 'rationale'].includes(key))) return undefined
-  if (!['low', 'medium', 'high', 'critical'].includes(String(value['risk_level']))) return undefined
-  if (!['unknown', 'low', 'medium', 'high'].includes(String(value['user_authorization']))) return undefined
+  if (typeof value['risk_level'] !== 'string' || !['low', 'medium', 'high', 'critical'].includes(value['risk_level'])) return undefined
+  if (typeof value['user_authorization'] !== 'string' || !['unknown', 'low', 'medium', 'high'].includes(value['user_authorization'])) return undefined
   if (value['outcome'] !== 'allow' && value['outcome'] !== 'deny') return undefined
   if (typeof value['rationale'] !== 'string' || value['rationale'].trim().length === 0
     || Buffer.byteLength(value['rationale'], 'utf8') > AUTO_REVIEW_MAX_RATIONALE_BYTES) return undefined

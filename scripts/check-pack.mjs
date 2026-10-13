@@ -13,7 +13,7 @@ const result = spawnSync(invocation.command, invocation.args, {
   windowsVerbatimArguments: invocation.windowsVerbatimArguments,
 })
 if (result.error !== undefined) {
-  process.stderr.write(`${result.error.message}\n`)
+  process.stderr.write(`npm pack dry-run failed to start (${result.error.code ?? 'UNKNOWN'})\n`)
   process.exit(1)
 }
 if (result.status !== 0) {

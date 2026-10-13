@@ -225,6 +225,8 @@ assertContract(
   }, 'compatibility') === 'infrastructure',
 )
 
+const doctorCompatibility = JSON.parse(await readFile(new URL('../compatibility.json', import.meta.url), 'utf8'))
+const doctorDshRange = doctorCompatibility.dshPluginApi.versions.join(' || ')
 const candidateDoctor = {
   schemaVersion: 1,
   credentialFile: { state: 'missing' },
@@ -233,8 +235,8 @@ const candidateDoctor = {
     status: 'unverified',
     node: { status: 'compatible' },
     packages: Object.fromEntries(['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-compaction', '@earendil-works/pi-ai'].map(name => [name, {
-      supported: name === '@earendil-works/pi-ai' ? DECLARED_PI_AI_VERSION : DECLARED_DSH_RANGE,
-      installed: name === '@earendil-works/pi-ai' ? DECLARED_PI_AI_VERSION : '0.1.7-rc.3',
+      supported: name === '@earendil-works/pi-ai' ? doctorCompatibility.piAi.version : doctorDshRange,
+      installed: name === '@earendil-works/pi-ai' ? doctorCompatibility.piAi.version : '0.1.7-rc.3',
       status: 'unverified',
     }])),
   },
@@ -253,7 +255,7 @@ assertContract('declared installation checks still reject unverified versions', 
 const declaredDoctor = structuredClone(candidateDoctor)
 declaredDoctor.compatibility.status = 'compatible'
 for (const [name, entry] of Object.entries(declaredDoctor.compatibility.packages)) {
-  entry.installed = name === '@earendil-works/pi-ai' ? DECLARED_PI_AI_VERSION : '0.1.7-rc.1'
+  entry.installed = name === '@earendil-works/pi-ai' ? doctorCompatibility.piAi.version : '0.1.7-rc.1'
   entry.status = 'compatible'
 }
 assertContract('declared compatible diagnostics still pass', doctorOutcome(declaredDoctor, {}, 0) === 'continue-runtime')
@@ -264,6 +266,8 @@ for (const [name, mutate] of [
   ['Node engine mismatch', report => { report.compatibility.node.status = 'incompatible' }],
   ['missing dependency', report => { delete report.compatibility.packages['@deepseek-ai/dsh-llm'].installed }],
   ['unknown dependency', report => { report.compatibility.packages['@deepseek-ai/dsh-llm'].status = 'unknown' }],
+  ['stale pi-ai pin', report => { report.compatibility.packages['@earendil-works/pi-ai'].supported = '0.85.1' }],
+  ['stale DSH range', report => { report.compatibility.packages['@deepseek-ai/dsh-llm'].supported = '0.1.7-rc.1' }],
   ['incompatible dependency', report => { report.compatibility.packages['@deepseek-ai/dsh-llm'].status = 'incompatible' }],
   ['wrong installed candidate', report => { report.compatibility.packages['@deepseek-ai/dsh-llm'].installed = '0.1.3-alpha.2' }],
   ['credential failure', report => { report.credentialFile.state = 'permissions-too-broad' }],

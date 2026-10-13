@@ -7,9 +7,9 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { OpenAICodexQuotaIndicator } from '../src/client/OpenAICodexQuotaIndicator.tsx'
 import type { OpenAICodexConfigForm } from '../src/client/config-form.ts'
 import { en } from '../src/client/locales.ts'
-import { BROWSER_REQUEST_TIMEOUT_MS } from '../src/client/request-json.ts'
 import { DEFAULT_OPENAI_CODEX_SETTINGS } from '../src/settings-contract.ts'
 import type { OpenAICodexSettingsConfig } from '../src/settings-contract.ts'
+import { BROWSER_REQUEST_TIMEOUT_MS } from '../src/client/request-json.ts'
 
 const configScope = ((): Pick<OpenAICodexConfigForm, 'getSnapshot' | 'subscribe'> => {
   const snapshot: ConfigFormSnapshot<OpenAICodexSettingsConfig> = {
@@ -71,17 +71,44 @@ describe('issue 219 quota browser scheduling', () => {
     await tick(1); expect(fetch).toHaveBeenCalledTimes(3)
   })
 
-  it('does not overlap a slow request and aborts it on unmount', async () => {
-    let signal: AbortSignal | undefined
-    const fetch = vi.fn((_input: unknown, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
-      signal = init?.signal ?? undefined
-      signal?.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')), { once: true })
-    }))
+  it.each(['headers', 'body'])('keeps %s single-flight until the deadline, then recovers after cooldown and aborts on unmount', async stall => {
+    const signals: (AbortSignal | null | undefined)[] = []
+    let finishOld: ((response: Response) => void) | undefined
+    let finishBody: ((value: unknown) => void) | undefined
+    const fetch = vi.fn(async (_input: unknown, init?: RequestInit): Promise<Response> => {
+      signals.push(init?.signal)
+      if (fetch.mock.calls.length > 1 || stall === 'headers') return new Promise(resolve => { if (fetch.mock.calls.length === 1) finishOld = resolve })
+      const response = success()
+      vi.spyOn(response, 'json').mockImplementation(() => new Promise(resolve => { finishBody = resolve }))
+      return response
+    })
     vi.stubGlobal('fetch', fetch)
-    await mount(); await tick(BROWSER_REQUEST_TIMEOUT_MS - 1); expect(fetch).toHaveBeenCalledTimes(1)
-    visibility(true); visibility(false); await tick(0); expect(fetch).toHaveBeenCalledTimes(1)
-    cleanup(); expect(signal?.aborted).toBe(true)
-    visibility(true); visibility(false); await tick(600_000)
+    await mount(); await tick(BROWSER_REQUEST_TIMEOUT_MS - 1)
+    visibility(true); visibility(false); await tick(0)
     expect(fetch).toHaveBeenCalledTimes(1)
+    expect(signals[0]?.aborted).toBe(false)
+    await tick(1); expect(signals[0]?.aborted).toBe(true)
+    visibility(true); visibility(false); await tick(59_999)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await tick(1); expect(fetch).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      const stale = { status: 'signed-in', usage: { rateLimits: [{ id: 'codex', windows: [{ remainingPercent: 99, windowSeconds: 604_800 }] }] } }
+      finishOld?.(Response.json(stale)); finishBody?.(stale)
+    })
+    expect(document.querySelector('[data-openai-codex-quota]')).toBeNull()
+    expect(signals[1]?.aborted).toBe(false)
+    cleanup(); expect(signals[1]?.aborted).toBe(true)
+    visibility(true); visibility(false); await tick(600_000)
+    expect(fetch).toHaveBeenCalledTimes(2)
+  })
+
+  it('resumes successful quota polling after a timed-out transport and clears its failure backoff', async () => {
+    const fetch = vi.fn(async (): Promise<Response> => fetch.mock.calls.length === 1 ? new Promise(() => {}) : success())
+    vi.stubGlobal('fetch', fetch)
+    await mount(); await tick(BROWSER_REQUEST_TIMEOUT_MS)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await tick(60_000); expect(fetch).toHaveBeenCalledTimes(2)
+    await tick(59_999); expect(fetch).toHaveBeenCalledTimes(2)
+    await tick(1); expect(fetch).toHaveBeenCalledTimes(3)
   })
 })

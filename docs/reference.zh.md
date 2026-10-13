@@ -136,7 +136,7 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `models` | 完整目录 | 可见的 Codex model id；空数组隐藏全部条目 |
 | `enableProxy` | `false` | Codex Connect 流量是否使用 `proxyUrl` |
 | `proxyUrl` | `http://127.0.0.1:7890` | 不带凭据的 HTTP(S) proxy origin；启用前不生效 |
-| `contextWindowOverrides` | 无 | 按模型设置客户端上下文预算 |
+| `maximumContextModels` | 空列表 | 这些模型的会话扩展开启值使用官方最大窗口而非 500K；关闭值仍为 272K |
 | `enableSearch` | `false` | 注册 Codex 搜索，并在保存时将它选为搜索提供方 |
 | `enableReserveFallback` | `false` | 为 agent 请求执行身份匹配、后端授权的 Luna Reserve 切换 |
 | `enableImageTool` | `false` | 注册 `view_image` |
@@ -151,7 +151,7 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `requestMetricsDirectory` | 不设置／关闭 | 启动配置中的私有绝对路径，记录[本地请求计量](request-metrics.zh.md)，不上传遥测 |
 | `requestMetricsMaxBytes` | `16777216` | 每进程单日志上限，整数 `4096`–`67108864`；不配置目录则不采集 |
 
-`contextWindowOverrides` 修改的是客户端预算，不是 OpenAI 服务端容量。未知模型 ID 或超过插件文档配置上限的值会明确失败；但如果某个 ID 已被官方目录退役，配置里遗留的 `null` 条目会被直接丢弃而不是报错——它不携带任何预算，因此仍带着它的 profile 可以继续加载。将整个字段设为 `null` 可屏蔽继承的全部覆盖值；将单个模型设为 `null` 可恢复其目录默认值，同时保留其他条目。请为输出和协议开销预留空间，并把更大的数值视为特定部署的实验，不能当作账户权限证据。所有权与持久化规则见 [Alpha 设计](design.zh.md)。
+输入区 Fast Mode 左侧的扩展图标只控制当前对话。关闭时为 272K；开启时为 500K，但不超过模型目录上限。模型列表中默认不勾选的“扩展时使用最大上下文窗口”只将该模型的开启值改为目录最大值（支持扩展的模型为 872K），关闭值不变。不支持扩展的模型不显示扩展图标。会话图标状态保存在进程内，插件重启后恢复关闭。旧的 `contextWindowOverrides` 已退役并忽略，不删除已有数据。这些值是客户端预算，不代表已验证的服务端容量。扩展可能增加 Token／额度消耗及会话请求错误或失败风险，出现问题时请关闭。调查与设计依据见[带日期的记录](agent-notes/session-extended-context.md)。设置继续手动保存，保存／放弃位于字段上方；切换模块保留草稿，关闭模型设置弹窗前需确认放弃未保存的改动。
 
 ## 诊断与恢复
 

@@ -6,7 +6,6 @@ import {
   DEFAULT_OPENAI_CODEX_SETTINGS,
   decodeOpenAICodexSettings,
   isValidOpenAICodexImageModelHint,
-  isValidOpenAICodexContextWindowOverrides,
   isValidOpenAICodexOutputVerbosity,
   isValidOpenAICodexReasoningSummary,
   resolveOpenAICodexProxyUrl,
@@ -131,6 +130,21 @@ describe('OpenAI Codex proxy settings contract', () => {
     })
   })
 
+  it('keeps the composer quota pill opt-in for fresh and legacy profiles', () => {
+    expect(DEFAULT_OPENAI_CODEX_SETTINGS.enableComposerQuotaPill).toBe(false)
+    expect(Config({}).enableComposerQuotaPill.get()).toBe(false)
+    expect(resolveOpenAICodexSettings({}).enableComposerQuotaPill).toBe(false)
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill: undefined })?.enableComposerQuotaPill).toBe(false)
+    expect(Config({ enableComposerQuotaPill: true }).enableComposerQuotaPill.get()).toBe(true)
+    expect(resolveOpenAICodexSettings({ enableComposerQuotaPill: true }).enableComposerQuotaPill).toBe(true)
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill: true })?.enableComposerQuotaPill).toBe(true)
+  })
+
+  it.each(['yes', 1, null, {}, []])('rejects a malformed composer quota pill setting: %j', enableComposerQuotaPill => {
+    expect(() => resolveOpenAICodexSettings({ enableComposerQuotaPill } as never)).toThrow()
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill })).toBeUndefined()
+  })
+
   it('rejects unsafe active proxy values while preserving explicit activation semantics', () => {
     expect(decodeOpenAICodexSettings({
       enableProxy: true,
@@ -146,90 +160,40 @@ describe('OpenAI Codex proxy settings contract', () => {
       .toBe('http://127.0.0.1:7890')
   })
 
-  it('defaults context-window overrides to undefined', () => {
-    expect(DEFAULT_OPENAI_CODEX_SETTINGS.contextWindowOverrides).toBeUndefined()
-    const legacy = decodeOpenAICodexSettings({
-      enableSearch: false,
-      enableImageTool: false,
-      searchModel: 'gpt-5.6-sol',
-      searchMode: 'cached',
-      searchContextSize: 'medium',
-      searchMaxOutputTokens: 10_000,
-    })
-    expect(legacy?.contextWindowOverrides).toBeUndefined()
+  it.each([undefined, null, {}, { 'gpt-6.1-sol': 350000 }, { retired: null }, { unknown: 9999999 }, []])('ignores retired context budgets without rejecting other settings: %j', legacy => {
+    const input = { contextWindowOverrides: legacy, enableSearch: true } as OpenAICodexSettingsInput
+    // Schemastery preserves null for optional fields without a default; neither
+    // null nor any historical budget is allowed to affect resolved settings.
+    expect(configSettings(Config(input)).contextWindowOverrides).toBe(legacy === null ? null : undefined)
+    expect(resolveOpenAICodexSettings(input)).toMatchObject({ enableSearch: true, contextWindowOverrides: undefined })
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, ...input })).toMatchObject({ enableSearch: true, contextWindowOverrides: undefined })
   })
 
-  it('accepts and detaches valid context-window overrides', () => {
-    expect(isValidOpenAICodexContextWindowOverrides({ 'gpt-5.6-sol': 1_050_000 })).toBe(true)
-    const decoded = decodeOpenAICodexSettings({
-      contextWindowOverrides: { 'gpt-5.6-sol': 1_050_000, 'gpt-5.6-terra': 1_050_000 },
-      enableSearch: false,
-      enableImageTool: false,
-      searchModel: 'gpt-5.6-sol',
-      searchMode: 'cached',
-      searchContextSize: 'medium',
-      searchMaxOutputTokens: 10_000,
-    })
-    expect(decoded?.contextWindowOverrides).toEqual({ 'gpt-5.6-sol': 1_050_000, 'gpt-5.6-terra': 1_050_000 })
+  it('defaults per-model maximum preferences off and detaches the saved id list', () => {
+    expect(configSettings(Config({})).maximumContextModels).toEqual([])
+    expect(resolveOpenAICodexSettings({}).maximumContextModels).toEqual([])
+    const ids = ['gpt-6.1-sol', 'gpt-6.1-sol']
+    const input = { maximumContextModels: ids }
+    const host = configSettings(Config(input))
+    expect(host.maximumContextModels).toEqual(['gpt-6.1-sol'])
+    expect(host.maximumContextModels).not.toBe(ids)
+    expect(resolveOpenAICodexSettings(input).maximumContextModels).toEqual(['gpt-6.1-sol'])
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, ...input })?.maximumContextModels).toEqual(['gpt-6.1-sol'])
   })
 
-  it('rejects malformed context-window overrides', () => {
-    expect(isValidOpenAICodexContextWindowOverrides({})).toBe(true)
-    expect(isValidOpenAICodexContextWindowOverrides({ 'gpt-5.6-sol': 0 })).toBe(false)
-    expect(isValidOpenAICodexContextWindowOverrides({ 'gpt-5.6-sol': -1 })).toBe(false)
-    expect(isValidOpenAICodexContextWindowOverrides({ 'gpt-5.6-sol': 1.5 })).toBe(false)
-    expect(isValidOpenAICodexContextWindowOverrides({ '': 100 })).toBe(false)
-    expect(isValidOpenAICodexContextWindowOverrides([])).toBe(false)
-    expect(decodeOpenAICodexSettings({
-      contextWindowOverrides: { 'gpt-5.6-sol': 0 },
-      enableSearch: false,
-      enableImageTool: false,
-      searchModel: 'gpt-5.6-sol',
-      searchMode: 'cached',
-      searchContextSize: 'medium',
-      searchMaxOutputTokens: 10_000,
-    })).toBeUndefined()
+  it('maps the Host null reset sentinel to maximum preferences off at every boundary', () => {
+    const input = { maximumContextModels: null }
+    expect(configSettings(Config(input)).maximumContextModels).toEqual([])
+    expect(resolveOpenAICodexSettings(input).maximumContextModels).toEqual([])
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, ...input })?.maximumContextModels).toEqual([])
+    expect(resolveOpenAICodexSettings(Object.assign({}, DEFAULT_OPENAI_CODEX_SETTINGS, { maximumContextModels: ['gpt-6.1-sol'] }, input)).maximumContextModels).toEqual([])
   })
 
-  it.each([
-    {}, { 'gpt-5.6-sol': 1 }, { 'gpt-5.6-sol': Number.MAX_SAFE_INTEGER },
-    Object.fromEntries(Array.from({ length: 256 }, (_, index) => [`model-${index}`, 300_000])),
-  ])('accepts the same structural map on Host and browser: %j', overrides => {
-    expect(isValidOpenAICodexContextWindowOverrides(overrides)).toBe(true)
-    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: overrides })?.contextWindowOverrides)
-      .toEqual(overrides)
-    expect(resolveOpenAICodexSettings({ contextWindowOverrides: overrides }).contextWindowOverrides).toEqual(overrides)
-  })
-
-  it.each([
-    [], '300000', { '': 1 }, { ' gpt-5.6-sol': 1 }, { 'gpt-5.6-sol': '300000' },
-    { 'gpt-5.6-sol': 0 }, { 'gpt-5.6-sol': -1 }, { 'gpt-5.6-sol': 1.5 },
-    { 'gpt-5.6-sol': Number.MAX_SAFE_INTEGER + 1 }, { 'gpt-5.6-sol': Infinity }, { 'gpt-5.6-sol': NaN },
-    Object.fromEntries(Array.from({ length: 257 }, (_, index) => [`model-${index}`, 300_000])),
-  ])('rejects the same malformed map on Host and browser: %j', overrides => {
-    expect(isValidOpenAICodexContextWindowOverrides(overrides)).toBe(false)
-    expect(() => Config({ contextWindowOverrides: overrides } as never)).toThrow()
-    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: overrides })).toBeUndefined()
-    expect(() => resolveOpenAICodexSettings({ contextWindowOverrides: overrides } as never)).toThrow()
-  })
-
-  it('preserves the Host null sentinel and resolves it as disabled in both consumers', () => {
-    const host = Config({ contextWindowOverrides: null })
-    expect(host.contextWindowOverrides.get()).toBeNull()
-    expect(resolveOpenAICodexSettings(configSettings(host)).contextWindowOverrides).toBeUndefined()
-    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: null })?.contextWindowOverrides).toBeUndefined()
-    expect(resolveOpenAICodexSettings({ contextWindowOverrides: null }).contextWindowOverrides).toBeUndefined()
-  })
-
-  it('preserves per-model null masks on Host and removes them only in resolved settings', () => {
-    const input = { 'gpt-5.6-sol': null, 'gpt-5.6-terra': 300_000 }
-    const host = Config({ contextWindowOverrides: input })
-    expect(host.contextWindowOverrides.get()).toEqual(input)
-    expect(host.contextWindowOverrides.get()).not.toBe(input)
-    expect(resolveOpenAICodexSettings(configSettings(host)).contextWindowOverrides).toEqual({ 'gpt-5.6-terra': 300_000 })
-    expect(decodeOpenAICodexSettings(configSettings(host))?.contextWindowOverrides).toEqual({ 'gpt-5.6-terra': 300_000 })
-    expect(isValidOpenAICodexContextWindowOverrides({ '': null })).toBe(false)
-    expect(isValidOpenAICodexContextWindowOverrides(Object.fromEntries(Array.from({ length: 257 }, (_, i) => [`model-${i}`, null])))).toBe(false)
+  it.each(['gpt-6.1-sol', [''], [' padded '], [1], ['m'.repeat(129)], Array(257).fill('model')])('rejects an invalid per-model maximum preference consistently: %j', maximumContextModels => {
+    const input = { maximumContextModels } as never
+    expect(() => Config(input)).toThrow()
+    expect(() => resolveOpenAICodexSettings(input)).toThrow()
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, maximumContextModels })).toBeUndefined()
   })
 
   it('defaults verbosity and reasoning summary to the official catalog behaviour', () => {

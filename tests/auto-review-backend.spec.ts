@@ -27,6 +27,21 @@ describe('Auto-review backend protocol', () => {
     expect(parseAutoReviewAssessment('not-json')).toBeUndefined()
   })
 
+  it.each(['risk_level', 'user_authorization', 'outcome'] as const)('rejects non-string or missing %s without coercion', field => {
+    for (const invalid of [[assessment[field]], {}, null, undefined, 1, true, 'invalid']) {
+      const value = { ...assessment, [field]: invalid }
+      expect(parseAutoReviewAssessment(JSON.stringify(value))).toBeUndefined()
+      expect(parseAutoReviewStream(stream(value))).toBeUndefined()
+    }
+  })
+
+  it('rejects non-object assessments and missing rationale', () => {
+    for (const value of [null, [], { risk_level: 'low', user_authorization: 'high', outcome: 'allow' }]) {
+      expect(parseAutoReviewAssessment(JSON.stringify(value))).toBeUndefined()
+      expect(parseAutoReviewStream(stream(value))).toBeUndefined()
+    }
+  })
+
   it('accepts one completed SSE assessment and rejects fail-open variants', () => {
     expect(parseAutoReviewStream(stream(assessment))).toEqual(assessment)
     expect(parseAutoReviewStream(`${stream(assessment)}${stream(assessment)}`)).toBeUndefined()

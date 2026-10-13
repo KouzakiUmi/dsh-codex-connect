@@ -94,7 +94,7 @@ describe('issue 219 provider-to-DSH diagnostics', () => {
     expect(headers.get('x-client-request-id')).not.toBe('fixture-session')
   })
 
-  it('keeps pi-ai identity while routing the model HTTP attempt through the shared governor', async () => {
+  it('keeps the provider originator and host attribution while routing the model HTTP attempt through the shared governor', async () => {
     const fetch = vi.fn(async (_input: unknown, _init?: RequestInit) => eventResponse({ type: 'error', code, message: overloaded }))
     vi.stubGlobal('fetch', fetch)
     const requests = new OpenAICodexBackendRequests()
@@ -106,9 +106,9 @@ describe('issue 219 provider-to-DSH diagnostics', () => {
       expect(error(chunks).code).toBe('PI_AI_ERROR')
       const headers = new Headers(fetch.mock.calls[0]?.[1]?.headers)
       expect(headers.get('originator')).toBe('pi')
-      // The host PiAiAdapter forces its standard attribution header on every provider request;
-      // the pi identity itself is the originator above, not the User-Agent.
-      expect(headers.get('user-agent')).toBe(attributionHeaders()['user-agent'])
+      const hostUserAgent = new Headers(attributionHeaders()).get('user-agent')
+      expect(hostUserAgent).not.toBeNull()
+      expect(headers.get('user-agent')).toBe(hostUserAgent)
       expect(headers.get('x-client-request-id')).toBe(diagnostic(chunks)['clientRequestId'])
     } finally { requests.dispose() }
   })
