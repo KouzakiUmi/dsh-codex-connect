@@ -79,6 +79,7 @@ export async function syncTaskFile(filename: string, text: string, failure: stri
   if (!stable(before)) taskFailure(failure)
   // Windows requires a writable flush handle and ignores O_NOFOLLOW; verify both identities.
   const file = await open(filename, constants.O_RDWR | constants.O_NOFOLLOW | constants.O_NONBLOCK)
+  let after: BigIntStats
   try {
     if (!stable(await file.stat({ bigint: true })) || !stable(await lstat(filename, { bigint: true }))) taskFailure(failure)
     const bytes = Buffer.alloc(expected.length + 1)
@@ -90,8 +91,14 @@ export async function syncTaskFile(filename: string, text: string, failure: stri
     }
     if (count !== expected.length || !bytes.subarray(0, count).equals(expected)) taskFailure(failure)
     await file.sync()
-    if (!stable(await file.stat({ bigint: true })) || !stable(await lstat(filename, { bigint: true }))) taskFailure(failure)
+    // Commit the replacement name before final validation, while still holding the writer lock.
+    if (process.platform !== 'win32') {
+      const directory = await open(dirname(filename), constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
+      try { await directory.sync() } finally { await directory.close() }
+    }
+    after = await file.stat({ bigint: true })
   } finally { await file.close() }
+  if (!stable(after) || !stable(await lstat(filename, { bigint: true }))) taskFailure(failure)
 }
 
 /** One private file/lock per root. Codecs cannot change identity or storage safety checks. */
@@ -103,8 +110,11 @@ export class AtomicTaskDocumentStore<T> {
   }
   /** Reads do not create a directory or grant anything. */
   async read(sessionId: string): Promise<T | undefined> {
+    return this.readCurrent(sessionId, true)
+  }
+  private async readCurrent(sessionId: string, retryReplacement: boolean, previouslyObserved = false): Promise<T | undefined> {
     const filename = this.filename(sessionId)
-    let observed = false
+    let observed = previouslyObserved
     try {
       const parent = await lstat(this.directory)
       if (!parent.isDirectory() || parent.isSymbolicLink()
@@ -115,8 +125,9 @@ export class AtomicTaskDocumentStore<T> {
       if (target.isSymbolicLink()) taskFailure('TASK_STATE_UNAVAILABLE')
       if (!target.isFile()) taskFailure('TASK_STATE_UNSAFE')
       const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
+      let identity: BigIntStats, after: BigIntStats, bytes: Buffer, bytesRead: number
       try {
-        const identity = await file.stat({ bigint: true })
+        identity = await file.stat({ bigint: true })
         const current = await lstat(filename, { bigint: true }).catch(() => taskFailure('TASK_STATE_UNAVAILABLE'))
         if (current.isSymbolicLink()) taskFailure('TASK_STATE_UNAVAILABLE')
         if (!current.isFile() || target.dev !== identity.dev || target.ino !== identity.ino
@@ -124,11 +135,28 @@ export class AtomicTaskDocumentStore<T> {
         const stat = await file.stat()
         if (!stat.isFile() || stat.nlink !== 1 || stat.size > MAX_BYTES
           || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
-        const bytes = Buffer.alloc(MAX_BYTES + 1)
-        const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
+        bytes = Buffer.alloc(MAX_BYTES + 1)
+        const read = await file.read(bytes, 0, bytes.length, 0)
+        bytesRead = read.bytesRead
         if (bytesRead > MAX_BYTES || bytesRead !== stat.size) taskFailure('TASK_STATE_INVALID')
-        return this.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, bytesRead))), sessionId)
+        after = await file.stat({ bigint: true })
       } finally { await file.close() }
+      const current = await lstat(filename, { bigint: true })
+      const stable = (stat: BigIntStats): boolean => stat.dev === identity.dev && stat.ino === identity.ino
+        && stat.nlink === identity.nlink && stat.size === identity.size && stat.mode === identity.mode && stat.uid === identity.uid
+        && stat.mtimeNs === identity.mtimeNs && stat.ctimeNs === identity.ctimeNs
+      // Atomic replacement may unlink this fd or happen after the final fd stat, during close.
+      // Retry the new private regular inode once; never consume stale authority or replay a mutation.
+      const replacedSnapshot = stable(after) || (after.nlink === 0n && after.dev === identity.dev && after.ino === identity.ino
+        && after.size === identity.size && after.mode === identity.mode && after.uid === identity.uid && after.mtimeNs === identity.mtimeNs)
+      if (retryReplacement && replacedSnapshot
+        && current.isFile() && !current.isSymbolicLink() && current.nlink === 1n
+        && current.dev === identity.dev && current.ino !== identity.ino && current.uid === identity.uid
+        && current.size <= BigInt(MAX_BYTES) && (process.platform === 'win32' || (current.mode & 0o077n) === 0n)) {
+        return this.readCurrent(sessionId, false, true)
+      }
+      if (!current.isFile() || current.isSymbolicLink() || !stable(after) || !stable(current)) taskFailure('TASK_STATE_UNAVAILABLE')
+      return this.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, bytesRead))), sessionId)
     } catch (error: unknown) {
       // Only initial absence means no saved state. Never select a fallback after observing a target.
       if (!observed && (error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
@@ -150,11 +178,6 @@ export class AtomicTaskDocumentStore<T> {
       if (Buffer.byteLength(text) > MAX_BYTES) taskFailure('TASK_STATE_TOO_LARGE')
       await writeFileAtomic(filename, text + '\n', { mode: 0o600, dirMode: 0o700 })
       await syncTaskFile(filename, text + '\n', 'TASK_STATE_UNSAFE')
-      // Ensure the replacement name is committed before a request reservation may leave this process.
-      if (process.platform !== 'win32') {
-        const directory = await open(this.directory, constants.O_RDONLY)
-        try { await directory.sync() } finally { await directory.close() }
-      }
       return structuredClone(next)
     })
   }

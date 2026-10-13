@@ -133,3 +133,79 @@ for (const [filename, name, unsafe] of entrypoints) {
     }
   }
 }
+
+const durableSource = await readFile(new URL('native-compaction-durable-smoke.mjs', import.meta.url), 'utf8')
+const functionSource = name => {
+  const start = durableSource.indexOf(`async function ${name}(`)
+  assert.notEqual(start, -1)
+  const end = durableSource.indexOf('\n}', start)
+  assert.notEqual(end, -1)
+  return durableSource.slice(start, end + 2)
+}
+for (const scenario of ['offline', 'matching', 'changed', 'missing', 'empty', 'malformed', 'uppercase', 'read failure']) {
+  test(`durable child fingerprint: ${scenario}`, async () => {
+    const expected = 'a'.repeat(64), credential = { accountId: 'synthetic-child' }
+    let reads = 0
+    const selector = runInNewContext(`(${functionSource('childCredential')})`, {
+      LIVE: scenario !== 'offline',
+      process: { env: { DSH_NATIVE_COMPACTION_EXPECTED_LOGIN: scenario === 'missing' ? undefined
+        : scenario === 'empty' ? '' : scenario === 'malformed' ? 'bad' : scenario === 'uppercase' ? 'A'.repeat(64) : expected } },
+      syntheticCredential: () => credential,
+      readLogin: async () => {
+        reads++
+        if (scenario === 'read failure') throw new Error('SYNTHETIC_READER_FAILURE')
+        return { fingerprint: scenario === 'changed' ? 'b'.repeat(64) : expected, credential }
+      },
+      fail: code => { throw new Error(code) },
+    })
+    if (scenario === 'offline' || scenario === 'matching') assert.equal(await selector(), credential)
+    else await assert.rejects(selector(), { message: scenario === 'changed' ? 'CREDENTIAL_CHANGED_STOP'
+      : scenario === 'read failure' ? 'SYNTHETIC_READER_FAILURE' : 'INVALID_CHILD_MODE' })
+    assert.equal(reads, ['matching', 'changed', 'read failure'].includes(scenario) ? 1 : 0)
+    assert.ok(durableSource.includes('const credential = await childCredential()'))
+    assert.ok(durableSource.indexOf('const credential = await childCredential()') < durableSource.indexOf("const undici = await import('undici')"))
+  })
+}
+
+test('durable parent binds both spawns to its original fingerprint, overriding ambient input without persistence/logging', async () => {
+  const expected = 'a'.repeat(64), spawns = [], states = [], reports = []
+  const parent = runInNewContext(`(${functionSource('main').replaceAll('import.meta.url', JSON.stringify(import.meta.url))})`, {
+    CHILD: false, LIVE: true, MODEL: 'synthetic-model', SELF: 'synthetic-script', URL, Buffer,
+    process: { argv: ['node', 'synthetic-script', '--live', '--codex-login'], platform: 'win32', version: 'synthetic', execPath: 'synthetic-node',
+      env: { DSH_NATIVE_COMPACTION_EXPECTED_LOGIN: 'b'.repeat(64) } },
+    parseDurableArgs: () => ({ caseName: 'oversized-user' }), stagesForCase: () => ['baseline', 'native', 'resume'],
+    digest: () => 'synthetic-digest', readFile: async () => Buffer.from('synthetic-source'),
+    readVerifiedDurableRuntime: async () => ({ '@deepseek-ai/dsh-llm': 'synthetic' }), readLogin: async () => ({ fingerprint: expected }),
+    mkdtemp: async () => 'synthetic-root', tmpdir: () => 'synthetic-temp', join: (...parts) => parts.join('/'),
+    randomBytes: () => Buffer.from('synthetic'), save: async (_path, state) => { states.push(state) },
+    json: async () => ({ metrics: [] }), rm: async () => {},
+    spawnSync: (_node, args, options) => { spawns.push({ args, options }); return { status: 0, stdout: JSON.stringify({ ok: true, report: { synthetic: true } }) } },
+    safeError: () => 'SYNTHETIC_FAILURE', fail: code => { throw new Error(code) }, console: { log: report => reports.push(report) },
+  })
+  await parent()
+  assert.equal(spawns.length, 2)
+  for (const { args, options } of spawns) {
+    assert.equal(options.env.DSH_NATIVE_COMPACTION_EXPECTED_LOGIN, expected)
+    assert.ok(!args.some(value => value.includes(expected)))
+  }
+  for (const [index, spawn] of spawns.entries()) {
+    const phase = index === 0 ? 'write' : 'resume'
+    const state = { live: true, caseName: 'oversized-user', runtime_versions: {} }
+    let reads = 0, providerImports = 0
+    const runChild = runInNewContext(`${functionSource('childCredential')}\n${functionSource('child').replaceAll('import.meta.url', JSON.stringify(import.meta.url))}\nchild`, {
+      LIVE: true, process: { env: { ...spawn.options.env }, argv: ['node', 'synthetic-script', '--child', phase, 'synthetic-root', '--live'] },
+      join: (...parts) => parts.join('/'), json: async () => state,
+      parseDurableArgs: () => ({ live: true, caseName: 'oversized-user' }), stagesForCase: () => ['baseline', 'native', 'resume'],
+      readVerifiedDurableRuntime: async () => ({}),
+      readLogin: async () => { reads++; return { fingerprint: 'b'.repeat(64), credential: { accountId: 'synthetic-replacement' } } },
+      fail: code => { throw new Error(code) },
+    }, { importModuleDynamically: () => { providerImports++; throw new Error('UNEXPECTED_PROVIDER_IMPORT') } })
+    // Parent A and pre-spawn A were stable; the separately stable child B must stop before undici/adapter setup.
+    await assert.rejects(runChild(phase, 'synthetic-root'), { message: 'CREDENTIAL_CHANGED_STOP' })
+    assert.equal(reads, 1)
+    assert.equal(providerImports, 0)
+  }
+  assert.ok(!JSON.stringify(states).includes(expected))
+  assert.ok(!JSON.stringify(reports).includes(expected))
+  assert.equal(JSON.parse(reports[0]).real_provider_dispatches, 0)
+})

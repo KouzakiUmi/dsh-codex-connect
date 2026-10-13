@@ -20,11 +20,13 @@ for (const platform of ['win32', 'linux'] as const) for (const kind of ['state',
     'unchanged', 'partial reads', 'post-write symlink', 'post-write hardlink', 'replaced before open',
     'large inode mismatch', 'replaced after open', 'wrong content before observation', 'changed during read',
     'growth during read', 'replaced during sync', 'hardlinked during sync', 'mtime changed during sync',
-    'ctime changed during sync', 'missing after sync', 'sync failure', 'close failure',
+    'ctime changed during sync', 'missing after sync', 'sync failure', 'close failure', 'file close replacement',
+    ...(platform === 'linux' ? ['directory open replacement', 'directory sync replacement', 'directory close replacement',
+      'directory sync failure', 'directory close failure'] : []),
   ])(`${kind}: ${platform}: %s`, async scenario => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     const value = { state: 'synthetic' }
-    let expected = Buffer.alloc(0), target = '', observations = 0, identities = 0, readCalls = 0
+    let expected = Buffer.alloc(0), target = '', observations = 0, identities = 0, readCalls = 0, replaced = false
     const snapshot = (ino = 1n) => ({
       dev: 1n, ino, nlink: 1n, size: BigInt(expected.length), mode: 0o600n, uid: 1000n,
       mtimeNs: 10000000000000000n, ctimeNs: 10000000000000000n,
@@ -37,6 +39,7 @@ for (const platform of ['win32', 'linux'] as const) for (const kind of ['state',
       if (!options?.bigint) return { isDirectory: () => true, isSymbolicLink: () => false, mode: 0o700 }
       const stage = ++observations
       if (scenario === 'missing after sync' && stage === 3) throw missing
+      if (replaced) return snapshot(2n)
       const stat = snapshot()
       if (scenario === 'post-write symlink' && stage === 1) return { ...stat, isFile: () => false, isSymbolicLink: () => true }
       if (scenario === 'post-write hardlink' && stage === 1) return { ...stat, nlink: 2n }
@@ -44,7 +47,10 @@ for (const platform of ['win32', 'linux'] as const) for (const kind of ['state',
       if (scenario === 'large inode mismatch') return snapshot(9007199254740992n)
       return stat
     })
-    const close = vi.fn(async () => { if (scenario === 'close failure') throw new Error('synthetic close failure') })
+    const close = vi.fn(async () => {
+      if (scenario === 'file close replacement') replaced = true
+      if (scenario === 'close failure') throw new Error('synthetic close failure')
+    })
     const sync = vi.fn(async () => { if (scenario === 'sync failure') throw new Error('synthetic sync failure') })
     const file = {
       stat: vi.fn(async () => {
@@ -69,9 +75,20 @@ for (const platform of ['win32', 'linux'] as const) for (const kind of ['state',
         return { bytesRead: count }
       }), sync, close,
     }
-    const directorySync = vi.fn(async () => {})
+    const directorySync = vi.fn(async () => {
+      if (scenario === 'directory sync replacement') replaced = true
+      if (scenario === 'directory sync failure') throw new Error('synthetic directory sync failure')
+    })
+    const directoryClose = vi.fn(async () => {
+      if (scenario === 'directory close replacement') replaced = true
+      if (scenario === 'directory close failure') throw new Error('synthetic directory close failure')
+    })
     io.open.mockImplementation(async (filename: string, flags: number) => {
-      if (filename !== target) return { sync: directorySync, close: vi.fn(async () => {}) }
+      if (filename !== target) {
+        if (scenario === 'directory open replacement') replaced = true
+        expect(flags).toBe(constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
+        return { sync: directorySync, close: directoryClose }
+      }
       expect(flags & constants.O_RDWR).toBe(constants.O_RDWR)
       return file
     })
@@ -90,11 +107,12 @@ for (const platform of ['win32', 'linux'] as const) for (const kind of ['state',
     } else {
       await expect(operation.then(dispatch)).rejects.toThrow()
       expect(dispatch).not.toHaveBeenCalled()
-      expect(directorySync).not.toHaveBeenCalled()
       const early = ['post-write symlink', 'post-write hardlink', 'replaced before open', 'large inode mismatch',
         'replaced after open', 'wrong content before observation', 'changed during read', 'growth during read'].includes(scenario)
       expect(sync).toHaveBeenCalledTimes(early ? 0 : 1)
+      expect(directorySync).toHaveBeenCalledTimes(platform === 'linux' && !early && scenario !== 'sync failure' ? 1 : 0)
     }
+    expect(directoryClose).toHaveBeenCalledTimes(directorySync.mock.calls.length)
     const opened = scenario !== 'post-write symlink' && scenario !== 'post-write hardlink'
     expect(close).toHaveBeenCalledTimes(opened ? 1 : 0)
     expect(io.write).toHaveBeenCalledOnce()

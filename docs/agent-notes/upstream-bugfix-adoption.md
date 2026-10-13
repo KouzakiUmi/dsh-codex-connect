@@ -48,6 +48,8 @@ This avoids carrying obsolete route/authentication and UI-count implementations.
    [artifact store](../../src/adaptive-task-artifacts.ts),
    [identity/admission tests](../../tests/adaptive-task-store-identity.spec.ts),
    [write/flush race tests](../../tests/adaptive-task-write-identity.spec.ts),
+   [artifact read/reuse tests](../../tests/adaptive-task-artifact-identity.spec.ts),
+   [manual read/dispatch tests](../../tests/adaptive-task-read-stability.spec.ts),
    [artifact tests](../../tests/adaptive-task-evidence.spec.ts), and
    [named Phase 2 cases](../../scripts/adaptive-task-delegation-cases.json).
 2. **Recovery UI:** [component](../../src/client/PublishedAdaptiveTaskControl.tsx)
@@ -59,7 +61,7 @@ This avoids carrying obsolete route/authentication and UI-count implementations.
    [history tests](../../tests/history-migration.spec.ts), and POSIX-only probe guards.
 4. **Probe safety:** [durable reader](../../scripts/native-compaction-durable-smoke.mjs),
    [Luna reader](../../scripts/native-compaction-luna-smoke.mjs),
-   [120-case regression](../../scripts/native-compaction-login-tests.mjs),
+   [129 reader/binding cases](../../scripts/native-compaction-login-tests.mjs),
    [controlled-run portability](../../scripts/native-compaction-controlled-cases.mjs)
    and only the normal test-script hunk in [package metadata](../../package.json).
 5. **CLI build reproducibility:** only the standalone debug-label option in
@@ -91,7 +93,7 @@ and session replacement cancels pending backoff. This is a bounded retry policy,
 not perpetual monitoring or a guarantee that arbitrarily delayed routes recover
 without a remount.
 
-## Latest write/read-side review repairs
+## Earlier write/read-side review repairs
 
 The product write-side repair `2e38a66` belongs to adoption unit 1. Do not retain
 only `53454e7`'s writable flush handles without the current verification follow-up. Atomic-write SDK fsync
@@ -112,3 +114,27 @@ credential decoding/return. Partial reads are supported; size growth, truncation
 valid-account rewrites, link changes and post-read stat failures reject and close
 handles. Keep the updated 120-case test module with the two readers; the older
 mock readFile-only fixture cannot exercise the new bounded-read contract.
+
+## Final boundary repair following `b7239a0`
+
+The follow-up closes three new reports together with the adjacent state-reader
+P2 found by independent whole-chain review. Earlier `2e38a66`/`2cc098b` are
+prerequisites/provenance, not sufficient final repairs on their own.
+
+| Problem | Final adoption group / dependency |
+| --- | --- |
+| Parent selection versus separately stable child login reads | Durable reader plus the current login test module (120 reader cases and 9 binding cases). Both write/resume children consume the parent's original fingerprint from overridden private env before provider setup; no hash in state/argv/report. |
+| Replacement while POSIX directory commit or file close completes | Shared state-module flush helper and both state/artifact callers together. Directory open/sync/close and file close precede the final path validation inside the writer lock. Callers must not add later durability operations. |
+| Stale existing artifact accepted on reuse | Final artifact get/put plus [artifact identity tests](../../tests/adaptive-task-artifact-identity.spec.ts). Bigint read/post-close checks and observed-absence handling are required; reuse also runs the same exact-content/durability helper, without rewriting unsafe targets. |
+| Manual state consumption bypasses write-side verification | Final state reader, identity tests and [read/dispatch stability tests](../../tests/adaptive-task-read-stability.spec.ts). Read/post-close metadata/path checks precede codec parsing; actual control/legacy/manual reads are exercised, not stubbed successful. |
+
+A safe same-owner private atomic replacement gets **one read-only retry**, whether
+observed while reading or during close. The old bytes are discarded; repeated
+replacement, unsafe/link targets or disappearance after any observation fail
+unavailable, not missing-state fallback. No command/provider mutation is replayed.
+
+Use these complete final source/test groups on current main, not an isolated
+caller/helper hunk or an old generated bundle. Rebuild and validate every adopted
+subset; the combined PR checks and independent review do not certify a selective
+cherry-pick recipe, real OS concurrency, live acceptance or immunity to arbitrary
+same-user changes after the final observation point.

@@ -73,6 +73,15 @@ function syntheticCredential() {
   const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url')
   return { type: 'oauth', access: `${encode({ alg: 'none' })}.${encode({ 'https://api.openai.com/auth': { chatgpt_account_id: 'offline-durable' } })}.synthetic`, accountId: 'offline-durable', expires: Date.now() + 3600000, refresh: 'synthetic-only' }
 }
+/** Bind separately stable child reads to the parent's original selection, before any provider setup. */
+async function childCredential() {
+  if (!LIVE) return syntheticCredential()
+  const expected = process.env.DSH_NATIVE_COMPACTION_EXPECTED_LOGIN
+  if (typeof expected !== 'string' || !/^[a-f0-9]{64}$/.test(expected)) fail('INVALID_CHILD_MODE')
+  const login = await readLogin()
+  if (login.fingerprint !== expected) fail('CREDENTIAL_CHANGED_STOP')
+  return login.credential
+}
 function offlineResponse(stage, label, scenario, body, caseName, fault) {
   if (caseName !== 'oversized-user') return fixtureResponse(stage, controlledFixtureItem(stage, body, caseName, fault))
   if (stage === 'native' && scenario === 'reject-native') return new Response(JSON.stringify({ error: { code: 'invalid_request_error' } }), { status: 400 })
@@ -108,7 +117,7 @@ async function child(phase, root) {
   const stages = stagesForCase(state.caseName)
   const runtimeVersions = await readVerifiedDurableRuntime()
   if (JSON.stringify(runtimeVersions) !== JSON.stringify(state.runtime_versions)) fail('DURABLE_RUNTIME_CHANGED')
-  const credential = LIVE ? (await readLogin()).credential : syntheticCredential()
+  const credential = await childCredential()
   const undici = await import('undici')
   const dispatcher = LIVE ? new undici.EnvHttpProxyAgent() : undefined
   const ledgerPath = join(root, 'ledger.json')
@@ -337,7 +346,7 @@ async function main() {
     for (const phase of ['write', 'resume']) {
       if (LIVE && (await readLogin()).fingerprint !== fingerprint) fail('CREDENTIAL_CHANGED_STOP')
       const childResult = spawnSync(process.execPath, ['--experimental-transform-types', '--disable-warning=ExperimentalWarning', SELF, '--child', phase, root, ...process.argv.slice(2)], {
-        encoding: 'utf8', timeout: 210000, maxBuffer: 1024 * 1024, env: { ...process.env, OTEL_SDK_DISABLED: 'true', DSH_TELEMETRY_MODE: 'DISABLED' },
+        encoding: 'utf8', timeout: 210000, maxBuffer: 1024 * 1024, env: { ...process.env, DSH_NATIVE_COMPACTION_EXPECTED_LOGIN: fingerprint ?? '', OTEL_SDK_DISABLED: 'true', DSH_TELEMETRY_MODE: 'DISABLED' },
       })
       if (childResult.error || childResult.signal) fail('CHILD_DID_NOT_COMPLETE')
       let report

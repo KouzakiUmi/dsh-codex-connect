@@ -432,3 +432,53 @@ check rerun. No assertion, compiler/lint rule, dependency or host setting change
 The two code commits are scope-separated for selective adoption; their prerequisites
 are in the adoption guide. Combined-tree validation is not a claim that independent
 cherry-picks or a new installed-host/live-account matrix were run.
+
+## Whole-chain boundary repair and independent review — 2026-10-13
+
+Starting source `b7239a0`, unchanged upstream `7b34dd5`. Addressed new P2 reports
+4257096240 (parent/child fingerprint selection), 4257096253 (directory durability
+operation after prior file verification), and 4257096269 (stale artifact reuse).
+The original parent fingerprint is passed via overridden child env and checked
+before any provider initialization in both phases, without state/argv/report
+persistence. Flush now owns file and POSIX directory sync/close before its final
+path check while still locked. Artifact reads use bounded bigint post-read and
+post-close checks, observed absence cannot trigger rewriting, and reuse completes
+the same exact-content/identity/durability helper as a new write.
+
+A user-approved read-only `openai-codex/gpt-6.1-sol/high` reviewer audited complete
+store/control/legacy/delegation/auth/adapter chains, SDK locking and test seams.
+It found an adjacent existing P2: manual consumption had no write verification
+and could dispatch after state read/close link, mode or path changes. This was
+repaired before pushing: bigint metadata and close-after path checks precede codec
+parsing; safe same-owner regular atomic replacement gets one bounded read-only
+retry. Old bytes are discarded, repeated replacement fails unavailable, and
+observed-state tracking survives retries so disappearance never selects fallback.
+
+Reviewer final verification: current real store/parser/control/runtime source,
+synthetic surrounding services/filesystem, four atomic-retry cases and six manual
+three-read cases. Both legitimate replacement windows read the new document;
+faults block the delegate. It also ran the single integrated parent-binding Node
+test (1/1), connecting actual child source to the captured parent env; both phases
+reject stable replacement B after parent/pre-spawn A, before dynamic provider
+imports. Final review found no remaining actionable P1/P2 in scope, not zero bugs.
+
+Main-agent negative controls used only source variants in memory, never changing
+tracked source: disabled child comparison, pre-directory-only verification and
+disabled artifact post-close path checking each wrongly accepted their fixture;
+original code rejected each. Initial variant-format matching failed and was fixed
+before the successful combined control. First focused run also caught an OS-constant
+assertion assuming Windows exported O_DIRECTORY; exact flag-combination assertions
+were corrected, with no gate weakening or production setting changes.
+
+Final current-source validation: `pnpm run check && node scripts/check-adaptive-task-ui.mjs`
+exit 0; 143 files / 1,950 non-browser passed / 5 Windows skips; 129 login/binding
+Node cases; focused product 6 files / 237 passed; full Chromium 12 files / 69 passed.
+Types, lint, actual build/import/CLI/metrics/compatibility and pack/inventory checks
+passed; Host regenerated. The earlier 1,932-test pass preceded the adjacent read
+repair and is not used as final evidence. No dependency, format, host declaration,
+activation gate or user data change; no actual probe credential/provider requests,
+installed-host acceptance, service changes, deployment, or subset cherry-pick test.
+Real OS durability and true cross-process writer/account races remain unverified;
+continued same-user changes after a final observation cannot be excluded by
+unbounded rechecks. The explicit one-read retry does not guarantee availability
+under persistent replacements.
