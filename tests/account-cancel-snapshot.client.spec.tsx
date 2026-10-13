@@ -2,7 +2,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { Context } from '@deepseek-ai/cordis'
+import { Context } from '@deepseek-ai/cordis'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { expect, it, vi } from 'vitest'
 import { OpenAICodexAccountStore } from '../src/client/account-store.ts'
@@ -12,16 +12,15 @@ import { OpenAICodexCredentialStore, OPENAI_CODEX_PROVIDER } from '../src/store.
 it.each(['switch', 'login-commit'])('keeps cancel quota and labels together after another view performs %s', async transition => {
   const root = await mkdtemp(join(tmpdir(), 'codex-cancel-snapshot-'))
   const store = new OpenAICodexCredentialStore(join(root, 'auth.json'))
-  const disposers: Array<() => void | Promise<void>> = []
+  const context = new Context()
   const views = [new OpenAICodexAccountStore(), new OpenAICodexAccountStore()]
   const makeCredential = (id: string) => ({ type: 'oauth' as const, accountId: id, access: `fixture-${id}`, refresh: `fixture-refresh-${id}`, expires: Date.now() + 3_600_000 })
   try {
     for (const id of ['b', 'a']) await store.modify(OPENAI_CODEX_PROVIDER, async () => makeCredential(id))
     const routes: Array<{ path: string; handler(req: IncomingMessage, res: ServerResponse): void | Promise<void> }> = []
-    const context = {
-      webServer: { register: (route: typeof routes[number]) => { routes.push(route); return () => {} } },
-      effect: (factory: () => (() => void | Promise<void>)) => { disposers.push(factory()) },
-    } as unknown as Context
+    context.provide('webServer', { register: (route: typeof routes[number]) => { routes.push(route); return () => {} } } as never)
+    // Isolate cross-view account/quota snapshots; real Cookie admission is tested over Host HTTP.
+    context.provide('connection', { requestRejection: () => undefined } as never)
     registerOpenAICodexAuthRoutes(context, store)
     vi.stubGlobal('fetch', async (path: string, init?: RequestInit) => {
       const route = routes.find(candidate => candidate.path === String(path))
@@ -51,7 +50,7 @@ it.each(['switch', 'login-commit'])('keeps cancel quota and labels together afte
     expect(first.getSnapshot().accounts).toEqual(expected.accounts)
   } finally {
     for (const view of views) view.dispose()
-    for (const dispose of disposers) await dispose()
+    await context.fiber.dispose()
     vi.unstubAllGlobals()
     await rm(root, { recursive: true, force: true })
   }

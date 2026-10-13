@@ -1,6 +1,7 @@
-import type { Context } from '@deepseek-ai/cordis'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { describe, expect, it, vi } from 'vitest'
+import { httpRouteTestContext } from './http-route-test-context.ts'
+import type { CapturedHttpRoute, TestHttpAdmission } from './http-route-test-context.ts'
 import {
   OPENAI_CODEX_UPDATE_PATH,
   OPENAI_CODEX_RUNTIME_PATH,
@@ -14,32 +15,17 @@ import {
   OPENAI_CODEX_VERIFIED_COMPATIBILITY_URL,
 } from '../src/update.ts'
 
-interface CapturedRoute {
-  path: string
-  handler(req: IncomingMessage, res: ServerResponse): Promise<void> | void
-}
-
 const trustedOrigins = { has: async () => false } as unknown as OpenAICodexTrustedOriginsStore
 
 function capture(
   fetchImpl: (input: string, init?: RequestInit) => Promise<Response>,
   resolveCurrentDshVersion: () => Promise<string | undefined> = async () => '0.1.1-rc.2',
   path = OPENAI_CODEX_UPDATE_PATH,
-): CapturedRoute {
-  const routes: CapturedRoute[] = []
-  const ctx = {
-    webServer: {
-      register(route: CapturedRoute) {
-        routes.push(route)
-        return () => undefined
-      },
-    },
-    effect(factory: () => void | (() => void | Promise<void>)) {
-      return factory()
-    },
-  } as unknown as Context
+  admission: TestHttpAdmission = 'allow',
+): CapturedHttpRoute {
+  const { ctx, routes } = httpRouteTestContext({ admission })
   registerOpenAICodexUpdateRoutes(ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveCurrentDshVersion }, trustedOrigins)
-  const route = routes.find(candidate => candidate.path === path)
+  const route = [...routes.values()].find(candidate => candidate.path === path)
   if (route === undefined) throw new Error('update route was not registered')
   return route
 }
@@ -72,6 +58,58 @@ function json(value: unknown, status = 200): Response {
 }
 
 describe('Codex Connect update route', () => {
+  it.each(['missing', 'unauthenticated', 'forbidden', 'throws'] as const)('keeps public update/runtime routes Origin-only when Connection is %s', async admission => {
+    const fixture = httpRouteTestContext({ admission })
+    const fetchImpl = vi.fn(async () => json({}, 503))
+    const resolveCurrentDshVersion = vi.fn(async () => '0.1.1-rc.2')
+    registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveCurrentDshVersion }, trustedOrigins)
+    for (const path of [OPENAI_CODEX_RUNTIME_PATH, OPENAI_CODEX_UPDATE_PATH]) {
+      const res = response()
+      await fixture.routes.get(`exact:${path}`)!.handler(request(), res)
+      expect(res.observed.status).toBe(200)
+    }
+    expect(resolveCurrentDshVersion).toHaveBeenCalledOnce()
+    expect(fetchImpl).toHaveBeenCalled()
+    expect(fixture.requestRejection).not.toHaveBeenCalled()
+  })
+
+  it.each([1, 2])('rolls back failed update registration %s and preserves unrelated routes', async nth => {
+    const fixture = httpRouteTestContext({ failRegistrationAt: nth + 1 })
+    const unrelated: CapturedHttpRoute = { kind: 'exact', path: '/unrelated', handler: () => undefined }
+    fixture.webServer.register(unrelated)
+    const fetchImpl = vi.fn()
+    const resolveCurrentDshVersion = vi.fn()
+    expect(() => registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveCurrentDshVersion }, trustedOrigins))
+      .toThrow('synthetic HTTP route registration failure')
+    expect([...fixture.routes.values()]).toEqual([unrelated])
+    await fixture.ctx.fiber.dispose()
+    expect([...fixture.routes.values()]).toEqual([unrelated])
+    expect(fixture.disposedPaths).toEqual([OPENAI_CODEX_RUNTIME_PATH, OPENAI_CODEX_UPDATE_PATH].slice(0, nth - 1).reverse())
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(resolveCurrentDshVersion).not.toHaveBeenCalled()
+  })
+
+  it('rolls back runtime registration without removing an unrelated update route owner', async () => {
+    const fixture = httpRouteTestContext()
+    const occupied: CapturedHttpRoute = { kind: 'exact', path: OPENAI_CODEX_UPDATE_PATH, handler: () => undefined }
+    fixture.webServer.register(occupied)
+    expect(() => registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: '0.1.0-alpha.4.14' }, trustedOrigins)).toThrow(/duplicate HTTP route/u)
+    expect([...fixture.routes.values()]).toEqual([occupied])
+    await fixture.ctx.fiber.dispose()
+    expect([...fixture.routes.values()]).toEqual([occupied])
+    expect(fixture.disposedPaths).toEqual([OPENAI_CODEX_RUNTIME_PATH])
+  })
+
+  it('releases update routes in reverse order on normal disposal', async () => {
+    const fixture = httpRouteTestContext()
+    const unrelated: CapturedHttpRoute = { kind: 'exact', path: '/unrelated', handler: () => undefined }
+    fixture.webServer.register(unrelated)
+    registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: '0.1.0-alpha.4.14' }, trustedOrigins)
+    await fixture.ctx.fiber.dispose()
+    expect([...fixture.routes.values()]).toEqual([unrelated])
+    expect(fixture.disposedPaths).toEqual([OPENAI_CODEX_UPDATE_PATH, OPENAI_CODEX_RUNTIME_PATH])
+  })
+
   it('returns a safe update result for trusted loopback GETs', async () => {
     const fetchMock = vi.fn(async (url: string): Promise<Response> => {
       if (url === OPENAI_CODEX_NPM_METADATA_URL) return json({ alpha: '0.1.0-alpha.4.15' })

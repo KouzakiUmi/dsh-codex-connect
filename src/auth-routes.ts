@@ -31,6 +31,7 @@ import { FastModeRegistry, isFastModeSessionId } from './fast-mode.ts'
 import { OPENAI_CODEX_FAST_MODE_PATH } from './fast-mode-paths.ts'
 import type { OpenAICodexProxyManager } from './provider-proxy.ts'
 import { publicAuthError as safeMessage } from './auth-error.ts'
+import { harnessHttpRejection } from './http-auth.ts'
 
 export {
   OPENAI_CODEX_AUTH_LOGIN_PATH,
@@ -618,160 +619,161 @@ export function registerOpenAICodexAuthRoutes(
   authorizationTimeoutMs?: number,
   quotaState?: OpenAICodexQuotaState,
 ): void {
-  const auth = new OpenAICodexWebAuth(store, { proxyManager, resolveProxyUrl, authorizationTimeoutMs, quotaState })
   const storedFilename = (store as OpenAICodexCredentialStore & { filename?: unknown }).filename
   const fastMode = fastModeOverride ?? new FastModeRegistry()
   const trustedOrigins = trustedOriginsOverride ?? (typeof storedFilename === 'string'
     ? new OpenAICodexTrustedOriginsStore(join(dirname(storedFilename), OPENAI_CODEX_TRUSTED_ORIGINS_FILENAME))
     : new OpenAICodexTrustedOriginsStore())
-  ctx.effect(() => {
+  ctx.effect(function* () {
+    const auth = new OpenAICodexWebAuth(store, { proxyManager, resolveProxyUrl, authorizationTimeoutMs, quotaState })
+    // Cordis collects each yield immediately and disposes in reverse order, including on setup failure.
+    yield () => auth.dispose()
     const authorize = async (req: IncomingMessage, res: ServerResponse): Promise<boolean> => {
+      const rejection = harnessHttpRejection(ctx, req)
+      if (rejection !== undefined) {
+        json(res, rejection.status, { error: rejection.error })
+        return false
+      }
       const decision = await trustedRequestDecision(req, trustedOrigins)
       if (decision.trusted) return true
       json(res, 403, { error: decision.error })
       return false
     }
-    const routes = [
-      ctx.webServer.register({
-        kind: 'exact',
-        path: OPENAI_CODEX_AUTH_STATUS_PATH,
-        handler: async (req, res) => {
-          if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' })
-          if (!await authorize(req, res)) return
-          const snapshot = await store.captureActiveAccount()
-          const [status, accounts] = await Promise.all([auth.status(snapshot), snapshot.accounts()])
-          json(res, 200, { ...status, accounts })
-        },
-      }),
-      ctx.webServer.register({
-        kind: 'exact',
-        path: OPENAI_CODEX_AUTH_LOGIN_PATH,
-        handler: async (req, res) => {
-          if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
-          if (!await authorize(req, res)) return
-          try {
-            json(res, 200, await auth.signIn())
-          } catch (error: unknown) {
-            json(res, 500, { error: safeMessage(error) })
+    yield ctx.webServer.register({
+      kind: 'exact',
+      path: OPENAI_CODEX_AUTH_STATUS_PATH,
+      handler: async (req, res) => {
+        if (req.method !== 'GET') return json(res, 405, { error: 'method not allowed' })
+        if (!await authorize(req, res)) return
+        const snapshot = await store.captureActiveAccount()
+        const [status, accounts] = await Promise.all([auth.status(snapshot), snapshot.accounts()])
+        json(res, 200, { ...status, accounts })
+      },
+    })
+    yield ctx.webServer.register({
+      kind: 'exact',
+      path: OPENAI_CODEX_AUTH_LOGIN_PATH,
+      handler: async (req, res) => {
+        if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
+        if (!await authorize(req, res)) return
+        try {
+          json(res, 200, await auth.signIn())
+        } catch (error: unknown) {
+          json(res, 500, { error: safeMessage(error) })
+        }
+      },
+    })
+    yield ctx.webServer.register({
+      kind: 'exact',
+      path: OPENAI_CODEX_AUTH_CALLBACK_PATH,
+      handler: async (req, res) => {
+        if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
+        if (!await authorize(req, res)) return
+        const type = header(req, 'content-type')
+        if (type === undefined || !/^application\/json(?:\s*;|$)/iu.test(type.trim())) {
+          return json(res, 415, { error: 'unsupported content type' })
+        }
+        try {
+          const raw = await readFastModeBody(req)
+          if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return json(res, 400, { error: 'invalid input' })
+          const body = raw as Record<string, unknown>
+          if (Object.keys(body).length !== 1 || typeof body['callbackUrl'] !== 'string') {
+            return json(res, 400, { error: 'invalid input' })
           }
-        },
-      }),
-      ctx.webServer.register({
-        kind: 'exact',
-        path: OPENAI_CODEX_AUTH_CALLBACK_PATH,
-        handler: async (req, res) => {
-          if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
-          if (!await authorize(req, res)) return
-          const type = header(req, 'content-type')
-          if (type === undefined || !/^application\/json(?:\s*;|$)/iu.test(type.trim())) {
-            return json(res, 415, { error: 'unsupported content type' })
-          }
-          try {
-            const raw = await readFastModeBody(req)
-            if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return json(res, 400, { error: 'invalid input' })
-            const body = raw as Record<string, unknown>
-            if (Object.keys(body).length !== 1 || typeof body['callbackUrl'] !== 'string') {
-              return json(res, 400, { error: 'invalid input' })
-            }
-            const status = auth.submitCallback(body['callbackUrl'])
-            return json(res, status, status === 200 ? { ok: true } : {
-              error: status === 409 ? 'manual callback unavailable' : 'invalid callback URL',
-            })
-          } catch (error: unknown) {
-            return json(res, error instanceof RangeError ? 413 : 400, {
-              error: error instanceof RangeError ? 'request body too large' : 'invalid input',
-            })
-          }
-        },
-      }),
-      ctx.webServer.register({
-        kind: 'exact',
-        path: OPENAI_CODEX_AUTH_CANCEL_PATH,
-        handler: async (req, res) => {
-          if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
-          if (!await authorize(req, res)) return
-          try {
-            await auth.cancel()
-            json(res, 200, await auth.status())
-          } catch (error: unknown) {
-            json(res, 500, { error: safeMessage(error) })
-          }
-        },
-      }),
-      ctx.webServer.register({
-        kind: 'exact',
-        path: OPENAI_CODEX_AUTH_LOGOUT_PATH,
-        handler: async (req, res) => {
-          if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
-          if (!await authorize(req, res)) return
-          try {
-            await auth.signOut()
-            json(res, 200, { ok: true })
-          } catch (error: unknown) {
-            json(res, 500, { error: safeMessage(error) })
-          }
-        },
-      }),
-      ctx.webServer.register({
-        kind: 'exact',
-        path: OPENAI_CODEX_AUTH_ACCOUNTS_PATH,
-        handler: async (req, res) => {
-          if (req.method !== 'GET' && req.method !== 'POST' && req.method !== 'DELETE') {
-            return json(res, 405, { error: 'method not allowed' })
-          }
-          if (!await authorize(req, res)) return
-          if (req.method === 'GET') return json(res, 200, { accounts: await store.accounts() })
-          const type = header(req, 'content-type')
-          if (type === undefined || !/^application\/json(?:\s*;|$)/iu.test(type.trim())) {
-            return json(res, 415, { error: 'unsupported content type' })
-          }
-          try {
-            const raw = await readFastModeBody(req)
-            if (req.method === 'POST') {
-              const body = activateAccountBody(raw)
-              if (body === undefined) return json(res, 400, { error: 'invalid input' })
-              return json(res, 200, await auth.activateAccount(body.accountKey))
-            }
-            const body = removeAccountBody(raw)
+          const status = auth.submitCallback(body['callbackUrl'])
+          return json(res, status, status === 200 ? { ok: true } : {
+            error: status === 409 ? 'manual callback unavailable' : 'invalid callback URL',
+          })
+        } catch (error: unknown) {
+          return json(res, error instanceof RangeError ? 413 : 400, {
+            error: error instanceof RangeError ? 'request body too large' : 'invalid input',
+          })
+        }
+      },
+    })
+    yield ctx.webServer.register({
+      kind: 'exact',
+      path: OPENAI_CODEX_AUTH_CANCEL_PATH,
+      handler: async (req, res) => {
+        if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
+        if (!await authorize(req, res)) return
+        try {
+          await auth.cancel()
+          json(res, 200, await auth.status())
+        } catch (error: unknown) {
+          json(res, 500, { error: safeMessage(error) })
+        }
+      },
+    })
+    yield ctx.webServer.register({
+      kind: 'exact',
+      path: OPENAI_CODEX_AUTH_LOGOUT_PATH,
+      handler: async (req, res) => {
+        if (req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
+        if (!await authorize(req, res)) return
+        try {
+          await auth.signOut()
+          json(res, 200, { ok: true })
+        } catch (error: unknown) {
+          json(res, 500, { error: safeMessage(error) })
+        }
+      },
+    })
+    yield ctx.webServer.register({
+      kind: 'exact',
+      path: OPENAI_CODEX_AUTH_ACCOUNTS_PATH,
+      handler: async (req, res) => {
+        if (req.method !== 'GET' && req.method !== 'POST' && req.method !== 'DELETE') {
+          return json(res, 405, { error: 'method not allowed' })
+        }
+        if (!await authorize(req, res)) return
+        if (req.method === 'GET') return json(res, 200, { accounts: await store.accounts() })
+        const type = header(req, 'content-type')
+        if (type === undefined || !/^application\/json(?:\s*;|$)/iu.test(type.trim())) {
+          return json(res, 415, { error: 'unsupported content type' })
+        }
+        try {
+          const raw = await readFastModeBody(req)
+          if (req.method === 'POST') {
+            const body = activateAccountBody(raw)
             if (body === undefined) return json(res, 400, { error: 'invalid input' })
-            return json(res, 200, await auth.removeAccount(body.accountKey, body.replacementAccountKey))
-          } catch (error: unknown) {
-            if (error instanceof RangeError) return json(res, 413, { error: 'request body too large' })
-            if (error instanceof TypeError) return json(res, 400, { error: 'invalid input' })
-            const mapped = accountMutationError(error)
-            return json(res, mapped.status, { error: mapped.error })
+            return json(res, 200, await auth.activateAccount(body.accountKey))
           }
-        },
-      }),
-      ctx.webServer.register({
-        kind: 'exact',
-        path: OPENAI_CODEX_FAST_MODE_PATH,
-        handler: async (req, res) => {
-          if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
-          if (!await authorize(req, res)) return
-          if (req.method === 'GET') {
-            const sessionId = fastModeSessionIdFromQuery(req)
-            if (sessionId === undefined) return json(res, 400, { error: 'invalid input' })
-            return json(res, 200, { enabled: fastMode.isEnabled(sessionId) })
-          }
-          const type = header(req, 'content-type')
-          if (type === undefined || !/^application\/json(?:\s*;|$)/iu.test(type.trim())) {
-            return json(res, 415, { error: 'unsupported content type' })
-          }
-          try {
-            const body = fastModeBody(await readFastModeBody(req))
-            if (body === undefined) return json(res, 400, { error: 'invalid input' })
-            fastMode.set(body.sessionId, body.enabled)
-            return json(res, 200, { enabled: fastMode.isEnabled(body.sessionId) })
-          } catch (error: unknown) {
-            return json(res, error instanceof RangeError ? 413 : 400, { error: error instanceof RangeError ? 'request body too large' : 'invalid input' })
-          }
-        },
-      }),
-    ]
-    return async () => {
-      for (const dispose of routes) dispose()
-      await auth.dispose()
-    }
+          const body = removeAccountBody(raw)
+          if (body === undefined) return json(res, 400, { error: 'invalid input' })
+          return json(res, 200, await auth.removeAccount(body.accountKey, body.replacementAccountKey))
+        } catch (error: unknown) {
+          if (error instanceof RangeError) return json(res, 413, { error: 'request body too large' })
+          if (error instanceof TypeError) return json(res, 400, { error: 'invalid input' })
+          const mapped = accountMutationError(error)
+          return json(res, mapped.status, { error: mapped.error })
+        }
+      },
+    })
+    yield ctx.webServer.register({
+      kind: 'exact',
+      path: OPENAI_CODEX_FAST_MODE_PATH,
+      handler: async (req, res) => {
+        if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
+        if (!await authorize(req, res)) return
+        if (req.method === 'GET') {
+          const sessionId = fastModeSessionIdFromQuery(req)
+          if (sessionId === undefined) return json(res, 400, { error: 'invalid input' })
+          return json(res, 200, { enabled: fastMode.isEnabled(sessionId) })
+        }
+        const type = header(req, 'content-type')
+        if (type === undefined || !/^application\/json(?:\s*;|$)/iu.test(type.trim())) {
+          return json(res, 415, { error: 'unsupported content type' })
+        }
+        try {
+          const body = fastModeBody(await readFastModeBody(req))
+          if (body === undefined) return json(res, 400, { error: 'invalid input' })
+          fastMode.set(body.sessionId, body.enabled)
+          return json(res, 200, { enabled: fastMode.isEnabled(body.sessionId) })
+        } catch (error: unknown) {
+          return json(res, error instanceof RangeError ? 413 : 400, { error: error instanceof RangeError ? 'request body too large' : 'invalid input' })
+        }
+      },
+    })
   }, 'dsh-codex-connect: Web OAuth routes')
 }

@@ -281,3 +281,44 @@ reads and closes any opened handle. Existing identity, symlink, size and POSIX
 permission scenarios also pass. Both script syntax checks and `git diff --check`
 pass. These are synthetic reader tests, not real-account or live-probe acceptance.
 Only scripts/tests and this record changed; product source/bundles need no rebuild.
+
+## Upstream integration and conflict repair — 2026-10-13
+
+Merged upstream `main` at `fa84fe0` (#331) into the PR branch starting at
+`4499ca4`. Upstream is the authoritative baseline; no personal-branch changes
+were included. Four files had actual conflicts: the Task handler, its publication
+mock, the authenticated UI checker and the generated host entry.
+
+Resolution retains upstream's per-request Connection lookup, redacted fail-closed
+responses, single effect-owned route with the upstream fixture label, dynamic
+Connection mock and named-case UI report validation. Both sides' lifecycle tests
+remain, giving ten authenticated UI-mode cases (nine without UI). The merged pack
+checker retains Windows command-shim handling and upstream's nine-file inventory.
+Our artifact/state/login safety fixes, paused recovery UI fixes, named Phase 2
+cases and platform-independent CLI debug-label setting remain. Generated output
+was rebuilt from the combined source, never resolved by hand or whole-file choice.
+
+Development runtime: Windows, Node `v24.13.0`, pnpm `10.33.0`, locked DSH SDK
+`0.1.7-rc.1`, Cordis `4.0.4`, Vitest `4.1.11`, tsdown `0.23.0`/Rolldown `1.2.8`.
+The first typecheck failed because existing node_modules resolved the other task's
+DSH SDK `0.2.1-alpha.2` instead of this branch's lockfile. User-approved
+`CI=true pnpm install --frozen-lockfile --ignore-scripts` restored locked dependencies;
+the earlier non-interactive install attempt stopped with NO_TTY before restoration.
+No dependency declaration, lockfile, host/Profile or service was modified.
+
+Current combined-tree verification (not historical-head evidence):
+
+- `pnpm run check`: exit 0, including lint/types, build, import/CLI/metrics checks,
+  compatibility, pack manifest and its 26 inventory regressions.
+- Non-browser suite: 140 files, 1,725 passed / 5 platform-gated skipped, plus
+  60/60 standalone login-reader tests. Skips are not counted as passes.
+- `pnpm run test:browser`: exit 0, 12 files / 63 Chromium tests passed.
+- Focused HTTP/publication/store/identity suite: 4 files / 65 tests passed.
+- `node scripts/check-adaptive-task-ui.mjs`: exit 0; actual signed-cookie host,
+  product route, paused browser control and strict named-report validation.
+- Standard build ran twice and produced no additional generated drift after staging.
+- Diff whitespace and unresolved-file checks passed before commit.
+
+These are local synthetic fixtures, not live-account/provider or daily-profile
+acceptance. No new supported-host installation matrix, release or deployment was
+performed. Existing untracked installation snapshots and unrelated files remain.

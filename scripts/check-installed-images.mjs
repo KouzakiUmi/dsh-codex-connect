@@ -21,10 +21,11 @@ export async function checkInstalledImages(importHost, CodexConnect, toolsManife
   const runtimeKey = imageRuntimeService(toolsManifest)
   const [{ Context }, { default: Llm }, { default: Sessions, SessionId },
     { default: Projections }, { default: Prompt }, { default: Tools, defineTool },
-    { default: Agents }, { default: Loop }] = await Promise.all([
+    { default: Agents }, { default: Loop }, Connection] = await Promise.all([
     '@deepseek-ai/cordis', '@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-session',
     '@deepseek-ai/dsh-session-projection', '@deepseek-ai/dsh-system-prompt',
     '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-agent', '@deepseek-ai/dsh-agent-loop',
+    '@deepseek-ai/dsh-client-connection',
   ].map(importHost))
   const directory = await mkdtemp(join(tmpdir(), 'codex-installed-images-'))
   const previousHome = process.env.DSH_HOME
@@ -40,7 +41,25 @@ export async function checkInstalledImages(importHost, CodexConnect, toolsManife
   globalThis.fetch = async () => { networkAttempts++; throw new Error('Unexpected image fixture network request') }
   const routes = new Map()
   try {
-    ctx.provide('webServer', { register(route) { routes.set(route.path, route); return () => routes.delete(route.path) } })
+    ctx.provide('webServer', { register(route) {
+      assert.ok(!routes.has(route.path), 'synthetic WebServer must reject duplicate routes')
+      routes.set(route.path, route)
+      return () => routes.delete(route.path)
+    } })
+    // Real Host authentication, with credential records held only in this synthetic fixture's memory.
+    const records = new Map()
+    ctx.provide('credentials', { async modifyRecord(key, mutate) {
+      const next = await mutate(records.get(key))
+      if (next !== undefined) records.set(key, next)
+      return records.get(key)
+    } })
+    await ctx.plugin(Connection)
+    const index = { writeHead(status, headers) { this.status = status; this.headers = headers }, end() {} }
+    const authenticatedUrl = new URL(ctx.connection.authenticatedUrl('http://127.0.0.1:3081'))
+    assert.equal(ctx.connection.authorizeIndex({ method: 'GET', url: authenticatedUrl.pathname + authenticatedUrl.search,
+      headers: { host: authenticatedUrl.host } }, index), false)
+    assert.equal(index.status, 303)
+    const cookie = index.headers['set-cookie'].split(';')[0]
     ctx.provide('attachments', {
       imageLimits: { maxImageBytes: 1_000_000, maxImagesPerMessage: 4, maxMessageImageBytes: 4_000_000, maxImagePixels: 1_000_000, maxImageDimension: 2048, mediaTypes: ['image/png'] },
       async validateImage(input) {
@@ -104,11 +123,15 @@ export async function checkInstalledImages(importHost, CodexConnect, toolsManife
     assert.equal(image.original.bytes, PNG.length)
     const route = routes.get('/plugins/dsh-codex-connect/images/original')
     assert.ok(route, 'original image download route must be registered')
-    const download = async (sessionId, assetId) => {
+    const download = async (sessionId, assetId, authenticated = true) => {
       const response = { writeHead(status, headers) { this.status = status; this.headers = headers }, end(body) { this.body = body } }
-      await route.handler({ method: 'GET', url: `${route.path}?${new URLSearchParams({ sessionId, assetId })}`, headers: { host: '127.0.0.1:3081' }, socket: { remoteAddress: '127.0.0.1' } }, response)
+      await route.handler({ method: 'GET', url: `${route.path}?${new URLSearchParams({ sessionId, assetId })}`,
+        headers: { host: '127.0.0.1:3081', ...(authenticated ? { cookie } : {}) }, socket: { remoteAddress: '127.0.0.1' } }, response)
       return response
     }
+    const unauthenticated = await download(agent.session.id, image.original.assetId, false)
+    assert.equal(unauthenticated.status, 401)
+    assert.equal(JSON.parse(unauthenticated.body).error, 'DSH_BROWSER_AUTH_REQUIRED')
     const original = await download(agent.session.id, image.original.assetId)
     assert.equal(original.status, 200)
     assert.deepEqual(original.body, PNG)
@@ -177,7 +200,8 @@ export async function checkInstalledImages(importHost, CodexConnect, toolsManife
     assert.deepEqual(await bridgeExecute('synthetic-non-codex'), bridgeContent)
     assert.equal(networkAttempts, 0)
     return { syntheticOnly: true, generated, edited, codeRuns, dispatchEvent: dispatch[0].type,
-      originalDownloadVerified: true, inheritedOriginalVerified: true, earlierForkDenied: true, unrelatedSessionDenied: true,
+      originalDownloadVerified: true, originalAuthenticationVerified: true,
+      inheritedOriginalVerified: true, earlierForkDenied: true, unrelatedSessionDenied: true,
       editSourcesVerified: true, inheritedEditVerified: true, invalidEditRefused: true,
       selectionHandlesVerified: true, realProviderRequests: 0 }
   } finally {

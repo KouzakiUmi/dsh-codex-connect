@@ -1,4 +1,4 @@
-import type { Context } from '@deepseek-ai/cordis'
+import { Context } from '@deepseek-ai/cordis'
 import type { AuthInteraction } from '@earendil-works/pi-ai'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { Readable } from 'node:stream'
@@ -176,10 +176,11 @@ describe('manual callback state boundary', () => {
 interface Route { path: string; handler(req: IncomingMessage, res: ServerResponse): void | Promise<void> }
 function routes(trusted = false) {
   const result: Route[] = []
-  const ctx = {
-    webServer: { register: (route: Route) => { result.push(route); return () => undefined } },
-    effect: (factory: () => () => Promise<void>) => { cleanups.push(factory()) },
-  } as unknown as Context
+  const ctx = new Context()
+  ctx.provide('webServer', { register: (route: Route) => { result.push(route); return () => undefined } } as never)
+  // These are OAuth state/body unit tests; Host cookie admission has separate real-Connection coverage.
+  ctx.provide('connection', { requestRejection: () => undefined } as never)
+  cleanups.push(() => ctx.fiber.dispose())
   registerOpenAICodexAuthRoutes(ctx, store, { has: async () => trusted } as unknown as OpenAICodexTrustedOriginsStore)
   return {
     callback: result.find(route => route.path === OPENAI_CODEX_AUTH_CALLBACK_PATH)!,

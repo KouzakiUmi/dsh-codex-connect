@@ -478,12 +478,16 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
     enabled: () => configValue(config.enableImageGeneration) === true,
     tools: () => configValue(config.imageHandleBridgeTools),
   })
+  // Public catalog/version metadata does not need access to the operator's account or private resources.
   ctx.inject(['webServer'], webCtx => {
+    registerOpenAICodexUpdateRoutes(webCtx, { currentVersion: CODEX_CONNECT_VERSION }, trustedOrigins)
+    registerOpenAICodexModelCatalogRoute(webCtx, openAICodexModelCatalog, trustedOrigins)
+  })
+  // Protected routes follow Connection's lifetime as well as WebServer's; no unauthenticated fallback.
+  ctx.inject(['webServer', 'connection'], webCtx => {
     registerOpenAICodexAuthRoutes(webCtx, credentials, trustedOrigins, fastMode, proxyManager, resolveProviderProxyUrl,
       configValue(config.oauthTimeoutMs) ?? OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS, quota)
     registerOpenAICodexProxyRoutes(webCtx, trustedOrigins, proxyManager)
-    registerOpenAICodexUpdateRoutes(webCtx, { currentVersion: CODEX_CONNECT_VERSION }, trustedOrigins)
-    registerOpenAICodexModelCatalogRoute(webCtx, openAICodexModelCatalog, trustedOrigins)
     registerOpenAICodexOriginalImageRoute(webCtx, trustedOrigins, imageAssets)
   })
 
