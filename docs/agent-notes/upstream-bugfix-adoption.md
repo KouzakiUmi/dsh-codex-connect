@@ -28,7 +28,8 @@ not be used to replace a newer Host/Client bundle wholesale.
 | State path/handle bigint identity checks and fail-unavailable after observed state disappears | `f66cd41`, state-specific portion of `c2e234a` (plus writable flush in `53454e7`) | Adopt final state source and identity/admission tests together. `c2e234a` is a merge commit, not a standalone state-fix cherry-pick. |
 | Initial routeless entry suppression; later gaps preserve recovery; initial gaps get bounded GET retries | `f8998c8`, `336076f`, `4b30858` | Adopt final recovery component and browser suite together. `336076f` also wires login tests into package scripts; it is not UI-only. |
 | Platform-independent standalone CLI source debug labels | `4b7c406` | The configuration setting is independent; this historical commit also renames/rebuilds chunks. Keep future keyring externalization and rebuild all CLI output. |
-| Probe login-file symlink/identity/hardlink rejection; 60 normal-check regressions | POSIX portability from `53454e7`, then `49865b0`, `4499ca4`; normal test wiring in `336076f` | Adopt both readers, their test module and the test-script hunk together. `4499ca4` assumes identity checks/test helpers from `49865b0`; those reader hunks also assume the preceding Windows portability shape. |
+| Write-side flush identity, exact-content and metadata verification for state/artifacts | `2e38a66` | Product-only repair on the existing file-safety/Windows tree. Keep the shared state-module helper, both call sites and write race tests together; rebuild Host output. |
+| Probe login-file symlink/identity/hardlink rejection and bounded read/post-read verification; 120 normal-check regressions | POSIX portability from `53454e7`, then `49865b0`, `4499ca4`; normal test wiring in `336076f`; read-side review repair `2cc098b` | Adopt both readers, their test module and the test-script hunk together. `4499ca4` assumes identity checks/test helpers from `49865b0`; those reader hunks also assume the preceding Windows portability shape. |
 
 `1e5c1bd` and `c2e234a` have two parents. Blind `cherry-pick -m 1` includes
 upstream integration, while `-m 2` includes accumulated branch changes. Neither
@@ -46,6 +47,7 @@ This avoids carrying obsolete route/authentication and UI-count implementations.
    [state store](../../src/adaptive-task-store.ts),
    [artifact store](../../src/adaptive-task-artifacts.ts),
    [identity/admission tests](../../tests/adaptive-task-store-identity.spec.ts),
+   [write/flush race tests](../../tests/adaptive-task-write-identity.spec.ts),
    [artifact tests](../../tests/adaptive-task-evidence.spec.ts), and
    [named Phase 2 cases](../../scripts/adaptive-task-delegation-cases.json).
 2. **Recovery UI:** [component](../../src/client/PublishedAdaptiveTaskControl.tsx)
@@ -57,7 +59,7 @@ This avoids carrying obsolete route/authentication and UI-count implementations.
    [history tests](../../tests/history-migration.spec.ts), and POSIX-only probe guards.
 4. **Probe safety:** [durable reader](../../scripts/native-compaction-durable-smoke.mjs),
    [Luna reader](../../scripts/native-compaction-luna-smoke.mjs),
-   [60-case regression](../../scripts/native-compaction-login-tests.mjs),
+   [120-case regression](../../scripts/native-compaction-login-tests.mjs),
    [controlled-run portability](../../scripts/native-compaction-controlled-cases.mjs)
    and only the normal test-script hunk in [package metadata](../../package.json).
 5. **CLI build reproducibility:** only the standalone debug-label option in
@@ -73,14 +75,14 @@ its own typecheck, focused tests, full check, browser checks where affected and
 fresh generated-build/pack validation. Do not widen supported versions, remove
 safety assertions or hand-edit generated chunks to make a subset pass.
 
-## Current review repair
+## Earlier route-gap review repair
 
 Commit `4b30858` changes only the recovery component, its browser regressions and
 the rebuilt Client artifact. It assumes the prior UI state/ref structure; it is
 an incremental repair on this PR, not a standalone patch on clean main. For clean
 main, use the complete final component/browser-test difference in adoption unit 2.
 
-The latest review concerns a first read during route disposal/re-registration.
+The earlier review concerns a first read during route disposal/re-registration.
 The control now makes at most three initial GETs, with abortable 250/500 ms
 backoff, before concluding 404/405 absence. Missing bodies are not parsed. A
 recovered route exposes the existing task; confirmed ordinary conversations stay
@@ -88,3 +90,25 @@ entry-free. Later gaps still require explicit re-read, writes are never replayed
 and session replacement cancels pending backoff. This is a bounded retry policy,
 not perpetual monitoring or a guarantee that arbitrarily delayed routes recover
 without a remount.
+
+## Latest write/read-side review repairs
+
+The product write-side repair `2e38a66` belongs to adoption unit 1. Do not retain
+only `53454e7`'s writable flush handles without the current verification follow-up. Atomic-write SDK fsync
+is explicitly out of scope and its return value does not expose the written inode.
+The shared flush check therefore verifies regular/single-link bigint path and
+opened-handle identity/metadata, reads only the expected content length plus one
+sentinel byte and compares exact serialized bytes before sync. It verifies the
+handle and path again after sync before returning a reservation/state/digest.
+Keep the helper in the state module and both state/artifact call sites together;
+copying only the artifact call site leaves an unresolved import. This is not a
+new atomic-write implementation or an SDK/version change.
+
+The independent probe read-side repair `2cc098b` belongs to adoption unit 4. It
+does not depend on `2e38a66`, but assumes the earlier probe identity/link checks. Both readers
+use at most 512 KiB plus one sentinel byte and revalidate path/handle link counts,
+bigint identities, sizes, nanosecond mtime/ctime and security metadata before
+credential decoding/return. Partial reads are supported; size growth, truncation,
+valid-account rewrites, link changes and post-read stat failures reject and close
+handles. Keep the updated 120-case test module with the two readers; the older
+mock readFile-only fixture cannot exercise the new bounded-read contract.

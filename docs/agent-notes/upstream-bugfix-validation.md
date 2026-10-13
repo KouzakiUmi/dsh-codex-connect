@@ -401,3 +401,34 @@ to issues/behaviors, explicit prerequisites and final source/test groups. It war
 against blind merge-commit cherry-picks, obsolete fixed totals and overwriting
 current upstream authentication. Subset/cherry-pick combinations were not executed
 or certified; only the complete tested source is accepted by these local checks.
+
+## Write/flush and post-read review repairs — 2026-10-13
+
+Starting source `0dbf9bb`, unchanged upstream `7b34dd5`. Product repair `2e38a66`
+verifies bigint path/handle identity, single-link regular type, stable metadata
+and bounded exact-content readback around the existing writable flush; both
+state updates and new artifacts must finish verification before returning.
+SDK atomic rename/locking is retained; its fsync-free void API is not replaced.
+Probe-only repair `2cc098b` bounds reads to 512 KiB plus one sentinel byte and
+checks path/handle identity, links, size and nanosecond metadata after reading,
+before credential decoding/return. Partial reads work; handles close on failure.
+
+Negative controls: restoring the old bare flush call made both Windows state and
+artifact symlink cases wrongly resolve (2 intended failures). Temporarily removing
+post-read validation made both readers accept synthetic valid-account rewrites on
+mocked Windows/Linux (4 intended failures). Both controls were removed before
+final verification. No real credentials or network were used.
+
+Focused product tests: 4 files / 129 passed, including 68 new write cases. Probe
+reader tests: 120/120 passed (original 60 plus 60 post-read/partial-read cases).
+Full Chromium: 12 files / 69 passed. Final `pnpm run check && node
+scripts/check-adaptive-task-ui.mjs`: exit 0, 141 non-browser files / 1,842 passed
+and 5 Windows-gated skipped, 120 standalone login cases, types/lint/build/imports,
+CLI/metrics/compatibility/pack and authenticated UI report passed. Host output was
+rebuilt; no generated code was hand-edited. First full attempt stopped at a new
+test's widened string/Platform typing; literal typing was corrected and the entire
+check rerun. No assertion, compiler/lint rule, dependency or host setting changed.
+
+The two code commits are scope-separated for selective adoption; their prerequisites
+are in the adoption guide. Combined-tree validation is not a claim that independent
+cherry-picks or a new installed-host/live-account matrix were run.
