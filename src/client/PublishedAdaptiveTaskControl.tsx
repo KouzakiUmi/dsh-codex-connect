@@ -53,7 +53,7 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
     try {
       let decoded: AdaptiveTaskState | undefined
       let absentRoute = false
-      // Only the read-only live-root readiness error may be retried, at most twice.
+      // Initial route gaps and read-only live-root readiness may retry twice; never replay a mutation.
       for (let attempt = 0; attempt < (action === undefined ? 3 : 1); attempt++) {
         const response = await fetch(action === undefined
           ? `${ADAPTIVE_TASK_PATH}?sessionId=${encodeURIComponent(sessionId)}` : ADAPTIVE_TASK_PATH, {
@@ -63,26 +63,24 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
         })
         if (token !== generation.current || operation.signal.aborted) return
         const initialRead = action === undefined && !receivedResponse.current
-        receivedResponse.current = true
-        // Only the first read can identify a routeless host. Later route gaps must retain
-        // the unconfirmed recovery/re-read path; mutations are never automatically retried.
+        // A reload can temporarily remove the route even on the first read. Confirm absence
+        // with bounded GET-only retries; later gaps retain the unconfirmed recovery path.
         if (response.status === 404 || response.status === 405) {
           if (!initialRead) throw new Error('Unconfirmed task state')
-          absentRoute = true; break
+          if (attempt === 2) { absentRoute = true; break }
+        } else {
+          receivedResponse.current = true
+          const body: unknown = await response.json()
+          const readyRetry = action === undefined && response.status === 409 && typeof body === 'object' && body !== null
+            && 'error' in body && body.error === 'TASK_LIVE_ROOT_REQUIRED' && attempt < 2
+          if (!readyRetry) { decoded = response.ok ? decodeTaskState(body) : undefined; break }
         }
-        const body: unknown = await response.json()
-        if (action === undefined && response.status === 409 && typeof body === 'object' && body !== null
-          && 'error' in body && body.error === 'TASK_LIVE_ROOT_REQUIRED' && attempt < 2) {
-          await new Promise<void>((resolve, reject) => {
-            const abort = () => { clearTimeout(wait); operation.signal.removeEventListener('abort', abort); reject(operation.signal.reason) }
-            const wait = setTimeout(() => { operation.signal.removeEventListener('abort', abort); resolve() }, 250 * (attempt + 1))
-            operation.signal.addEventListener('abort', abort, { once: true })
-            if (operation.signal.aborted) abort()
-          })
-          continue
-        }
-        decoded = response.ok ? decodeTaskState(body) : undefined
-        break
+        await new Promise<void>((resolve, reject) => {
+          const abort = () => { clearTimeout(wait); operation.signal.removeEventListener('abort', abort); reject(operation.signal.reason) }
+          const wait = setTimeout(() => { operation.signal.removeEventListener('abort', abort); resolve() }, 250 * (attempt + 1))
+          operation.signal.addEventListener('abort', abort, { once: true })
+          if (operation.signal.aborted) abort()
+        })
       }
       if (absentRoute) {
         if (token !== generation.current || operation.signal.aborted) return
