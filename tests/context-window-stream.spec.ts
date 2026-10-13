@@ -2,8 +2,10 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { SessionId } from '@deepseek-ai/dsh-session'
 import type { AssistantMessageEventStream, Provider } from '@earendil-works/pi-ai'
 import { createOpenAICodexAdapter } from '../src/adapter.ts'
+import { ExtendedContextRegistry } from '../src/extended-context.ts'
 import { OpenAICodexCredentialStore, OPENAI_CODEX_PROVIDER } from '../src/store.ts'
 
 const observed = vi.hoisted(() => [] as {
@@ -55,13 +57,23 @@ describe('context-window request snapshots', () => {
       read: async () => ({ type: 'oauth', accountId: 'offline-account', access: 'offline-test-access', refresh: 'offline-test-refresh', expires: Date.now() + 3_600_000 }),
     } as unknown as OpenAICodexCredentialStore
     credentials.captureActiveAccount = async () => credentials
-    const overrides = { 'gpt-5.6-sol': 350_000 }
-    const adapter = createOpenAICodexAdapter(credentials, () => undefined, undefined, undefined, undefined, undefined, () => overrides)
-    const prepared = await adapter.prepareCall('openai-codex', 'gpt-5.6-sol')
-    overrides['gpt-5.6-sol'] = 300_000
-    const current = await adapter.prepareCall('openai-codex', 'gpt-5.6-sol')
+    const registry = new ExtendedContextRegistry()
+    let maximumContextModels: string[] = []
+    const signal = new AbortController().signal
+    registry.set('a', true)
+    registry.bind(signal, 'a')
+    const adapter = createOpenAICodexAdapter(credentials, () => undefined,
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, registry, () => maximumContextModels)
+    const prepared = await adapter.prepareCall('openai-codex', 'gpt-5.6-sol', signal)
+    maximumContextModels = ['gpt-5.6-sol']
+    const maximum = await adapter.prepareCall('openai-codex', 'gpt-5.6-sol', signal)
+    maximumContextModels = []
+    registry.set('a', false)
+    registry.bind(signal, 'a')
+    const current = await adapter.prepareCall('openai-codex', 'gpt-5.6-sol', signal)
     const options = { provider: 'openai-codex', model: 'gpt-5.6-sol', messages: [], maxTokens: 1024 }
-    for (const call of [prepared, current]) {
+    for (const call of [prepared, maximum, current]) {
       const events: unknown[] = []
       for await (const event of call.stream(options)) events.push(event)
       expect(events).toContainEqual({
@@ -69,12 +81,13 @@ describe('context-window request snapshots', () => {
       })
     }
     expect(observed).toEqual([
-      { apiKey: 'offline-test-access', contextWindow: 350_000, maxTokens: 1024, transport: 'sse' },
-      { apiKey: 'offline-test-access', contextWindow: 300_000, maxTokens: 1024, transport: 'sse' },
+      { apiKey: 'offline-test-access', contextWindow: 500_000, maxTokens: 1024, transport: 'sse' },
+      { apiKey: 'offline-test-access', contextWindow: 872_000, maxTokens: 1024, transport: 'sse' },
+      { apiKey: 'offline-test-access', contextWindow: 272_000, maxTokens: 1024, transport: 'sse' },
     ])
   })
 
-  it('keeps a running request on its captured account while a new request uses the selected account', async () => {
+  it.each(['off', 'expanded', 'maximum'] as const)('keeps %s requests on their captured account while new requests use the selected account', async mode => {
     const root = await mkdtemp(join(tmpdir(), 'dsh-openai-codex-request-account-'))
     try {
       const credentials = new OpenAICodexCredentialStore(join(root, 'auth.json'))
@@ -86,8 +99,12 @@ describe('context-window request snapshots', () => {
         accountId,
       })
       await credentials.modify(OPENAI_CODEX_PROVIDER, () => Promise.resolve(saved('access-one', 'account-1')))
-      const adapter = createOpenAICodexAdapter(credentials, () => undefined)
-      const options = { provider: OPENAI_CODEX_PROVIDER, model: 'gpt-5.6-sol', messages: [] }
+      const registry = new ExtendedContextRegistry()
+      registry.set('a', mode !== 'off')
+      const adapter = createOpenAICodexAdapter(credentials, () => undefined,
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined,
+        undefined, undefined, undefined, undefined, registry, () => mode === 'maximum' ? ['gpt-5.6-sol'] : [])
+      const options = { provider: OPENAI_CODEX_PROVIDER, model: 'gpt-5.6-sol', sessionId: SessionId('a'), messages: [] }
       streamGate.pending = true
       const running = (async () => {
         for await (const _event of adapter.stream(options)) { /* no events in the offline stream */ }
@@ -102,6 +119,8 @@ describe('context-window request snapshots', () => {
       await next
 
       expect(observed.map(request => request.apiKey)).toEqual(['access-one', 'access-two'])
+      const expectedWindow = mode === 'off' ? 272_000 : mode === 'expanded' ? 500_000 : 872_000
+      expect(observed.map(request => request.contextWindow)).toEqual([expectedWindow, expectedWindow])
       streamGate.release?.()
       await running
     } finally {

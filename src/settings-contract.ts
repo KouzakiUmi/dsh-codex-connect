@@ -126,6 +126,8 @@ export const DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS = 10_000
 export interface OpenAICodexSettingsConfig {
   /** Model ids advertised in selectors; undefined advertises the full catalog. */
   models: string[] | undefined
+  /** Models whose session expansion ON budget uses the maximum instead of 500K. */
+  maximumContextModels?: string[]
   /** Route Codex Connect requests through the explicitly configured proxy. */
   enableProxy: boolean
   /** Credential-free HTTP(S) proxy origin; inactive while enableProxy is false. */
@@ -166,6 +168,7 @@ export interface OpenAICodexSettingsConfig {
 
 export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> = Object.freeze({
   models: undefined,
+  maximumContextModels: [],
   enableProxy: false,
   proxyUrl: DEFAULT_OPENAI_CODEX_PROXY_URL,
   contextWindowOverrides: undefined,
@@ -188,8 +191,16 @@ export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> 
 })
 
 /** Input settings allow null to disable overrides inherited from a lower settings layer. */
-export interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides'>> {
+export interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides' | 'maximumContextModels'>> {
   contextWindowOverrides?: Readonly<Record<string, number | null>> | null | undefined
+  /** Host null resets this defaulted list, leaving every maximum preference off. */
+  maximumContextModels?: string[] | null
+}
+
+/** Bounded per-model preferences; these are not arbitrary token budgets. */
+export function isValidMaximumContextModels(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length <= 256
+    && value.every(id => typeof id === 'string' && id.length > 0 && id.length <= 128 && id.trim() === id)
 }
 
 /** Fill the schema defaults even when called without Cordis validation. */
@@ -197,6 +208,10 @@ export function resolveOpenAICodexSettings(
   value: OpenAICodexSettingsInput,
 ): OpenAICodexSettingsConfig {
   const resolved = { ...DEFAULT_OPENAI_CODEX_SETTINGS, ...value }
+  const maximumContextModels = resolved.maximumContextModels ?? []
+  if (!isValidMaximumContextModels(maximumContextModels)) {
+    throw new TypeError('OpenAI Codex maximumContextModels must contain at most 256 bounded model ids')
+  }
   if (typeof resolved.enableReserveFallback !== 'boolean') {
     throw new TypeError('OpenAI Codex enableReserveFallback must be a boolean')
   }
@@ -216,7 +231,7 @@ export function resolveOpenAICodexSettings(
   if (!isValidOpenAICodexReasoningSummary(resolved.reasoningSummary)) {
     throw new TypeError('OpenAI Codex reasoningSummary must be auto, concise, detailed, or none')
   }
-  return { ...resolved, contextWindowOverrides: resolveOpenAICodexContextWindowOverrides(resolved.contextWindowOverrides) }
+  return { ...resolved, maximumContextModels: [...new Set(maximumContextModels)], contextWindowOverrides: undefined }
 }
 
 /** Resolve the active proxy without treating a disabled value as a route. */
@@ -235,9 +250,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsConfig | undefined {
   if (!isRecord(value)) return undefined
   const models = value['models']
+  const maximumContextModels = value['maximumContextModels']
+  if (maximumContextModels !== undefined && maximumContextModels !== null && !isValidMaximumContextModels(maximumContextModels)) return undefined
   const enableProxy = value['enableProxy']
   const proxyUrl = value['proxyUrl']
-  const contextWindowOverrides = value['contextWindowOverrides']
   const enableSearch = value['enableSearch']
   const enableReserveFallback = value['enableReserveFallback']
   const enableNewSessionFastMode = value['enableNewSessionFastMode']
@@ -257,7 +273,6 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   if (models !== undefined && (!Array.isArray(models) || models.some(model => typeof model !== 'string'))) return undefined
   if (enableProxy !== undefined && typeof enableProxy !== 'boolean') return undefined
   if (proxyUrl !== undefined && (typeof proxyUrl !== 'string' || !isValidOpenAICodexProxyUrl(proxyUrl))) return undefined
-  if (contextWindowOverrides !== undefined && contextWindowOverrides !== null && !isValidOpenAICodexContextWindowOverrides(contextWindowOverrides)) return undefined
   if (typeof enableSearch !== 'boolean' || typeof enableImageTool !== 'boolean') return undefined
   if (enableReserveFallback !== undefined && typeof enableReserveFallback !== 'boolean') return undefined
   if (enableNewSessionFastMode !== undefined && typeof enableNewSessionFastMode !== 'boolean') return undefined
@@ -277,12 +292,12 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   // Older Host snapshots predate the output-style choices; absence maps to the released behavior.
   if (outputVerbosity !== undefined && !isValidOpenAICodexOutputVerbosity(outputVerbosity)) return undefined
   if (reasoningSummary !== undefined && !isValidOpenAICodexReasoningSummary(reasoningSummary)) return undefined
-  const overrides = resolveOpenAICodexContextWindowOverrides(contextWindowOverrides)
   return {
     models: models === undefined ? undefined : [...new Set(models)],
+    maximumContextModels: [...new Set(maximumContextModels ?? [])],
     enableProxy: enableProxy ?? false,
     proxyUrl: proxyUrl === undefined ? DEFAULT_OPENAI_CODEX_PROXY_URL : normalizeOpenAICodexProxyUrl(proxyUrl)!,
-    contextWindowOverrides: overrides === undefined ? undefined : Object.freeze(overrides),
+    contextWindowOverrides: undefined,
     enableSearch,
     enableReserveFallback: enableReserveFallback ?? false,
     enableNewSessionFastMode: enableNewSessionFastMode ?? false,

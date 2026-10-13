@@ -37,6 +37,7 @@ async function fixture(initial: Record<string, unknown> = {}, auto?: boolean) {
   vi.stubEnv('DSH_HOME', join(root, 'synthetic-home'))
   let history = true
   let nativeCount = 0
+  let capacity = 0
   const wires: Wire[] = []
   vi.stubGlobal('fetch', vi.fn(async (url: string | URL, init: RequestInit) => {
     expect(String(url)).toBe('https://chatgpt.com/backend-api/codex/responses')
@@ -54,7 +55,7 @@ async function fixture(initial: Record<string, unknown> = {}, auto?: boolean) {
       nativeCount += 1
       return sse({ type: 'compaction', id: 'cmp_settings_fixture', encrypted_content: 'synthetic-settings-checkpoint' })
     }
-    return sse({ type: 'message', id: 'msg_settings_fixture', role: 'assistant', phase: 'final_answer', status: 'completed', content: [{ type: 'output_text', text: history ? 'Synthetic historical reasoning and decisions. '.repeat(400) : 'Continue the synthetic task.', annotations: [] }] })
+    return sse({ type: 'message', id: 'msg_settings_fixture', role: 'assistant', phase: 'final_answer', status: 'completed', content: [{ type: 'output_text', text: history ? 'Synthetic historical reasoning and decisions. '.repeat(400 * Math.max(1, Math.ceil(capacity / 8192))) : 'Continue the synthetic task.', annotations: [] }] })
   }))
   const encode = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url')
   const store = new plugin.OpenAICodexCredentialStore()
@@ -80,8 +81,12 @@ async function fixture(initial: Record<string, unknown> = {}, auto?: boolean) {
     maxOverflowRetries: 0,
   })
   const { editor } = await loadSettingsPlugin(runtime, root, 'dsh-codex-connect', plugin, {
-    models: [MODEL], contextWindowOverrides: { [MODEL]: 8192 }, ...initial,
+    models: [MODEL], ...initial,
   })
+  const modelInfo = await runtime.llm.resolveModelInfo(PROVIDER, MODEL)
+  expect(modelInfo.context).toBeDefined()
+  capacity = modelInfo.context!.contextWindow
+  expect(Number.isSafeInteger(capacity) && capacity > 0).toBe(true)
   const settings = runtime.settings
   const resolved = () => plugin.decodeOpenAICodexSettings(settings.describe().find(entry => entry.ns === NS)?.value)!
   const exercise = async (name: string) => {
@@ -95,7 +100,7 @@ async function fixture(initial: Record<string, unknown> = {}, auto?: boolean) {
     history = true
     await send('Record the first set of synthetic decisions.')
     await send('Record the next synthetic decisions.')
-    expect(runtime.tokenMeter.measure(agent.session).totalTokens).toBeGreaterThanOrEqual(8192 * 0.8)
+    expect(runtime.tokenMeter.measure(agent.session).totalTokens).toBeGreaterThanOrEqual(capacity * 0.8)
     history = false
     // Only an ordinary followup: the real AgentLoop chooses whether to compact.
     await send('Continue the synthetic work.')

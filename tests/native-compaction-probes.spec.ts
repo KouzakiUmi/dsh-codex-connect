@@ -20,7 +20,15 @@ it('rehearses the three-dispatch bridge and rejects fallback without live networ
     expect(report.fallback_dispatched).toBe(false)
   }
 }, 35_000)
-it('rehearses real DSH JSONL write and fresh-process restore with synthetic responses', () => {
+it.skipIf(process.platform !== 'win32')('rejects unsafe Windows probe storage before any dispatch', () => {
+  const result = probe('native-compaction-durable-smoke.mjs', ['--offline'])
+  expect(result.error).toBeUndefined()
+  expect(result.status).toBe(1)
+  expect(JSON.parse(result.stdout.trim())).toMatchObject({ stop_reason: 'TEMP_DIRECTORY_UNSAFE',
+    dispatch_count: 0, real_provider_dispatches: 0, fresh_processes_completed: 0, temporary_storage_removed: true })
+}, 35_000)
+
+it.skipIf(process.platform === 'win32')('rehearses real DSH JSONL write and fresh-process restore with synthetic responses', () => {
   const result = probe('native-compaction-durable-smoke.mjs', ['--offline'])
   expect(result.error).toBeUndefined()
   expect(result.status).toBe(0)
@@ -44,7 +52,7 @@ it('rehearses real DSH JSONL write and fresh-process restore with synthetic resp
   expect(report.metrics[2]).toMatchObject({ replayed_compaction_matches_persisted: true,
     payload: { outside_compaction_contains_target: false, compaction_items: 1 } })
 }, 35_000)
-it('stops failed native persistence acceptance before fallback or a resume dispatch', () => {
+it.skipIf(process.platform === 'win32')('stops failed native persistence acceptance before fallback or a resume dispatch', () => {
   const result = probe('native-compaction-durable-smoke.mjs', ['--offline', '--reject-native'])
   expect(result.error).toBeUndefined()
   expect(result.status).toBe(1)
@@ -58,7 +66,7 @@ it('requires explicit Codex-login selection before live durable acceptance', () 
   expect(result.stdout).toBe('')
   expect(JSON.parse(result.stderr.trim())).toEqual({ stop_reason: 'INVALID_MODE' })
 })
-it.each([
+it.skipIf(process.platform === 'win32').each([
   ['case-only', 'case-only'], ['wrapped', 'target-with-extra-text'],
   ['wrong', 'different-label'], ['empty', 'empty'],
 ])('retains diagnosis for synthetic %s recall without accepting or retrying it', (scenario, classification) => {

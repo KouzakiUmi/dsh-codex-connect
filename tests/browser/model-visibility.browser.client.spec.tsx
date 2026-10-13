@@ -149,90 +149,69 @@ describe('Codex model visibility in Chromium', () => {
     expect(mutate).not.toHaveBeenCalled()
   })
 
-  it('keeps the label and numeric input on one row, the limit on the next and the slider full-width', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json(modelCatalogFixture([{ id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' }]))))
-    const { scope } = settingsScopeFixture()
+  it.each(['implicit', 'explicit'] as const)('clears dirty after restoring a full multi-model %s selection', async mode => {
+    const ids = ['gpt-6.1-sol', 'gpt-6-astra']
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(modelCatalogFixture([
+      { id: ids[0]!, name: 'GPT-6.1 Sol' }, { id: ids[1]!, name: 'GPT-6 Astra' },
+    ]))))
+    const { scope, mutate } = settingsScopeFixture({ models: mode === 'implicit' ? undefined : ids })
     root.render(createElement(OpenAICodexConfiguration, { scope, t }))
-    await page.getByRole('button', { name: en.contextAdjust, exact: true }).click()
-    for (const width of [526, 360]) {
-      await page.viewport(width, 800)
-      host.style.width = '100%'
-      const control = page.getByRole('group', { name: en.contextTokens, exact: true })
-      const input = control.getByRole('spinbutton').element().getBoundingClientRect()
-      const label = control.getByText(en.contextTokens, { exact: true }).element().getBoundingClientRect()
-      const limit = control.getByRole('link', { name: en.contextMaximum }).element().getBoundingClientRect()
-      const slider = control.getByRole('slider').element().getBoundingClientRect()
-      const box = control.element().getBoundingClientRect()
-      expect(Math.abs(label.y + label.height / 2 - input.y - input.height / 2)).toBeLessThan(1)
-      expect(input.width).toBe(112)
-      expect(Math.abs(input.right - box.right)).toBeLessThan(1)
-      expect(limit.top).toBeGreaterThanOrEqual(input.bottom)
-      expect(slider.top).toBeGreaterThanOrEqual(limit.bottom)
-      expect(Math.abs(slider.width - box.width)).toBeLessThan(1)
-      expect(box.height).toBeLessThanOrEqual(100)
-      expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth)
-    }
-    await expect.element(page.getByRole('link', { name: en.contextMaximum })).toHaveAttribute('title', en.contextLimitSource)
-  })
-
-  it('stages per-model budgets, preserves hidden models, discards edits and resets without changing other budgets', async () => {
-    const models = [{ id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' }, { id: 'gpt-5.6-terra', name: 'GPT-5.6 Terra' }]
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(modelCatalogFixture(models)))))
-    const { scope, mutate } = settingsScopeFixture({ contextWindowOverrides: { 'gpt-5.6-sol': 300_000, 'gpt-5.6-terra': 340_000 } })
-    root.render(createElement(OpenAICodexConfiguration, { scope, t }))
-    const sol = page.getByRole('group', { name: 'GPT-5.6 Sol', exact: true })
-    await sol.getByRole('button', { name: en.contextAdjust, exact: true }).click()
-    const input = sol.getByRole('spinbutton', { name: en.contextTokens })
-    await input.fill('350000')
+    const sol = page.getByRole('checkbox', { name: /GPT-6\.1 Sol/u })
+    await expect.element(sol).toBeChecked()
+    await sol.click()
+    await expect.element(page.getByText(en.settingsUnsaved, { exact: true })).toBeVisible()
+    await sol.click()
+    await expect.element(page.getByRole('button', { name: en.save, exact: true })).toBeDisabled()
     expect(mutate).not.toHaveBeenCalled()
-    await page.getByRole('button', { name: en.discard, exact: true }).click()
-    await vi.waitFor(() => { expect((input.element() as HTMLInputElement).value).toBe('300000') })
-    await input.fill('350000')
-    await sol.getByRole('checkbox').click()
-    await page.getByRole('button', { name: en.save, exact: true }).click()
-    await vi.waitFor(() => {
-      expect(scope.getSnapshot().value).toMatchObject({ models: ['gpt-5.6-terra'], contextWindowOverrides: { 'gpt-5.6-sol': 350_000, 'gpt-5.6-terra': 340_000 } })
-    })
-    await sol.getByRole('button', { name: en.contextReset, exact: true }).click()
-    await page.getByRole('button', { name: en.save, exact: true }).click()
-    await vi.waitFor(() => {
-      expect(mutate).toHaveBeenCalledWith(expect.arrayContaining([{ op: 'set', path: ['contextWindowOverrides'], value: { 'gpt-5.6-sol': null, 'gpt-5.6-terra': 340_000 } }]), expect.any(Number))
-      expect(scope.getSnapshot().value?.contextWindowOverrides).toEqual({ 'gpt-5.6-terra': 340_000 })
-      expect((input.element() as HTMLInputElement).value).toBe('272000')
-    })
-    await page.viewport(360, 800)
-    host.style.width = '100%'
-    await vi.waitFor(() => { expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth) })
+    expect(scope.getSnapshot().value?.models).toEqual(mode === 'implicit' ? undefined : ids)
   })
 
-  it('blocks empty, fractional, nonpositive and unsafe budgets, and leaves restoring defaults explicit', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json(modelCatalogFixture([{ id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' }]))))
+  it('stages maximum context independently per model with safe defaults and risk guidance', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json(modelCatalogFixture([
+      { id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol' },
+      { id: 'gpt-6-astra', name: 'GPT-6 Astra' },
+      { id: 'gpt-5.5', name: 'GPT-5.5' },
+    ]).map(model => model.id === 'gpt-5.5' ? { ...model, maxContextWindow: 272_000 } : model))))
     const { scope, mutate } = settingsScopeFixture()
     root.render(createElement(OpenAICodexConfiguration, { scope, t }))
-    await page.getByRole('button', { name: en.contextAdjust, exact: true }).click()
-    const input = page.getByRole('spinbutton', { name: en.contextTokens })
-    for (const value of ['0', '-1', '1.5', '872001', '9007199254740992', '']) {
-      await input.fill('1000')
-      await input.fill(value)
-      await vi.waitFor(() => {
-        expect((page.getByRole('button', { name: en.save, exact: true }).element() as HTMLButtonElement).disabled).toBe(true)
-        expect(input.element().getAttribute('aria-invalid')).toBe('true')
-      })
-    }
+    const sol = page.getByRole('checkbox', { name: `${en.maximumContextModel} (gpt-6.1-sol)`, exact: true })
+    const astra = page.getByRole('checkbox', { name: `${en.maximumContextModel} (gpt-6-astra)`, exact: true })
+    await expect.element(sol).not.toBeChecked()
+    await expect.element(astra).not.toBeChecked()
+    await expect.element(page.getByText(en.extendedContextWarning, { exact: true })).toBeVisible()
+    expect(host.querySelector('[aria-label="' + en.maximumContextModel + ' (gpt-5.5)"]')).toBeNull()
+    await sol.click()
+    await expect.element(astra).not.toBeChecked()
     expect(mutate).not.toHaveBeenCalled()
-    await page.getByRole('button', { name: en.contextReset, exact: true }).click()
+    await page.getByRole('button', { name: en.discard, exact: true }).click()
+    await expect.element(sol).not.toBeChecked()
+    await sol.click()
     await page.getByRole('button', { name: en.save, exact: true }).click()
-    expect(scope.getSnapshot().value?.contextWindowOverrides).toBeUndefined()
+    await vi.waitFor(() => {
+      expect(scope.getSnapshot().value?.maximumContextModels).toEqual(['gpt-6.1-sol'])
+      expect(scope.getSnapshot().value?.models).toBeUndefined()
+    })
+    expect(mutate).toHaveBeenCalledWith([{ op: 'set', path: ['maximumContextModels'], value: ['gpt-6.1-sol'] }], expect.any(Number))
   })
 
-  it('does not allow editing budgets in a read-only scope', async () => {
+  it('removes arbitrary context controls and places save actions above all fields', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json(modelCatalogFixture([{ id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' }]))))
-    const { scope, mutate } = settingsScopeFixture({}, false)
+    const { scope, mutate } = settingsScopeFixture({ contextWindowOverrides: { 'gpt-5.6-sol': 350000 } })
     root.render(createElement(OpenAICodexConfiguration, { scope, t }))
-    await vi.waitFor(() => {
-      expect(page.getByRole('button', { name: en.contextAdjust, exact: true }).element().matches(':disabled')).toBe(true)
-    })
-    expect(mutate).not.toHaveBeenCalled()
+    const model = page.getByRole('checkbox', { name: /GPT-5\.6 Sol/u })
+    await expect.element(model).toBeVisible()
+    expect(host.querySelector('input[type="range"]')).toBeNull()
+    expect(host.querySelector('[role="tabpanel"]:not([hidden]) input[type="number"]')).toBeNull()
+    const actions = host.querySelector('[data-codex-settings-actions]') as HTMLElement
+    expect(getComputedStyle(actions).position).toBe('static')
+    expect(actions.getBoundingClientRect().bottom).toBeLessThanOrEqual(model.element().getBoundingClientRect().top)
+    await model.click()
+    await expect.element(page.getByText(en.settingsUnsaved, { exact: true })).toBeVisible()
+    await model.click()
+    await expect.element(page.getByRole('button', { name: en.save, exact: true })).toBeDisabled()
+    await model.click()
+    await page.getByRole('button', { name: en.save, exact: true }).click()
+    expect(mutate).toHaveBeenCalledWith([{ op: 'set', path: ['models'], value: [] }], expect.any(Number))
   })
 
   it('discloses Auto-review details and asks once before the first profile enablement', async () => {
@@ -330,56 +309,6 @@ describe('Codex model visibility in Chromium', () => {
     await vi.waitFor(() => {
       expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth)
     })
-  })
-
-  it('synchronizes pointer and keyboard slider edits with exact input, warns above default and restores the numeric default', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json(modelCatalogFixture([{ id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' }]))))
-    const { scope, mutate } = settingsScopeFixture()
-    root.render(createElement(OpenAICodexConfiguration, { scope, t }))
-    const sol = page.getByRole('group', { name: 'GPT-5.6 Sol', exact: true })
-    await expect.element(sol).toHaveTextContent('272,000 tokens')
-    await sol.getByRole('button', { name: en.contextAdjust, exact: true }).click()
-    const input = sol.getByRole('spinbutton', { name: en.contextTokens })
-    const slider = sol.getByRole('slider', { name: en.contextSlider })
-    await expect.element(input).toHaveValue(272_000)
-    expect(slider.element().getAttribute('max')).toBe('872000')
-    await input.fill('350123')
-    await expect.element(slider).toHaveValue('350123')
-    await expect.element(sol.getByText(en.contextAboveDefault)).toBeVisible()
-    await slider.click()
-    const pointerBudget = (slider.element() as HTMLInputElement).valueAsNumber
-    expect(pointerBudget).toBeGreaterThan(1)
-    expect(pointerBudget).toBeLessThan(872_000)
-    await expect.element(input).toHaveValue(pointerBudget)
-    await userEvent.keyboard('{End}')
-    await expect.element(input).toHaveValue(872_000)
-    await userEvent.keyboard('{ArrowLeft}')
-    await expect.element(input).toHaveValue(871_999)
-    expect(mutate).not.toHaveBeenCalled()
-    await page.getByRole('button', { name: en.save, exact: true }).click()
-    expect(scope.getSnapshot().value?.contextWindowOverrides).toEqual({ 'gpt-5.6-sol': 871_999 })
-    await sol.getByRole('button', { name: en.contextReset, exact: true }).click()
-    await expect.element(input).toHaveValue(272_000)
-    await expect.element(slider).toHaveValue('272000')
-    await expect.element(sol.getByText(en.contextAboveDefault)).not.toBeInTheDocument()
-    await page.viewport(360, 800)
-    host.style.width = '100%'
-    await vi.waitFor(() => { expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth) })
-  })
-
-  it('uses a fallback model ceiling without claiming a higher official limit', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => Response.json([{ id: 'gpt-5.3-codex-spark', name: 'Spark', contextWindow: 128_000, maxContextWindow: 128_000, contextLimitSource: 'catalog-default' }])))
-    const { scope } = settingsScopeFixture()
-    root.render(createElement(OpenAICodexConfiguration, { scope, t }))
-    await page.getByRole('button', { name: en.contextAdjust, exact: true }).click()
-    await expect.element(page.getByText(en.contextMaximum, { exact: true })).toHaveAttribute('title', en.contextLimitFallback)
-    const input = page.getByRole('spinbutton', { name: en.contextTokens })
-    await expect.element(input).toHaveValue(128_000)
-    await input.fill('128001')
-    await expect.element(page.getByRole('button', { name: en.save, exact: true })).toBeDisabled()
-    await input.fill('128000')
-    await expect.element(page.getByRole('button', { name: en.save, exact: true })).toBeEnabled()
-    expect(page.getByRole('slider', { name: en.contextSlider }).element().getAttribute('max')).toBe('128000')
   })
 
   it('keeps proxy state explicit and touch targets usable in a narrow viewport', async () => {

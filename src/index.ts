@@ -20,7 +20,7 @@ import type {} from '@deepseek-ai/dsh-host-webserver'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-user-approval'
-import { assertOpenAICodexContextWindowOverrides, createOpenAICodexAdapter, openAICodexModelCatalog } from './adapter.ts'
+import { createOpenAICodexAdapter, openAICodexModelCatalog } from './adapter.ts'
 import type { OpenAICodexOutputStyle } from './adapter.ts'
 import { OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS, registerOpenAICodexAuthRoutes } from './auth-routes.ts'
 import { registerOpenAICodexProxyRoutes } from './proxy-routes.ts'
@@ -36,6 +36,7 @@ import {
 } from './update.ts'
 import { CODEX_CONNECT_VERSION } from './version.ts'
 import { FastModeRegistry } from './fast-mode.ts'
+import { ExtendedContextRegistry, registerExtendedContextRequests } from './extended-context.ts'
 import { registerOpenAICodexFastModeDefaults } from './fast-mode-defaults.ts'
 import { assertNoOpenAICodexProviderConflict } from './doctor.ts'
 import { imageGenerateTool } from './image-tool.ts'
@@ -122,13 +123,12 @@ import {
   DEFAULT_OPENAI_CODEX_PROXY_URL,
   DEFAULT_OPENAI_CODEX_REASONING_SUMMARY,
   parseOpenAICodexImageModelHint,
+  isValidMaximumContextModels,
   OPENAI_CODEX_SETTINGS_NAMESPACE,
   resolveOpenAICodexProxyUrl,
   resolveOpenAICodexSettings,
-  parseOpenAICodexContextWindowOverrides,
 } from './settings-contract.ts'
 import type { OpenAICodexOutputVerbosity, OpenAICodexReasoningSummarySetting, OpenAICodexSettingsInput } from './settings-contract.ts'
-import { isRetiredOpenAICodexOverride } from './official-models.ts'
 
 export {
   decodeOpenAICodexSettings,
@@ -265,6 +265,8 @@ export interface Config {
   oauthTimeoutMs?: number
   /** Model ids advertised in selectors; omitted to advertise the full catalog. */
   models?: string[] | undefined
+  /** Use the official maximum ON budget for these models; OFF remains 272K. */
+  maximumContextModels?: string[] | null
   /** Route Codex Connect requests through proxyUrl after explicit activation. */
   enableProxy?: boolean
   /** Credential-free HTTP(S) proxy origin. */
@@ -319,30 +321,19 @@ function configValue<T>(value: T | Volatile<T> | undefined): T | undefined {
     : value as T | undefined
 }
 
-function parseSettingsContextWindowOverrides(
-  value: Record<string, number | null> | null | undefined,
-): Record<string, number | null> | null | undefined {
-  if (value === null || value === undefined) return value
-  const parsed = parseOpenAICodexContextWindowOverrides(value)
-  if (parsed === undefined) return undefined
-  assertOpenAICodexContextWindowOverrides(parsed, openAICodexModelCatalog())
-  // Drop stored cleanup entries for ids the official catalog retired, so a profile that still
-  // carries one keeps loading instead of failing this plugin's whole composition.
-  return Object.fromEntries(Object.entries(parsed)
-    .filter(([id, budget]) => !isRetiredOpenAICodexOverride(id, budget)))
-}
-
 const configSchema = z.object({
   requestMetricsDirectory: z.union([z.const(undefined), z.string()]),
   requestMetricsMaxBytes: z.number().step(1).min(4096).max(64 * 1024 * 1024).default(16 * 1024 * 1024),
   oauthTimeoutMs: z.number().step(1).min(1_000).max(1_800_000).default(OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS),
   models: z.union([z.const(undefined), z.array(z.string())]).volatile(),
+  maximumContextModels: z.transform(z.array(z.string()), value => {
+    if (!isValidMaximumContextModels(value)) throw new TypeError('OpenAI Codex maximumContextModels must contain at most 256 bounded model ids')
+    return [...new Set(value)]
+  }).default([]).volatile(),
   enableProxy: z.boolean().default(false).volatile(),
   proxyUrl: z.string().default(DEFAULT_OPENAI_CODEX_PROXY_URL).volatile(),
-  contextWindowOverrides: z.transform(
-    z.union([z.const(undefined), z.const(null), z.dict(z.union([z.const(null), z.number()]))]),
-    parseSettingsContextWindowOverrides,
-  ).volatile(),
+  // Compatibility sink: stored custom budgets are accepted but never used or rewritten.
+  contextWindowOverrides: z.transform(z.any(), () => undefined).volatile(),
   enableSearch: z.boolean().default(false).volatile(),
   enableReserveFallback: z.boolean().default(false).volatile(),
   enableNewSessionFastMode: z.boolean().default(false).volatile(),
@@ -368,6 +359,7 @@ export interface VolatileConfig {
   requestMetricsMaxBytes: number
   oauthTimeoutMs: number
   models: Volatile<string[] | undefined>
+  maximumContextModels: Volatile<string[]>
   enableProxy: Volatile<boolean>
   proxyUrl: Volatile<string>
   contextWindowOverrides: Volatile<Record<string, number | null> | null | undefined>
@@ -400,9 +392,9 @@ export const Config: z<Config, VolatileConfig> = configSchema
  * @param config - capability gates and standalone-search tuning.
  */
 export function apply(ctx: Context, config: Config | VolatileConfig): void {
-  const catalog = openAICodexModelCatalog()
   const current = (): OpenAICodexSettingsInput => Object.fromEntries(Object.entries({
-    models: configValue(config.models), enableProxy: configValue(config.enableProxy), proxyUrl: configValue(config.proxyUrl),
+    models: configValue(config.models), maximumContextModels: configValue(config.maximumContextModels),
+    enableProxy: configValue(config.enableProxy), proxyUrl: configValue(config.proxyUrl),
     contextWindowOverrides: configValue(config.contextWindowOverrides), enableSearch: configValue(config.enableSearch),
     enableReserveFallback: configValue(config.enableReserveFallback), enableNativeCompaction: configValue(config.enableNativeCompaction),
     enableNewSessionFastMode: configValue(config.enableNewSessionFastMode),
@@ -415,7 +407,6 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
   }).filter(([, value]) => value !== undefined)) as OpenAICodexSettingsInput
   const validateSettings = (value: OpenAICodexSettingsInput): void => {
     resolveOpenAICodexSettings(value)
-    assertOpenAICodexContextWindowOverrides(value.contextWindowOverrides ?? undefined, catalog)
   }
   validateSettings(current())
   const proxyManager = new OpenAICodexProxyManager()
@@ -434,6 +425,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
     join(dirname(credentials.filename), OPENAI_CODEX_TRUSTED_ORIGINS_FILENAME),
   )
   const fastMode = new FastModeRegistry()
+  const extendedContext = new ExtendedContextRegistry()
   registerOpenAICodexFastModeDefaults(ctx, fastMode, () => resolveOpenAICodexSettings(current()))
   const taskDirectory = join(dirname(credentials.filename), 'codex-connect-tasks')
   taskRuntime = new AdaptiveTaskControlRuntime(ctx, {
@@ -460,6 +452,8 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
     permits: reservePermits,
     enabled: () => resolveOpenAICodexSettings(current()).enableReserveFallback,
   })
+  // Capture the final routed model after Reserve's waterfall has completed.
+  registerExtendedContextRequests(ctx, extendedContext)
   assertNoOpenAICodexProviderConflict(ctx.llm.listProviders().map(provider => provider.id))
   new OpenAICodexTransport(
     ctx,
@@ -486,7 +480,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       () => resolveOpenAICodexSettings(current()).models,
       proxyManager,
       resolveProviderProxyUrl,
-      () => resolveOpenAICodexSettings(current()).contextWindowOverrides,
+      undefined, // Retired profile budgets no longer affect runtime context.
       reservePermits,
       () => resolveOpenAICodexSettings(current()).enableNativeCompaction,
       backendRequests,
@@ -496,6 +490,8 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
         const resolved = resolveOpenAICodexSettings(current())
         return { verbosity: resolved.outputVerbosity, reasoningSummary: resolved.reasoningSummary }
       },
+      extendedContext,
+      () => resolveOpenAICodexSettings(current()).maximumContextModels,
     ),
   )
   registerImageHandleBridge(ctx, {
@@ -506,7 +502,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
   })
   ctx.inject(['webServer'], webCtx => {
     registerOpenAICodexAuthRoutes(webCtx, credentials, trustedOrigins, fastMode, proxyManager, resolveProviderProxyUrl,
-      configValue(config.oauthTimeoutMs) ?? OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS, quota)
+      configValue(config.oauthTimeoutMs) ?? OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS, quota, extendedContext)
     registerOpenAICodexProxyRoutes(webCtx, trustedOrigins, proxyManager)
     registerOpenAICodexUpdateRoutes(webCtx, { currentVersion: CODEX_CONNECT_VERSION }, trustedOrigins)
     registerOpenAICodexModelCatalogRoute(webCtx, openAICodexModelCatalog, trustedOrigins)

@@ -33,7 +33,7 @@ export async function runNativeAutomaticScenario(scenario, { root, importHost, p
   let phase = 'history'
   let ctx
   const pressure = ['pressure', 'below-threshold', 'auto-disabled', 'repeated-pressure', 'unshrinkable-tail'].includes(scenario)
-  const capacity = pressure ? 8192 : 200000
+  let capacity = 0
   globalThis.fetch = async (url, init) => {
     assert.equal(String(url), 'https://chatgpt.com/backend-api/codex/responses')
     assert.equal(init.method, 'POST')
@@ -53,7 +53,9 @@ export async function runNativeAutomaticScenario(scenario, { root, importHost, p
       if (scenario === 'overflow-bounded' || ordinaryCount === 3) return rejection(true)
     }
     const long = scenario !== 'below-threshold' && (phase === 'history' || scenario === 'repeated-pressure')
-    return sse(text(long ? 'Synthetic historical reasoning and decisions. '.repeat(scenario === 'unshrinkable-tail' ? 1200 : 400) : 'Continued after automatic acceptance.'))
+    // Keep the original pressure ratio without reintroducing a production budget override.
+    const scale = pressure ? Math.max(1, Math.ceil(capacity / 8192)) : 1
+    return sse(text(long ? 'Synthetic historical reasoning and decisions. '.repeat((scenario === 'unshrinkable-tail' ? 1200 : 400) * scale) : 'Continued after automatic acceptance.'))
   }
   try {
     const modules = await Promise.all([
@@ -73,7 +75,11 @@ export async function runNativeAutomaticScenario(scenario, { root, importHost, p
     await ctx.plugin(persistence.default, { root: join(root, scenario, 'sessions'), compression, packChunks: true })
     ctx.on('agent/request-error', async ({ failure }, next) => { failures.push(failure.code); return next() })
     await ctx.plugin(compaction.default, { auto: scenario !== 'auto-disabled', thresholdRatio: 0.8, headroomTokens: 1024, maxTokens: 1024, retainTokens: 0, compactionRetries: 0, maxOverflowRetries: 1 })
-    await ctx.plugin(plugin, { enableNativeCompaction: true, contextWindowOverrides: { [MODEL]: capacity } })
+    await ctx.plugin(plugin, { enableNativeCompaction: true })
+    const modelInfo = await ctx.llm.resolveModelInfo(PROVIDER, MODEL)
+    assert.ok(modelInfo.context, 'pressure fixtures require provider-owned context metadata')
+    capacity = modelInfo.context.contextWindow
+    assert.ok(Number.isSafeInteger(capacity) && capacity > 0, 'pressure fixtures require the actual advertised model window')
     const { agent } = await ctx.agents.create({ sessionId: sessions.SessionId(`automatic-${scenario}`), agentOptions: { provider: PROVIDER, model: MODEL, reasoningEffort: llm.ReasoningEffortId('low') } })
     const send = async value => {
       agent.followup(llm.createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: value }] }))

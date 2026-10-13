@@ -5,7 +5,6 @@ import type { Provider, SimpleStreamOptions, TranscriptContext } from '@earendil
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
 import { resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, GenerateOptions, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm'
-import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import type { ResolvedPiAiProviderProfile } from '@deepseek-ai/dsh-llm-pi-ai'
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
@@ -13,8 +12,9 @@ import type { OpenAICodexCredentialStore } from './store.ts'
 import { readOpenAICodexRequestAuth } from './auth.ts'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
 import type { FastModeRegistry } from './fast-mode.ts'
+import type { ExtendedContextRegistry } from './extended-context.ts'
 import type { OpenAICodexModelCatalogEntry } from './model-contract.ts'
-import { isValidOpenAICodexContextBudget, openAICodexContextLimit } from './model-contract.ts'
+import { isValidOpenAICodexContextBudget, openAICodexContextLimit, openAICodexExpandedContextWindow } from './model-contract.ts'
 import { OPENAI_CODEX_TRANSPORT, withOpenAICodexModels } from './model-catalog.ts'
 import type { OpenAICodexProxyManager } from './provider-proxy.ts'
 import type { OpenAICodexBackendRequests } from './backend-request.ts'
@@ -335,7 +335,8 @@ export function createOpenAICodexAdapter(
   visibleModelIds?: () => readonly string[] | undefined,
   proxyManager?: OpenAICodexProxyManager,
   resolveProxyUrl?: () => string | undefined,
-  contextWindowOverrides?: () => Readonly<Record<string, number>> | undefined,
+  /** Retired argument kept for positional compatibility; never invoked. */
+  _contextWindowOverrides?: () => Readonly<Record<string, number>> | undefined,
   reservePermits?: ReserveRequestPermits,
   nativeCompactionEnabled?: () => boolean,
   backendRequests?: OpenAICodexBackendRequests,
@@ -343,21 +344,39 @@ export function createOpenAICodexAdapter(
   imageEditingEnabled?: () => boolean,
   /** Profile-scoped output-detail and reasoning-summary preferences read on every request. */
   outputStyle?: () => OpenAICodexOutputStyle | undefined,
+  extendedContext?: ExtendedContextRegistry,
+  maximumContextModels?: () => readonly string[] | undefined,
 ): PiAiAdapter {
   const baseline = withOpenAICodexModels(openaiCodexProvider())
   const provider = reservePermits === undefined ? baseline : withOpenAICodexReserve(baseline, reservePermits)
-  let profiles: Map<string, ResolvedPiAiProviderProfile> | undefined
-  let previousOverrides: Readonly<Record<string, number>> | undefined
-  const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => {
-    const overrides = contextWindowOverrides?.()
-    if (profiles === undefined || !deepEqualJson(previousOverrides, overrides)) {
-      const profile = createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, overrides, backendRequests, taskDispatch?.wrapProvider, outputStyle)
-      previousOverrides = overrides === undefined ? undefined : { ...overrides }
-      // PiAiAdapter keys snapshots by map identity; captured calls keep the old map.
-      profiles = new Map([[OPENAI_CODEX_PROVIDER, profile]])
-    }
-    return profiles
+  const profiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
+    provider, fastMode, proxyManager, resolveProxyUrl, undefined, backendRequests, taskDispatch?.wrapProvider, outputStyle,
+  )]])
+  const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => profiles
+  const adapterOptions = {
+    resolveApiKey: async () => {
+      const operation = async () => (await readOpenAICodexRequestAuth(credentials)).access
+      return proxyManager?.run(resolveProxyUrl?.(), operation) ?? operation()
+    },
+    auth: { credentials: new InMemoryCredentialStore(), authContext: defaultProviderAuthContext() },
+    resolveAttachments,
   }
+  const maximumBudgets = Object.fromEntries(provider.getModels().map(model => [
+    model.id, openAICodexContextLimit(model.id, model.contextWindow).maxContextWindow,
+  ]))
+  const maximumProfiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
+    provider, fastMode, proxyManager, resolveProxyUrl, maximumBudgets, backendRequests, taskDispatch?.wrapProvider, outputStyle,
+  )]])
+  const maximumAdapter = new PiAiAdapter({ ...adapterOptions, profiles: () => maximumProfiles })
+  const expandedBudgets = Object.fromEntries(provider.getModels().map(model => [
+    model.id, openAICodexExpandedContextWindow(model.id, model.contextWindow),
+  ]))
+  const expandedProfiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
+    provider, fastMode, proxyManager, resolveProxyUrl, expandedBudgets, backendRequests, taskDispatch?.wrapProvider, outputStyle,
+  )]])
+  const expandedAdapter = new PiAiAdapter({ ...adapterOptions, profiles: () => expandedProfiles })
+  const expansionAdapter = (model: string): PiAiAdapter => maximumContextModels?.()?.includes(model) === true
+    ? maximumAdapter : expandedAdapter
   class OpenAICodexAdapter extends PiAiAdapter {
     private streamPrepared(
       stream: (options: GenerateOptions) => AsyncIterable<StreamChunk>,
@@ -374,7 +393,10 @@ export function createOpenAICodexAdapter(
     }
 
     override async prepareCall(providerId: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall> {
-      const prepared = await super.prepareCall(providerId, model, signal)
+      const extended = extendedContext?.forRequest(signal, model) === true
+      const prepared = extended
+        ? await expansionAdapter(model).prepareCall(providerId, model, signal)
+        : await super.prepareCall(providerId, model, signal)
       return {
         model: prepared.model,
         stream: options => this.streamPrepared(prepared.stream, options),
@@ -382,7 +404,8 @@ export function createOpenAICodexAdapter(
     }
 
     override stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
-      return this.streamPrepared(next => super.stream(next), options)
+      return this.streamPrepared(next => extendedContext?.isEnabled(next.sessionId) === true
+        ? expansionAdapter(next.model).stream(next) : super.stream(next), options)
     }
 
     override async listModels(providerId: string) {
@@ -393,14 +416,5 @@ export function createOpenAICodexAdapter(
       return catalog.filter(model => visible.has(model.id))
     }
   }
-  return new OpenAICodexAdapter({
-    profiles: currentProfiles,
-    resolveApiKey: async () => {
-      const operation = async () => (await readOpenAICodexRequestAuth(credentials)).access
-      return proxyManager?.run(resolveProxyUrl?.(), operation) ?? operation()
-    },
-    // Host-side auth accepts only the explicit bearer token resolved above.
-    auth: { credentials: new InMemoryCredentialStore(), authContext: defaultProviderAuthContext() },
-    resolveAttachments,
-  })
+  return new OpenAICodexAdapter({ ...adapterOptions, profiles: currentProfiles })
 }

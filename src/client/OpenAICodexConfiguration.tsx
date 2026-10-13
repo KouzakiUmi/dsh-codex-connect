@@ -5,15 +5,12 @@ import type { CSSProperties } from 'react'
 import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { OpenAICodexSettingsConfig } from '../settings-contract.ts'
 import {
-  isValidOpenAICodexContextWindowOverrides,
   isValidOpenAICodexImageModelHint,
   isValidOpenAICodexProxyUrl,
   normalizeOpenAICodexProxyUrl,
 } from '../settings-contract.ts'
 import {
   decodeOpenAICodexModelCatalog,
-  isValidOpenAICodexContextBudget,
-  openAICodexContextLimitSource,
   OPENAI_CODEX_MODEL_CATALOG_PATH,
 } from '../model-contract.ts'
 import type { OpenAICodexModelCatalogEntry } from '../model-contract.ts'
@@ -31,6 +28,8 @@ export interface OpenAICodexConfigurationProps {
   activeModule?: OpenAICodexSettingsModule
   /** Stable prefix that associates external module tabs with these panels. */
   panelIdPrefix?: string
+  /** Let an owned settings dialog protect pending edits on close. */
+  onPendingChange?: (pending: { dirty: boolean; busy: boolean }) => void
 }
 
 /** Modules shared by the Plugin settings page and the Models settings dialog. */
@@ -100,7 +99,7 @@ const UNAVAILABLE_SNAPSHOT = {
 
 const CONFIG_FIELDS = [
   'models',
-  'contextWindowOverrides',
+  'maximumContextModels',
   'enableProxy',
   'enableReserveFallback',
   'enableNewSessionFastMode',
@@ -177,11 +176,10 @@ function sameField(
   left: OpenAICodexSettingsConfig[keyof OpenAICodexSettingsConfig],
   right: OpenAICodexSettingsConfig[keyof OpenAICodexSettingsConfig],
 ): boolean {
-  if (field === 'contextWindowOverrides') {
-    const leftMap = left as OpenAICodexSettingsConfig['contextWindowOverrides']
-    const rightMap = right as OpenAICodexSettingsConfig['contextWindowOverrides']
-    return Object.keys(leftMap ?? {}).length === Object.keys(rightMap ?? {}).length
-      && Object.entries(leftMap ?? {}).every(([id, value]) => rightMap?.[id] === value)
+  if (field === 'maximumContextModels') {
+    const l = left ?? []
+    const r = right ?? []
+    return Array.isArray(l) && Array.isArray(r) && l.length === r.length && l.every(id => r.includes(id))
   }
   if (field !== 'models') return left === right
   if (left === undefined || right === undefined) return left === right
@@ -191,7 +189,7 @@ function sameField(
 }
 
 /** Edit the Host-owned llm-openai-codex settings section with Save/Discard staging. */
-export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix }: OpenAICodexConfigurationProps) {
+export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix, onPendingChange }: OpenAICodexConfigurationProps) {
   const subscribe = useCallback((listener: () => void) => scope?.subscribe(listener) ?? (() => undefined), [scope])
   const getSnapshot = useCallback(() => scope?.getSnapshot() ?? UNAVAILABLE_SNAPSHOT, [scope])
   const snapshot = useSyncExternalStore(
@@ -201,12 +199,12 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   )
   const [draft, setDraft] = useState<OpenAICodexSettingsConfig | undefined>(snapshot.value)
   const baseline = useRef(snapshot.value)
-  const [dirty, setDirty] = useState(false)
+  const dirty = draft !== undefined && baseline.current !== undefined
+    && CONFIG_FIELDS.some(field => !sameField(field, baseline.current![field], draft[field]))
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<'idle' | 'saved' | 'error'>('idle')
   const [modelCatalog, setModelCatalog] = useState<OpenAICodexModelCatalogEntry[] | undefined>()
   const [modelCatalogError, setModelCatalogError] = useState(false)
-  const [expandedModels, setExpandedModels] = useState<Readonly<Record<string, boolean>>>({})
   const [proxyDetection, setProxyDetection] = useState<ProxyDetectionState>({ status: 'idle' })
   const [proxyMode, setProxyMode] = useState<'auto' | 'manual'>('auto')
   const [manualProxyUrl, setManualProxyUrl] = useState(snapshot.value?.proxyUrl ?? '')
@@ -260,6 +258,20 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     currentProxyCheckRequest.current += 1
   }, [])
 
+  useEffect(() => {
+    onPendingChange?.({ dirty, busy })
+  }, [dirty, busy, onPendingChange])
+
+  useEffect(() => {
+    if (!dirty && !busy) return
+    const protect = (event: BeforeUnloadEvent): void => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', protect)
+    return () => { window.removeEventListener('beforeunload', protect) }
+  }, [dirty, busy])
+
   const clearCurrentProxyCheck = (): void => {
     currentProxyCheckRequest.current += 1
     setCurrentProxyCheck({ status: 'idle' })
@@ -270,13 +282,12 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     value: OpenAICodexSettingsConfig[Key],
   ): void => {
     setDraft(current => current === undefined ? current : { ...current, [field]: value })
-    setDirty(true)
     setFeedback('idle')
   }
 
   const discard = (): void => {
-    setDraft(scope?.getSnapshot().value)
-    setDirty(false)
+    baseline.current = scope?.getSnapshot().value
+    setDraft(baseline.current)
     setFeedback('idle')
     setProxyDetection({ status: 'idle' })
     setProxyMode('auto')
@@ -294,7 +305,6 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
       autoReviewDisclosureAcknowledged: true,
       enableAutoReview: true,
     })
-    setDirty(true)
     setFeedback('idle')
     setAutoReviewConfirmOpen(false)
   }
@@ -331,7 +341,6 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     if (tested === undefined) return
     setDraft({ ...draft, proxyUrl: normalized, enableProxy: true })
     setManualProxyUrl(normalized)
-    setDirty(true)
     setFeedback('idle')
     setManualProbe(tested)
     clearCurrentProxyCheck()
@@ -409,12 +418,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     && snapshot.value?.enableProxy === true
     && normalizeOpenAICodexProxyUrl(draft.proxyUrl) === normalizeOpenAICodexProxyUrl(snapshot.value.proxyUrl)
   const validProxySelection = draft?.enableProxy !== true || acceptedProxyUnchanged || testedProxy
-  const validContexts = draft !== undefined && isValidOpenAICodexContextWindowOverrides(draft.contextWindowOverrides ?? {})
-    && Object.entries(draft.contextWindowOverrides ?? {}).every(([id, budget]) => {
-      const model = modelCatalog?.find(entry => entry.id === id)
-      return model !== undefined && isValidOpenAICodexContextBudget(budget, model.maxContextWindow)
-    })
-  const valid = validModel && validTokens && validProxy && validImageModelHint && validContexts && validProxySelection
+  const valid = validModel && validTokens && validProxy && validImageModelHint && validProxySelection
 
   const save = async (): Promise<void> => {
     if (scope === undefined || draft === undefined || !snapshot.writable || !valid) return
@@ -433,10 +437,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
           && !sameField(field, desired[field], current.value![field])) {
           throw new Error(`Concurrent change to ${field}`)
         }
-        // Null masks prevent a reset row from silently re-inheriting a composition override.
-        const value = field === 'contextWindowOverrides'
-          ? { ...Object.fromEntries((modelCatalog ?? []).map(model => [model.id, null])), ...desired.contextWindowOverrides }
-          : desired[field]
+        const value = desired[field]
         return value === undefined ? { op: 'unset', path: [field] } : { op: 'set', path: [field], value }
       })
       if (ops.length > 0) await scope.mutate(ops, current.revision)
@@ -444,8 +445,8 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
       if (accepted === undefined || changed.some(field => !sameField(field, accepted[field], desired[field]))) {
         throw new Error('Host refused the configuration change')
       }
+      baseline.current = accepted
       setDraft(accepted)
-      setDirty(false)
       setFeedback('saved')
       clearCurrentProxyCheck()
     } catch {
@@ -478,6 +479,24 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
 
   return (
     <section style={{ ...sectionStyle, display: visibleModule === 'account' && !dirty ? 'none' : sectionStyle.display }} aria-label={t('configurationHeading')}>
+      <div role="group" aria-label={t('settingsActions')} data-codex-settings-actions style={{ ...actionsStyle, padding: '8px 0' }}>
+        <span aria-live="polite">
+          {dirty ? <span style={bodyStyle}>{t('settingsUnsaved')}</span> : null}
+          {feedback === 'saved' ? <span style={successStyle}>{t('settingsSaved')}</span> : null}
+          {feedback === 'error' ? <span style={errorStyle}>{t('settingsSaveFailed')}</span> : null}
+        </span>
+        <span style={buttonsStyle}>
+          <button type="button" style={{ ...buttonStyle, minHeight: 44 }} disabled={!dirty || busy} onClick={discard}>{t('discard')}</button>
+          <button
+            type="button"
+            style={{ ...primaryButtonStyle, minHeight: 44 }}
+            disabled={!dirty || !valid || !snapshot.writable || busy}
+            onClick={() => { void save() }}
+          >
+            {busy ? t('saving') : t('save')}
+          </button>
+        </span>
+      </div>
       {loading ? <p style={bodyStyle} role="status">{t('settingsLoading')}</p> : null}
       {snapshot.status === 'unavailable' ? <p style={errorStyle} role="alert">{t('settingsUnavailable')}</p> : null}
       {snapshot.status === 'ready' && !snapshot.writable ? <p style={errorStyle} role="alert">{t('settingsReadOnly')}</p> : null}
@@ -521,14 +540,9 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
           {modelCatalogError ? <p style={errorStyle} role="alert">{t('modelCatalogFailed')}</p> : null}
           {modelCatalog === undefined ? null : (
             <div style={modelListStyle} role="group" aria-label={t('modelCatalog')}>
+              <p style={bodyStyle} role="note">{t('extendedContextWarning')}</p>
               {modelCatalog.map(model => {
                 const selected = draft.models === undefined || draft.models.includes(model.id)
-                const budget = draft.contextWindowOverrides?.[model.id]
-                const invalidBudget = budget !== undefined && !isValidOpenAICodexContextBudget(budget, model.maxContextWindow)
-                const effectiveBudget = budget ?? model.contextWindow
-                const changeBudget = (value: number): void => {
-                  update('contextWindowOverrides', { ...draft.contextWindowOverrides, [model.id]: value })
-                }
                 return (
                   <div key={model.id} role="group" aria-label={model.name} style={{ minWidth: 0, padding: '10px 0', borderBottom: '1px solid var(--dsw-alias-border-l2)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
@@ -540,7 +554,10 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
                             const visible = new Set(draft.models ?? modelCatalog.map(entry => entry.id))
                             if (event.currentTarget.checked) visible.add(model.id)
                             else visible.delete(model.id)
-                            update('models', modelCatalog.filter(entry => visible.has(entry.id)).map(entry => entry.id))
+                            const models = modelCatalog.filter(entry => visible.has(entry.id)).map(entry => entry.id)
+                            // Restoring an implicit full catalog must restore the original value,
+                            // not leave an equivalent explicit list marked as an edit.
+                            update('models', baseline.current?.models === undefined && models.length === modelCatalog.length ? undefined : models)
                           }}
                         />
                         <span>
@@ -548,56 +565,23 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
                           {model.name === model.id ? null : <span style={modelIdStyle}> ({model.id})</span>}
                         </span>
                       </label>
-                      <div style={{ ...buttonsStyle, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <span style={bodyStyle}>{t('modelContext')}: {invalidBudget ? t('contextCustom') : `${effectiveBudget.toLocaleString()} tokens${budget === undefined ? ` · ${t('contextDefault')}` : ''}`}</span>
-                        <button type="button" style={buttonStyle} aria-expanded={expandedModels[model.id] === true} onClick={() => { setExpandedModels(current => ({ ...current, [model.id]: !current[model.id] })) }}>
-                          {expandedModels[model.id] === true ? t('contextHide') : t('contextAdjust')}
-                        </button>
-                      </div>
+                      {model.maxContextWindow > model.contextWindow ? <label style={{ ...modelRowStyle, flexWrap: 'wrap', minHeight: 44 }}>
+                        <input type="checkbox" checked={draft.maximumContextModels?.includes(model.id) === true}
+                          aria-label={`${t('maximumContextModel')} (${model.id})`}
+                          onChange={event => {
+                            const maximum = new Set(draft.maximumContextModels ?? [])
+                            if (event.currentTarget.checked) maximum.add(model.id)
+                            else maximum.delete(model.id)
+                            update('maximumContextModels', [...maximum])
+                          }} />
+                        <span>{t('maximumContextModel')} · {model.maxContextWindow / 1000}K</span>
+                      </label> : null}
                     </div>
-                    {expandedModels[model.id] === true ? (
-                      <div role="group" aria-label={t('contextTokens')} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-                        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                          <span style={labelStyle}>{t('contextTokens')}</span>
-                          <input type="number" min={1} step={1} max={model.maxContextWindow} style={{ ...controlStyle, width: 112, flexShrink: 0, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}
-                            value={Number.isNaN(effectiveBudget) ? '' : effectiveBudget}
-                            aria-invalid={invalidBudget}
-                            onChange={event => { changeBudget(event.currentTarget.valueAsNumber) }}
-                          />
-                        </label>
-                        <div style={{ ...bodyStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                            {model.contextLimitSource === 'codex-catalog'
-                              ? <a href={openAICodexContextLimitSource(model.id)} target="_blank" rel="noopener noreferrer" title={t('contextLimitSource')} style={{ color: 'inherit', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>{t('contextMaximum')}</a>
-                              : <span title={t('contextLimitFallback')}>{t('contextMaximum')}</span>}
-                            <span style={{ padding: '1px 6px', borderRadius: 4, background: 'var(--dsw-alias-bg-layer-2, var(--dsw-alias-bg-layer-1))', fontVariantNumeric: 'tabular-nums' }}>{model.maxContextWindow}</span>
-                            <span>tokens</span>
-                          </span>
-                          <button type="button" title={`${t('contextDefault')}: ${model.contextWindow.toLocaleString()} tokens`} style={{ ...bodyStyle, padding: '2px 0', border: 0, background: 'transparent', font: 'inherit', fontSize: 12, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }} onClick={() => {
-                            const overrides = { ...draft.contextWindowOverrides }
-                            delete overrides[model.id]
-                            update('contextWindowOverrides', overrides)
-                          }}>{t('contextReset')}</button>
-                        </div>
-                        <input type="range" min={1} max={model.maxContextWindow} step={1}
-                          aria-label={t('contextSlider')}
-                          aria-valuetext={invalidBudget ? t('contextInvalid') : `${effectiveBudget.toLocaleString()} tokens`}
-                          style={{ width: '100%', height: 20, margin: 0, accentColor: 'var(--dsw-alias-label-secondary)' }}
-                          value={invalidBudget ? model.contextWindow : effectiveBudget}
-                          onChange={event => { changeBudget(event.currentTarget.valueAsNumber) }}
-                        />
-                        {budget !== undefined && budget > model.contextWindow && !invalidBudget
-                          ? <p style={bodyStyle} role="status">{t('contextAboveDefault')}</p> : null}
-                        {invalidBudget ? <p style={errorStyle} role="alert">{t('contextInvalid')} (1–{model.maxContextWindow.toLocaleString()})</p> : null}
-                      </div>
-                    ) : null}
                   </div>
                 )
               })}
             </div>
           )}
-          <p style={bodyStyle}>{t('contextWarning')}</p>
-          {!validContexts ? <p style={errorStyle} role="alert">{t('contextInvalid')}</p> : null}
           </div>
           <div id={`${panelPrefix}-network`} role="tabpanel" aria-labelledby={`${panelPrefix}-network-tab`} hidden={visibleModule !== 'network'} style={{ ...fieldsetStyle, display: visibleModule === 'network' ? fieldsetStyle.display : 'none' }}>
           <div style={{ paddingTop: 4 }}>
@@ -957,23 +941,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
       {visibleModule === 'network' && !validProxy && draft !== undefined ? <p style={errorStyle} role="alert">{t('invalidProxyUrl')}</p> : null}
       {visibleModule === 'capabilities' && !validImageModelHint && draft !== undefined ? <p style={errorStyle} role="alert">{t('invalidImageModelHint')}</p> : null}
       {visibleModule === 'capabilities' ? <p style={bodyStyle}>{t('routingNote')}</p> : null}
-      <div style={{ ...actionsStyle, position: 'sticky', bottom: 0, zIndex: 1, padding: '10px 0', background: 'var(--dsw-alias-bg-layer-1, white)' }}>
-        <span aria-live="polite">
-          {feedback === 'saved' ? <span style={successStyle}>{t('settingsSaved')}</span> : null}
-          {feedback === 'error' ? <span style={errorStyle}>{t('settingsSaveFailed')}</span> : null}
-        </span>
-        <span style={buttonsStyle}>
-          <button type="button" style={{ ...buttonStyle, minHeight: 44 }} disabled={!dirty || busy} onClick={discard}>{t('discard')}</button>
-          <button
-            type="button"
-            style={{ ...primaryButtonStyle, minHeight: 44 }}
-            disabled={!dirty || !valid || !snapshot.writable || busy}
-            onClick={() => { void save() }}
-          >
-            {busy ? t('saving') : t('save')}
-          </button>
-        </span>
-      </div>
+
     </section>
   )
 }

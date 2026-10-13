@@ -19,7 +19,7 @@ import { OPENAI_CODEX_PROVIDER } from '../src/store.ts'
 import { Config } from '../src/index.ts'
 
 describe('OpenAI Codex rc.2 adapter profile', () => {
-  it.each(['gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna'])('adds missing %s without duplicating or overwriting native metadata', id => {
+  it.each(['gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna'])('adds missing %s without duplicating, normalizes the default window, and preserves other native metadata', id => {
     const provider = openaiCodexProvider()
     const baseline = provider.getModels().filter(model => model.id !== id)
     const patched = withOpenAICodexModels({ ...provider, getModels: () => baseline })
@@ -31,15 +31,16 @@ describe('OpenAI Codex rc.2 adapter profile', () => {
       cost: { input: 1, output: 2, cacheRead: 3, cacheWrite: 4 }, compat: { supportsStrictMode: false },
       thinkingLevelMap: { minimal: 'minimal' as const } }
     const result = withOpenAICodexModels({ ...provider, getModels: () => [native, ...baseline] }).getModels()
-    expect(result.filter(model => model.id === id)).toEqual([{ ...native,
+    expect(result.filter(model => model.id === id)).toEqual([{ ...native, contextWindow: 272_000,
       thinkingLevelMap: { off: null, minimal: null, xhigh: 'xhigh', max: 'max' } }])
     expect(native.thinkingLevelMap).toEqual({ minimal: 'minimal' })
-    // Native entries survive unchanged, except the calibrated ids and models the official catalog removed.
+    expect(native.contextWindow).toBe(300_000)
+    // Retained native metadata survives in detached entries with the standard 272K budget.
     const retained = baseline.filter(model => model.id !== OPENAI_CODEX_ASTRA_MODEL_ID
       && !['gpt-6.1-sol', 'gpt-6-sol', 'gpt-6-luna'].includes(model.id)
       && !OFFICIAL_CODEX_REMOVED_MODEL_IDS.includes(model.id))
     for (const old of retained) {
-      expect(result.find(model => model.id === old.id)).toBe(old)
+      expect(result.find(model => model.id === old.id)).toStrictEqual({ ...old, contextWindow: 272_000 })
     }
   })
 
@@ -160,9 +161,9 @@ describe('context-window overrides', () => {
     expect(listed.find(model => model.id === other.id)?.contextWindow).toBe(other.contextWindow)
   })
 
-  it('accepts a contextWindowOverrides config section', () => {
+  it('accepts but ignores a retired contextWindowOverrides config section', () => {
     expect(Config({ contextWindowOverrides: { 'gpt-5.6-sol': 350_000 } }).contextWindowOverrides.get())
-      .toEqual({ 'gpt-5.6-sol': 350_000 })
+      .toBeUndefined()
     expect(Config({}).contextWindowOverrides.get()).toBeUndefined()
   })
 
@@ -175,20 +176,22 @@ describe('context-window overrides', () => {
     expect(provider.getModels()[0]!.contextWindow).toBe(baseline[0]!.contextWindow)
   })
 
-  it('refreshes resolved budgets without changing an already prepared call or output limits', async () => {
+  it('ignores the retired budget getter without changing prepared calls or output limits', async () => {
     const target = 'gpt-5.6-sol'
     let overrides: Record<string, number> | undefined = { [target]: 350_000 }
+    let getterCalls = 0
     const adapter = createOpenAICodexAdapter({} as OpenAICodexCredentialStore, () => undefined,
-      undefined, undefined, undefined, undefined, () => overrides)
+      undefined, undefined, undefined, undefined, () => { getterCalls += 1; return overrides })
     const first = await adapter.prepareCall(OPENAI_CODEX_PROVIDER, target)
-    expect(first.model.context?.contextWindow).toBe(350_000)
+    expect(first.model.context?.contextWindow).toBe(272_000)
     overrides[target] = 300_000
     const next = await adapter.prepareCall(OPENAI_CODEX_PROVIDER, target)
-    expect(next.model.context?.contextWindow).toBe(300_000)
-    expect(first.model.context?.contextWindow).toBe(350_000)
+    expect(next.model.context?.contextWindow).toBe(272_000)
+    expect(first.model.context?.contextWindow).toBe(272_000)
     overrides = undefined
     const baseline = openaiCodexProvider().getModels().find(model => model.id === target)!
-    expect((await adapter.resolveModel(OPENAI_CODEX_PROVIDER, target)).context?.contextWindow).toBe(baseline.contextWindow)
+    expect((await adapter.resolveModel(OPENAI_CODEX_PROVIDER, target)).context?.contextWindow).toBe(272_000)
+    expect(getterCalls).toBe(0)
     const profile = createOpenAICodexProfile(openaiCodexProvider(), undefined, undefined, undefined, { [target]: 350_000 })
     expect(profile.piProvider.getModels().find(model => model.id === target)?.maxTokens).toBe(baseline.maxTokens)
     expect(profile.configuredMaxTokens.size).toBe(0)

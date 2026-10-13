@@ -11,6 +11,17 @@ export function openAICodexContextLimitSource(_id: string): string {
   return OPENAI_CODEX_CONTEXT_LIMIT_SOURCE
 }
 
+/** Plugin standard budget; intentionally separate from Codex Desktop's 500K default. */
+export function openAICodexDefaultContextWindow(id: string, fallback = 272_000): number {
+  return Object.hasOwn(CONFIGURATION_LIMITS, id) ? 272_000 : fallback
+}
+
+/** The per-model preference only changes the ON budget, never the standard/OFF budget. */
+export function openAICodexExpandedContextWindow(id: string, standard: number, maximum = false): number {
+  const limit = openAICodexContextLimit(id, standard).maxContextWindow
+  return maximum ? limit : Math.max(standard, Math.min(500_000, limit))
+}
+
 const CONFIGURATION_LIMITS: Readonly<Record<string, number>> = Object.freeze({
   'gpt-6.1-sol': 872_000,
   'gpt-6-astra': 872_000,

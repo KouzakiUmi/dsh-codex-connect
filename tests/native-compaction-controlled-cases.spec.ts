@@ -88,7 +88,15 @@ it('requires a new assistant event even when the historical answer is correct', 
   expect(() => newAssistantText([event, { type: 'user/message', seq: 8 }], 7)).toThrow('AGENT_TURN_FAILED')
   expect(newAssistantText([event, { ...event, seq: 9 }], 8)).toBe(target)
 })
-it('claims a future run once, persists across cleanup, and does not allow cross-case reuse', async () => {
+it.skipIf(process.platform !== 'win32')('rejects a Windows run ledger without creating a run claim', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'controlled-run-claim-'))
+  try {
+    await expect(claimControlledRun(root, 'windows-attempt', 'assistant-origin')).rejects.toThrow('RUN_LEDGER_UNSAFE')
+    await expect(readFile(join(root, 'windows-attempt.json'))).rejects.toMatchObject({ code: 'ENOENT' })
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+it.skipIf(process.platform === 'win32')('claims a future run once, persists across cleanup, and does not allow cross-case reuse', async () => {
   const root = await mkdtemp(join(tmpdir(), 'controlled-run-claim-'))
   try {
     await claimControlledRun(root, 'same-attempt', 'assistant-origin')
@@ -102,7 +110,7 @@ it('claims a future run once, persists across cleanup, and does not allow cross-
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
-it.each(['retained-user', 'assistant-origin'])('runs %s through real DSH persistence and two processes with request-derived synthetic answers', caseName => {
+it.skipIf(process.platform === 'win32').each(['retained-user', 'assistant-origin'])('runs %s through real DSH persistence and two processes with request-derived synthetic answers', caseName => {
   const result = probe(['--offline', `--case=${caseName}`])
   expect(result.error).toBeUndefined()
   expect(result.status, result.stdout).toBe(0)
@@ -117,7 +125,7 @@ it.each(['retained-user', 'assistant-origin'])('runs %s through real DSH persist
   expect(`${result.stdout}${result.stderr}`).not.toMatch(/CHECKPOINT_LABEL:|SYNTHETIC-REMEMBER-V1:|Library task|Remember the checkpoint label/u)
 }, 35_000)
 
-it.each([
+it.skipIf(process.platform === 'win32').each([
   ['assistant-origin', 'missing-native-target', 'COMPACTED_PREFIX_TARGET_MISSING', 2],
   ['assistant-origin', 'plaintext-leak', 'REPLAY_TARGET_LEAK', 3],
   ['retained-user', 'retained-user-lost', 'REPLAY_RETAINED_INPUT_MISMATCH', 3],
@@ -131,7 +139,7 @@ it.each([
   expect(report.blocked_dispatch_attempts).toBeGreaterThan(0)
 }, 35_000)
 
-it.each(['case-only', 'wrapped', 'wrong', 'empty'])('retains strict failure and diagnostics for controlled %s answers', fault => {
+it.skipIf(process.platform === 'win32').each(['case-only', 'wrapped', 'wrong', 'empty'])('retains strict failure and diagnostics for controlled %s answers', fault => {
   const result = probe(['--offline', '--case=assistant-origin', `--offline-fault=${fault}`])
   expect(result.status, result.stdout).toBe(1)
   const report = JSON.parse(result.stdout.trim())

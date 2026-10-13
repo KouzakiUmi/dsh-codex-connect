@@ -14,6 +14,7 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import * as CodexConnect from '../src/index.ts'
+import { ExtendedContextRegistry } from '../src/extended-context.ts'
 import { OPENAI_CODEX_RESERVE_MODEL } from '../src/reserve-usage.ts'
 import { ReserveReturnStore } from '../src/reserve-state.ts'
 import { OpenAICodexQuotaState } from '../src/quota-state.ts'
@@ -84,6 +85,30 @@ async function send(agent: Agent, text: string) {
 }
 
 describe('assembled Reserve agent routing', () => {
+  it('binds extended context after both Reserve entry and ordinary recovery in the real request waterfall', async () => {
+    const originalRead = OpenAICodexQuotaState.prototype.read
+    let shared: OpenAICodexQuotaState | undefined
+    vi.spyOn(OpenAICodexQuotaState.prototype, 'read').mockImplementation(function (this: OpenAICodexQuotaState, ...args) {
+      shared = this
+      return originalRead.apply(this, args)
+    })
+    const bind = vi.spyOn(ExtendedContextRegistry.prototype, 'bind')
+    vi.spyOn(ExtendedContextRegistry.prototype, 'isEnabled').mockReturnValue(true)
+    const { request, agent } = await fixture()
+    let usage = reserveUsage()
+    vi.stubGlobal('fetch', async () => Response.json(usage))
+    const entering = new AbortController().signal
+    const reserved = await request(undefined, entering)
+    expect(reserved.model).toBe(OPENAI_CODEX_RESERVE_MODEL)
+    expect(bind).toHaveBeenLastCalledWith(entering, agent.session.id, OPENAI_CODEX_RESERVE_MODEL)
+    usage = ordinaryUsage()
+    shared!.invalidate()
+    const returning = new AbortController().signal
+    const ordinary = await request(reserved, returning)
+    expect(ordinary.model).toBe('gpt-6-astra')
+    expect(bind).toHaveBeenLastCalledWith(returning, agent.session.id, 'gpt-6-astra')
+  })
+
   it('shares the actual routing snapshot with the account UI without exposing private authority', async () => {
     const original = OpenAICodexQuotaState.prototype.read
     let shared: OpenAICodexQuotaState | undefined

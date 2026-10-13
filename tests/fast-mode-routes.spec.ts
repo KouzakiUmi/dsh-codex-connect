@@ -6,6 +6,7 @@ import {
   registerOpenAICodexAuthRoutes,
 } from '../src/auth-routes.ts'
 import { FastModeRegistry } from '../src/fast-mode.ts'
+import { OPENAI_CODEX_EXTENDED_CONTEXT_PATH } from '../src/extended-context-paths.ts'
 import type { OpenAICodexCredentialStore } from '../src/store.ts'
 
 const store = {} as OpenAICodexCredentialStore
@@ -15,7 +16,7 @@ interface CapturedRoute {
   handler(req: IncomingMessage, res: ServerResponse): Promise<void> | void
 }
 
-function routes(registry = new FastModeRegistry()): CapturedRoute[] {
+function routes(registry = new FastModeRegistry(), path = OPENAI_CODEX_FAST_MODE_PATH): CapturedRoute[] {
   const captured: CapturedRoute[] = []
   const ctx = {
     webServer: {
@@ -28,7 +29,10 @@ function routes(registry = new FastModeRegistry()): CapturedRoute[] {
       return factory()
     },
   } as unknown as Context
-  registerOpenAICodexAuthRoutes(ctx, store, undefined, registry)
+  registerOpenAICodexAuthRoutes(ctx, store, undefined,
+    path === OPENAI_CODEX_FAST_MODE_PATH ? registry : undefined,
+    undefined, undefined, undefined, undefined,
+    path === OPENAI_CODEX_EXTENDED_CONTEXT_PATH ? registry : undefined)
   return captured
 }
 
@@ -69,8 +73,8 @@ function response(): ServerResponse & { status?: number; body?: string } {
   } as unknown as ServerResponse & { status?: number; body?: string }
 }
 
-function fastRoute(registry?: FastModeRegistry): CapturedRoute {
-  const route = routes(registry).find(candidate => candidate.path === OPENAI_CODEX_FAST_MODE_PATH)
+function fastRoute(registry?: FastModeRegistry, path = OPENAI_CODEX_FAST_MODE_PATH): CapturedRoute {
+  const route = routes(registry, path).find(candidate => candidate.path === path)
   if (route === undefined) throw new Error('Fast Mode route was not registered')
   return route
 }
@@ -79,12 +83,12 @@ function bodyOf(responseValue: { body?: string }): unknown {
   return JSON.parse(responseValue.body ?? 'null') as unknown
 }
 
-describe('OpenAI Codex Fast Mode routes', () => {
+describe.each([OPENAI_CODEX_FAST_MODE_PATH, OPENAI_CODEX_EXTENDED_CONTEXT_PATH])('session toggle route %s', (path) => {
   it('defaults off, isolates sessions, and disables by deletion', async () => {
     const registry = new FastModeRegistry()
-    const route = fastRoute(registry)
+    const route = fastRoute(registry, path)
     const initial = response()
-    await route.handler(request({ method: 'GET', url: `${OPENAI_CODEX_FAST_MODE_PATH}?sessionId=a` }), initial)
+    await route.handler(request({ method: 'GET', url: `${path}?sessionId=a` }), initial)
     expect(initial.status).toBe(200)
     expect(bodyOf(initial)).toEqual({ enabled: false })
 
@@ -98,7 +102,7 @@ describe('OpenAI Codex Fast Mode routes', () => {
     expect(bodyOf(enabled)).toEqual({ enabled: true })
 
     const other = response()
-    await route.handler(request({ method: 'GET', url: `${OPENAI_CODEX_FAST_MODE_PATH}?sessionId=b` }), other)
+    await route.handler(request({ method: 'GET', url: `${path}?sessionId=b` }), other)
     expect(bodyOf(other)).toEqual({ enabled: false })
 
     const disabled = response()
@@ -112,11 +116,11 @@ describe('OpenAI Codex Fast Mode routes', () => {
   })
 
   it('fails closed for origin, method, content type, input, and bounded body', async () => {
-    const route = fastRoute()
+    const route = fastRoute(undefined, path)
     const remote = response()
     await route.handler(request({
       method: 'GET',
-      url: `${OPENAI_CODEX_FAST_MODE_PATH}?sessionId=secret-session`,
+      url: `${path}?sessionId=secret-session`,
       remoteAddress: '192.168.1.8',
       origin: 'http://192.168.1.20:3081',
     }), remote)

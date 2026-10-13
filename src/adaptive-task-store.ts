@@ -81,14 +81,20 @@ export class AtomicTaskDocumentStore<T> {
       const parent = await lstat(this.directory)
       if (!parent.isDirectory() || parent.isSymbolicLink()
         || (process.platform !== 'win32' && (parent.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
+      const before = await lstat(filename)
+      // Windows does not implement O_NOFOLLOW; preserve the existing unavailable classification for links.
+      if (before.isSymbolicLink()) throw new Error('Task state link denied')
       const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
       try {
         const stat = await file.stat()
+        if (stat.dev !== before.dev || stat.ino !== before.ino) taskFailure('TASK_STATE_UNSAFE')
         if (!stat.isFile() || stat.nlink !== 1 || stat.size > MAX_BYTES
           || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
         const bytes = Buffer.alloc(MAX_BYTES + 1)
         const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
         if (bytesRead > MAX_BYTES || bytesRead !== stat.size) taskFailure('TASK_STATE_INVALID')
+        const after = await lstat(filename)
+        if (after.isSymbolicLink() || after.dev !== stat.dev || after.ino !== stat.ino) taskFailure('TASK_STATE_UNSAFE')
         return this.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, bytesRead))), sessionId)
       } finally { await file.close() }
     } catch (error: unknown) {
@@ -110,7 +116,8 @@ export class AtomicTaskDocumentStore<T> {
       const text = JSON.stringify(next)
       if (Buffer.byteLength(text) > MAX_BYTES) taskFailure('TASK_STATE_TOO_LARGE')
       await writeFileAtomic(filename, text + '\n', { mode: 0o600, dirMode: 0o700 })
-      const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW)
+      // Windows FlushFileBuffers requires write access; do not suppress a failed durable commit.
+      const file = await open(filename, (process.platform === 'win32' ? constants.O_RDWR : constants.O_RDONLY) | constants.O_NOFOLLOW)
       try { await file.sync() } finally { await file.close() }
       // Ensure the replacement name is committed before a request reservation may leave this process.
       if (process.platform !== 'win32') {

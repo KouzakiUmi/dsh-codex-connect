@@ -748,6 +748,8 @@ export declare const DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS = 10000;
 interface OpenAICodexSettingsConfig {
   /** Model ids advertised in selectors; undefined advertises the full catalog. */
   models: string[] | undefined;
+  /** Models whose session expansion ON budget uses the maximum instead of 500K. */
+  maximumContextModels?: string[];
   /** Route Codex Connect requests through the explicitly configured proxy. */
   enableProxy: boolean;
   /** Credential-free HTTP(S) proxy origin; inactive while enableProxy is false. */
@@ -787,8 +789,10 @@ interface OpenAICodexSettingsConfig {
 }
 export declare const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig>;
 /** Input settings allow null to disable overrides inherited from a lower settings layer. */
-interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides'>> {
+interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides' | 'maximumContextModels'>> {
   contextWindowOverrides?: Readonly<Record<string, number | null>> | null | undefined;
+  /** Host null resets this defaulted list, leaving every maximum preference off. */
+  maximumContextModels?: string[] | null;
 }
 /** Fill the schema defaults even when called without Cordis validation. */
 export declare function resolveOpenAICodexSettings(value: OpenAICodexSettingsInput): OpenAICodexSettingsConfig;
@@ -1078,6 +1082,8 @@ export interface Config {
   oauthTimeoutMs?: number;
   /** Model ids advertised in selectors; omitted to advertise the full catalog. */
   models?: string[] | undefined;
+  /** Use the official maximum ON budget for these models; OFF remains 272K. */
+  maximumContextModels?: string[] | null;
   /** Route Codex Connect requests through proxyUrl after explicit activation. */
   enableProxy?: boolean;
   /** Credential-free HTTP(S) proxy origin. */
@@ -1131,6 +1137,7 @@ export interface VolatileConfig {
   requestMetricsMaxBytes: number;
   oauthTimeoutMs: number;
   models: Volatile<string[] | undefined>;
+  maximumContextModels: Volatile<string[]>;
   enableProxy: Volatile<boolean>;
   proxyUrl: Volatile<string>;
   contextWindowOverrides: Volatile<Record<string, number | null> | null | undefined>;

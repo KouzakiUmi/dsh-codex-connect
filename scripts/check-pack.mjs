@@ -1,12 +1,20 @@
 import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
+import { resolveCommandInvocation } from './bounded-command.mjs'
 
-const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+const invocation = resolveCommandInvocation(process.platform === 'win32' ? 'npm.cmd' : 'npm',
+  ['pack', '--dry-run', '--json', '--ignore-scripts'])
+const result = spawnSync(invocation.command, invocation.args, {
   cwd: new URL('..', import.meta.url),
   encoding: 'utf8',
+  windowsVerbatimArguments: invocation.windowsVerbatimArguments,
 })
+if (result.error !== undefined) {
+  process.stderr.write(`npm pack dry-run failed to start (${result.error.code ?? 'UNKNOWN'})\n`)
+  process.exit(1)
+}
 if (result.status !== 0) {
-  process.stderr.write(result.stderr)
+  process.stderr.write(result.stderr ?? '')
   process.exit(result.status ?? 1)
 }
 

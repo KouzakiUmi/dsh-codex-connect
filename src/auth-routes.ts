@@ -28,6 +28,7 @@ import {
   normalizeTrustedOrigin,
 } from './trusted-origins.ts'
 import { FastModeRegistry, isFastModeSessionId } from './fast-mode.ts'
+import { OPENAI_CODEX_EXTENDED_CONTEXT_PATH } from './extended-context-paths.ts'
 import { OPENAI_CODEX_FAST_MODE_PATH } from './fast-mode-paths.ts'
 import type { OpenAICodexProxyManager } from './provider-proxy.ts'
 import { publicAuthError as safeMessage } from './auth-error.ts'
@@ -617,6 +618,7 @@ export function registerOpenAICodexAuthRoutes(
   resolveProxyUrl?: () => string | undefined,
   authorizationTimeoutMs?: number,
   quotaState?: OpenAICodexQuotaState,
+  extendedContext?: FastModeRegistry,
 ): void {
   const auth = new OpenAICodexWebAuth(store, { proxyManager, resolveProxyUrl, authorizationTimeoutMs, quotaState })
   const storedFilename = (store as OpenAICodexCredentialStore & { filename?: unknown }).filename
@@ -743,16 +745,19 @@ export function registerOpenAICodexAuthRoutes(
           }
         },
       }),
-      ctx.webServer.register({
+      ...[
+        { path: OPENAI_CODEX_FAST_MODE_PATH, registry: fastMode },
+        { path: OPENAI_CODEX_EXTENDED_CONTEXT_PATH, registry: extendedContext ?? new FastModeRegistry() },
+      ].map(({ path, registry }) => ctx.webServer.register({
         kind: 'exact',
-        path: OPENAI_CODEX_FAST_MODE_PATH,
+        path,
         handler: async (req, res) => {
           if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
           if (!await authorize(req, res)) return
           if (req.method === 'GET') {
             const sessionId = fastModeSessionIdFromQuery(req)
             if (sessionId === undefined) return json(res, 400, { error: 'invalid input' })
-            return json(res, 200, { enabled: fastMode.isEnabled(sessionId) })
+            return json(res, 200, { enabled: registry.isEnabled(sessionId) })
           }
           const type = header(req, 'content-type')
           if (type === undefined || !/^application\/json(?:\s*;|$)/iu.test(type.trim())) {
@@ -761,13 +766,13 @@ export function registerOpenAICodexAuthRoutes(
           try {
             const body = fastModeBody(await readFastModeBody(req))
             if (body === undefined) return json(res, 400, { error: 'invalid input' })
-            fastMode.set(body.sessionId, body.enabled)
-            return json(res, 200, { enabled: fastMode.isEnabled(body.sessionId) })
+            registry.set(body.sessionId, body.enabled)
+            return json(res, 200, { enabled: registry.isEnabled(body.sessionId) })
           } catch (error: unknown) {
             return json(res, error instanceof RangeError ? 413 : 400, { error: error instanceof RangeError ? 'request body too large' : 'invalid input' })
           }
         },
-      }),
+      })),
     ]
     return async () => {
       for (const dispose of routes) dispose()
