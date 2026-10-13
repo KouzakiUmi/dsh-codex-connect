@@ -59,8 +59,22 @@ async function readCodexLogin() {
     if (!stat.isFile() || stat.nlink !== 1 || stat.size > 512 * 1024
       || (process.platform !== 'win32' && ((stat.mode & 0o077) !== 0
         || (process.getuid !== undefined && stat.uid !== process.getuid())))) stop('CODEX_LOGIN_FILE_UNSAFE')
-    const bytes = await handle.readFile()
-    if (bytes.byteLength > 512 * 1024) stop('CODEX_LOGIN_FILE_UNSAFE')
+    const buffer = Buffer.alloc(512 * 1024 + 1)
+    let count = 0
+    while (count < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, count, buffer.length - count, count)
+      if (bytesRead === 0) break
+      count += bytesRead
+    }
+    const final = await handle.stat({ bigint: true })
+    const current = await lstat(path, { bigint: true })
+    const stable = snapshot => snapshot.isFile() && !snapshot.isSymbolicLink() && snapshot.nlink === 1n
+      && snapshot.dev === identity.dev && snapshot.ino === identity.ino && snapshot.size === identity.size
+      && snapshot.mtimeNs === identity.mtimeNs && snapshot.ctimeNs === identity.ctimeNs
+      && snapshot.mode === identity.mode && snapshot.uid === identity.uid
+    if (count > 512 * 1024 || BigInt(count) !== identity.size
+      || !stable(before) || !stable(after) || !stable(final) || !stable(current)) stop('CODEX_LOGIN_FILE_UNSAFE')
+    const bytes = buffer.subarray(0, count)
     return codexCredential(JSON.parse(bytes.toString('utf8')))
   } finally { await handle.close() }
 }

@@ -41,8 +41,22 @@ async function readLogin() {
     const info = await handle.stat()
     if (!info.isFile() || info.nlink !== 1 || info.size > 512 * 1024
       || (process.platform !== 'win32' && ((info.mode & 0o077) !== 0 || info.uid !== process.getuid()))) fail('CREDENTIAL_FILE_UNSAFE')
-    const bytes = await handle.readFile()
-    if (bytes.length > 512 * 1024) fail('CREDENTIAL_FILE_UNSAFE')
+    const buffer = Buffer.alloc(512 * 1024 + 1)
+    let count = 0
+    while (count < buffer.length) {
+      const { bytesRead } = await handle.read(buffer, count, buffer.length - count, count)
+      if (bytesRead === 0) break
+      count += bytesRead
+    }
+    const final = await handle.stat({ bigint: true })
+    const current = await lstat(path, { bigint: true })
+    const stable = snapshot => snapshot.isFile() && !snapshot.isSymbolicLink() && snapshot.nlink === 1n
+      && snapshot.dev === identity.dev && snapshot.ino === identity.ino && snapshot.size === identity.size
+      && snapshot.mtimeNs === identity.mtimeNs && snapshot.ctimeNs === identity.ctimeNs
+      && snapshot.mode === identity.mode && snapshot.uid === identity.uid
+    if (count > 512 * 1024 || BigInt(count) !== identity.size
+      || !stable(before) || !stable(after) || !stable(final) || !stable(current)) fail('CREDENTIAL_FILE_UNSAFE')
+    const bytes = buffer.subarray(0, count)
     const doc = JSON.parse(bytes.toString('utf8'))
     const tokens = doc?.tokens
     if (doc?.auth_mode !== 'chatgpt' || typeof tokens?.access_token !== 'string') fail('CREDENTIAL_INVALID')
