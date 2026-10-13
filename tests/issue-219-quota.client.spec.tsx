@@ -5,6 +5,7 @@ import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selec
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { OpenAICodexQuotaIndicator } from '../src/client/OpenAICodexQuotaIndicator.tsx'
 import { en } from '../src/client/locales.ts'
+import { BROWSER_REQUEST_TIMEOUT_MS } from '../src/client/request-json.ts'
 
 let hidden = false
 const state: ModelDirectoryState & { pending: null } = { pending: null, current: { provider: 'openai-codex', model: 'gpt-5.1-codex' }, routable: true, groups: [], failures: [], status: 'ready', error: null }
@@ -64,7 +65,8 @@ describe('issue 219 quota browser scheduling', () => {
       signal?.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')), { once: true })
     }))
     vi.stubGlobal('fetch', fetch)
-    await mount(); await tick(600_000); expect(fetch).toHaveBeenCalledTimes(1)
+    await mount(); await tick(BROWSER_REQUEST_TIMEOUT_MS - 1); expect(fetch).toHaveBeenCalledTimes(1)
+    visibility(true); visibility(false); await tick(0); expect(fetch).toHaveBeenCalledTimes(1)
     cleanup(); expect(signal?.aborted).toBe(true)
     visibility(true); visibility(false); await tick(600_000)
     expect(fetch).toHaveBeenCalledTimes(1)

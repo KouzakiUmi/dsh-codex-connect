@@ -322,3 +322,60 @@ Current combined-tree verification (not historical-head evidence):
 These are local synthetic fixtures, not live-account/provider or daily-profile
 acceptance. No new supported-host installation matrix, release or deployment was
 performed. Existing untracked installation snapshots and unrelated files remain.
+
+## Main refresh, observed-state disappearance and open-PR audit — 2026-10-13
+
+Starting PR head `1e5c1bd`; integrated upstream `7b34dd5` (#332). The merge
+completed without textual conflicts. Its browser deadlines/Abort handling,
+explicit Fast Mode readback and catalog-failure settings recovery are retained.
+Host/Client output was rebuilt from combined source.
+
+The new P2 was independently confirmed: after a successful target lstat, a later
+ENOENT was incorrectly interpreted as no saved state. The reader now tracks
+whether it observed the target. Only initial parent/target absence returns
+undefined; later open/stat/read/codec/close failures are unavailable. Initial
+no-state behavior and existing safety errors remain unchanged. Root selection
+must not silently fall back after an observed read failure; this does not assert
+that every transient failure previously caused a provider dispatch.
+
+Regressions cover initial missing parent/target, six post-observation stages,
+post-open disappearance and real control-runtime stream/auxiliary admission with
+synthetic host services: faults reject without invoking the delegate or making a
+second legacy read. A read-only Sol subagent checked the fix and called out a
+codec invocation-count assertion; that assertion was corrected before validation.
+No cross-read ownership policy, new activation or migration was introduced.
+
+Two bounded read-only Sol subagents independently reviewed state semantics and
+all open PRs. Complete GitHub pagination returned 16 PRs including #330. The
+other 15 heads were fetched only into audit refs; no open PR was merged into the
+product branch. Git merge-tree against an unreferenced combined-tree snapshot
+`8226df2` found these conflicts without changing the worktree:
+
+| Open PR | Conflicting files with combined #330 snapshot | Latest main comparison |
+| --- | --- | --- |
+| #327 | `lib/bin.js`, `tsdown.config.ts` | clean |
+| #328 | `scripts/check-dsh-next-contract.mjs`, `scripts/check-installed-images.mjs` | installed-images already conflicts |
+| #315 | `lib/index.js`, `scripts/check-adaptive-task-ui.mjs`, `src/adaptive-task-http.ts`, `tests/adaptive-task-http.spec.ts`, `tests/adaptive-task-publication.spec.ts` | same five conflicts already present |
+| #311 | `README.i18n.yaml`, `lib/bin.js`, `tsdown.config.ts` | README source already conflicts |
+| #312, #325, #320, #318, #295, #319, #310, #321, #309, #281, #326 | none | no combined runtime acceptance claimed |
+
+Future integration guidance: #327 is the maintainer follow-up to #311; do not
+blindly apply both. Keep keyring externalization together with standalone CLI
+debug-label stability and rebuild bundles. For #328 preserve compatibility-derived
+doctor expectations, synchronizing actual supported-version declarations instead
+of restoring a hardcoded range. #315 must not overwrite current dynamic Connection
+admission with its older direct property access; its lifecycle intent is partly
+superseded by #331. Shared dependency files can merge textually yet still require
+combo tests, especially SDK and DOM upgrades. These findings do not authorize
+publishing, rewriting others' PRs or preemptively changing dependency versions.
+
+Local combined-source evidence: full check exit 0 (140 non-browser files, 1,772
+passed / 5 Windows-gated skips at that stage, plus 60 login tests), Chromium suite
+12 files / 63 passed. The additional two runtime-admission cases were then checked
+with store/consent regressions: 3 files / 53 tests passed, plus project typing.
+Final exact-tree recheck: `pnpm run check && node scripts/check-adaptive-task-ui.mjs`
+exit 0; 140 non-browser files, 1,774 passed / 5 Windows-gated skips, all 60 login
+regressions, pack/inventory/build and authenticated UI evidence passed. Additional
+focused store/consent/stream/auxiliary suite: 53/53 passed with project typing.
+No live accounts/provider or deployment. Final documentation-only evidence append
+does not change tested source or generated output.

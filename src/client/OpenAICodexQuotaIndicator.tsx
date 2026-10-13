@@ -7,6 +7,7 @@ import type { OpenAICodexUsage, OpenAICodexRateLimitWindow } from '../usage.ts'
 import { OPENAI_CODEX_AUTH_STATUS_PATH } from '../auth-paths.ts'
 import { formatOpenAICodexResetAt } from './OpenAICodexSettings.tsx'
 import type { OpenAICodexSettingsKey } from './locales.ts'
+import { requestJson } from './request-json.ts'
 
 const WEEK_SECONDS = 7 * 24 * 60 * 60
 const FIVE_HOUR_SECONDS = 5 * 60 * 60
@@ -151,13 +152,12 @@ export function OpenAICodexQuotaIndicator({ directory, t }: OpenAICodexQuotaIndi
       if (inFlight || disposed || document.hidden) return
       inFlight = true
       try {
-        const response = await fetch(OPENAI_CODEX_AUTH_STATUS_PATH, {
+        const { response, value } = await requestJson(OPENAI_CODEX_AUTH_STATUS_PATH, {
           method: 'GET',
           credentials: 'same-origin',
           headers: { accept: 'application/json' },
           signal: controller.signal,
         })
-        const value: unknown = await response.json().catch(() => undefined)
         const usage = response.ok ? usageFromStatus(value) : undefined
         failures = usage === undefined ? Math.min(failures + 1, 5) : 0
         if (!disposed && !controller.signal.aborted) {

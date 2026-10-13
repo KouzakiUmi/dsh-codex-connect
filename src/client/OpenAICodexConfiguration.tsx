@@ -23,6 +23,7 @@ import {
   OPENAI_CODEX_PROXY_TEST_PATH,
 } from '../proxy-paths.ts'
 import type { OpenAICodexProxyProbeResult } from '../provider-proxy.ts'
+import { requestJson } from './request-json.ts'
 
 export interface OpenAICodexConfigurationProps {
   scope?: ConfigForm<OpenAICodexSettingsConfig>
@@ -172,6 +173,21 @@ function sameField(
     && left.every((model, index) => model === right[index])
 }
 
+/** Untouched Host-accepted budgets need no new catalog authority; edits do. */
+export function validContextEdits(
+  overrides: OpenAICodexSettingsConfig['contextWindowOverrides'],
+  accepted: OpenAICodexSettingsConfig['contextWindowOverrides'],
+  catalog: readonly OpenAICodexModelCatalogEntry[] | undefined,
+): boolean {
+  return isValidOpenAICodexContextWindowOverrides(overrides ?? {})
+    && (sameField('contextWindowOverrides', overrides, accepted) || catalog !== undefined)
+    && Object.entries(overrides ?? {}).every(([id, budget]) => {
+      if (accepted?.[id] === budget) return true
+      const model = catalog?.find(entry => entry.id === id)
+      return model !== undefined && isValidOpenAICodexContextBudget(budget, model.maxContextWindow)
+    })
+}
+
 /** Edit the Host-owned llm-openai-codex settings section with Save/Discard staging. */
 export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix }: OpenAICodexConfigurationProps) {
   const subscribe = useCallback((listener: () => void) => scope?.subscribe(listener) ?? (() => undefined), [scope])
@@ -198,6 +214,10 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   const [autoReviewConfirmOpen, setAutoReviewConfirmOpen] = useState(false)
   const [localModule, setLocalModule] = useState<(typeof CONFIGURATION_MODULES)[number]>('models')
   const localPanelIdPrefix = useId()
+  const [catalogAttempt, setCatalogAttempt] = useState(0)
+  const proxyDetectionController = useRef<AbortController | undefined>(undefined)
+  const manualProbeController = useRef<AbortController | undefined>(undefined)
+  const currentProxyCheckController = useRef<AbortController | undefined>(undefined)
   const proxyDetectionRequest = useRef(0)
   const manualProbeRequest = useRef(0)
   const currentProxyCheckRequest = useRef(0)
@@ -205,14 +225,17 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   useEffect(() => {
     if (scope === undefined) return
     const controller = new AbortController()
-    void fetch(OPENAI_CODEX_MODEL_CATALOG_PATH, {
+    setModelCatalog(undefined)
+    setModelCatalogError(false)
+    void requestJson(OPENAI_CODEX_MODEL_CATALOG_PATH, {
       method: 'GET',
       credentials: 'same-origin',
       headers: { accept: 'application/json' },
       signal: controller.signal,
-    }).then(async response => {
+    }).then(({ response, value }) => {
+      if (controller.signal.aborted) return
       if (!response.ok) throw new Error(`model catalog request failed: ${String(response.status)}`)
-      const catalog = decodeOpenAICodexModelCatalog(await response.json())
+      const catalog = decodeOpenAICodexModelCatalog(value)
       if (catalog === undefined) throw new Error('model catalog response was invalid')
       setModelCatalog(catalog)
       setModelCatalogError(false)
@@ -220,7 +243,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
       if (!controller.signal.aborted) setModelCatalogError(true)
     })
     return () => { controller.abort() }
-  }, [scope])
+  }, [scope, catalogAttempt])
 
   useEffect(() => {
     if (!dirty && !busy) {
@@ -236,13 +259,23 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     return () => { window.clearTimeout(timer) }
   }, [feedback])
 
-  useEffect(() => () => {
-    proxyDetectionRequest.current += 1
-    manualProbeRequest.current += 1
-    currentProxyCheckRequest.current += 1
-  }, [])
+  useEffect(() => {
+    setProxyDetection({ status: 'idle' })
+    setManualProbe(undefined)
+    setManualProbeBusy(false)
+    setCurrentProxyCheck({ status: 'idle' })
+    return () => {
+      proxyDetectionController.current?.abort()
+      manualProbeController.current?.abort()
+      currentProxyCheckController.current?.abort()
+      proxyDetectionRequest.current += 1
+      manualProbeRequest.current += 1
+      currentProxyCheckRequest.current += 1
+    }
+  }, [scope])
 
   const clearCurrentProxyCheck = (): void => {
+    currentProxyCheckController.current?.abort()
     currentProxyCheckRequest.current += 1
     setCurrentProxyCheck({ status: 'idle' })
   }
@@ -260,9 +293,12 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     setDraft(scope?.getSnapshot().value)
     setDirty(false)
     setFeedback('idle')
+    proxyDetectionController.current?.abort()
+    proxyDetectionRequest.current += 1
     setProxyDetection({ status: 'idle' })
     setProxyMode('auto')
     setManualProxyUrl(scope?.getSnapshot().value?.proxyUrl ?? '')
+    manualProbeController.current?.abort()
     manualProbeRequest.current += 1
     setManualProbe(undefined)
     setManualProbeBusy(false)
@@ -282,16 +318,20 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   }
 
   const detectProxy = async (): Promise<void> => {
+    proxyDetectionController.current?.abort()
+    const controller = new AbortController()
+    proxyDetectionController.current = controller
     const request = ++proxyDetectionRequest.current
     setProxyDetection({ status: 'detecting' })
     try {
-      const response = await fetch(OPENAI_CODEX_PROXY_DETECT_PATH, {
+      const { response, value: payload } = await requestJson(OPENAI_CODEX_PROXY_DETECT_PATH, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { accept: 'application/json' },
+        signal: controller.signal,
       })
       if (!response.ok) throw new Error(`proxy detection failed: ${String(response.status)}`)
-      const value = await response.json() as ProxyDetectionResponse
+      const value = payload as ProxyDetectionResponse
       if (!Array.isArray(value.candidates) || !Array.isArray(value.results)) throw new Error('proxy detection response was invalid')
       if (request !== proxyDetectionRequest.current) return
       setProxyDetection(value.candidates.length > 0
@@ -322,17 +362,21 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   const testManualProxy = async (): Promise<void> => {
     const normalized = normalizeOpenAICodexProxyUrl(manualProxyUrl)
     if (normalized === undefined) return
+    manualProbeController.current?.abort()
+    const controller = new AbortController()
+    manualProbeController.current = controller
     const request = ++manualProbeRequest.current
     setManualProbeBusy(true)
     try {
       const path = `${OPENAI_CODEX_PROXY_TEST_PATH}?proxyUrl=${encodeURIComponent(normalized)}`
-      const response = await fetch(path, {
+      const { response, value: payload } = await requestJson(path, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { accept: 'application/json' },
+        signal: controller.signal,
       })
       if (!response.ok) throw new Error(`proxy test failed: ${String(response.status)}`)
-      const result = await response.json() as OpenAICodexProxyProbeResult
+      const result = payload as OpenAICodexProxyProbeResult
       if (request === manualProbeRequest.current && normalizeOpenAICodexProxyUrl(manualProxyUrl) === normalized) setManualProbe(result)
     } catch {
       if (request === manualProbeRequest.current && normalizeOpenAICodexProxyUrl(manualProxyUrl) === normalized) {
@@ -351,17 +395,21 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     const saved = scope?.getSnapshot().value
     const normalized = saved?.enableProxy === true ? normalizeOpenAICodexProxyUrl(saved.proxyUrl) : undefined
     if (normalized === undefined) return
+    currentProxyCheckController.current?.abort()
+    const controller = new AbortController()
+    currentProxyCheckController.current = controller
     const request = ++currentProxyCheckRequest.current
     setCurrentProxyCheck({ status: 'checking' })
     try {
       const path = `${OPENAI_CODEX_PROXY_TEST_PATH}?proxyUrl=${encodeURIComponent(normalized)}`
-      const response = await fetch(path, {
+      const { response, value: payload } = await requestJson(path, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { accept: 'application/json' },
+        signal: controller.signal,
       })
       if (!response.ok) throw new Error(`proxy test failed: ${String(response.status)}`)
-      const result = await response.json() as OpenAICodexProxyProbeResult
+      const result = payload as OpenAICodexProxyProbeResult
       const current = scope?.getSnapshot().value
       if (request !== currentProxyCheckRequest.current || current?.enableProxy !== true || normalizeOpenAICodexProxyUrl(current.proxyUrl) !== normalized) return
       setCurrentProxyCheck(result.reachable ? { status: 'success', result } : { status: 'failed', result })
@@ -391,11 +439,9 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     && snapshot.value?.enableProxy === true
     && normalizeOpenAICodexProxyUrl(draft.proxyUrl) === normalizeOpenAICodexProxyUrl(snapshot.value.proxyUrl)
   const validProxySelection = draft?.enableProxy !== true || acceptedProxyUnchanged || testedProxy
-  const validContexts = draft !== undefined && isValidOpenAICodexContextWindowOverrides(draft.contextWindowOverrides ?? {})
-    && Object.entries(draft.contextWindowOverrides ?? {}).every(([id, budget]) => {
-      const model = modelCatalog?.find(entry => entry.id === id)
-      return model !== undefined && isValidOpenAICodexContextBudget(budget, model.maxContextWindow)
-    })
+  const validContexts = draft !== undefined && validContextEdits(
+    draft.contextWindowOverrides, baseline.current?.contextWindowOverrides, modelCatalog,
+  )
   const valid = validModel && validTokens && validProxy && validImageModelHint && validContexts && validProxySelection
 
   const save = async (): Promise<void> => {
@@ -406,7 +452,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     try {
       const current = scope.getSnapshot()
       const original = baseline.current
-      if (current.value === undefined || original === undefined || current.revision === undefined) {
+      if (!current.writable || current.status !== 'ready' || current.mode === 'memory' || current.value === undefined || original === undefined || current.revision === undefined) {
         throw new Error('Host settings are unavailable')
       }
       const changed = CONFIG_FIELDS.filter(field => !sameField(field, original[field], desired[field]))
@@ -421,7 +467,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
           : desired[field]
         return value === undefined ? { op: 'unset', path: [field] } : { op: 'set', path: [field], value }
       })
-      if (ops.length > 0) await scope.mutate(ops, current.revision)
+      if (ops.length > 0 && !await scope.mutate(ops, current.revision)) throw new Error('Host refused the configuration change')
       const accepted = scope.getSnapshot().value
       if (accepted === undefined || changed.some(field => !sameField(field, accepted[field], desired[field]))) {
         throw new Error('Host refused the configuration change')
@@ -452,6 +498,12 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   const manualProxyIsSelected = !manualProxyIsCurrent && normalizedManualProxy !== undefined && draftProxyUrl === normalizedManualProxy
   const visibleModule = activeModule ?? localModule
   const panelPrefix = panelIdPrefix ?? localPanelIdPrefix
+
+  useEffect(() => {
+    currentProxyCheckController.current?.abort()
+    currentProxyCheckRequest.current += 1
+    setCurrentProxyCheck({ status: 'idle' })
+  }, [scope, savedProxyUrl])
 
   const selectLocalModule = (module: (typeof CONFIGURATION_MODULES)[number]): void => {
     setLocalModule(module)
@@ -500,7 +552,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
             <p style={{ ...bodyStyle, marginTop: 4 }}>{t('modelCatalogIntro')}</p>
           </div>
           {modelCatalog === undefined && !modelCatalogError ? <p style={bodyStyle} role="status">{t('modelCatalogLoading')}</p> : null}
-          {modelCatalogError ? <p style={errorStyle} role="alert">{t('modelCatalogFailed')}</p> : null}
+          {modelCatalogError ? <div><p style={errorStyle} role="alert">{t('modelCatalogFailed')}</p><button type="button" style={buttonStyle} onClick={() => { setCatalogAttempt(attempt => attempt + 1) }}>{t('retry')}</button></div> : null}
           {modelCatalog === undefined ? null : (
             <div style={modelListStyle} role="group" aria-label={t('modelCatalog')}>
               {modelCatalog.map(model => {
@@ -673,6 +725,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
                   value={manualProxyUrl}
                   aria-invalid={manualProxyEntered && normalizedManualProxy === undefined}
                   onChange={event => {
+                    manualProbeController.current?.abort()
                     manualProbeRequest.current += 1
                     setManualProbeBusy(false)
                     setManualProbe(undefined)

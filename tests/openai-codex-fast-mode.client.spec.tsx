@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -8,6 +8,7 @@ import { OpenAICodexFastModeToggle } from '../src/client/OpenAICodexFastModeTogg
 import { en, zh } from '../src/client/locales.ts'
 import type { OpenAICodexSettingsKey } from '../src/client/locales.ts'
 import { OPENAI_CODEX_FAST_MODE_PATH } from '../src/fast-mode-paths.ts'
+import { BROWSER_REQUEST_TIMEOUT_MS } from '../src/client/request-json.ts'
 
 function t(key: OpenAICodexSettingsKey): string {
   return en[key]
@@ -47,11 +48,65 @@ function json(value: unknown, status = 200): Response {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 
 describe('OpenAI Codex Fast Mode Composer toggle', () => {
+  it.each(['GET headers', 'GET body', 'POST headers', 'POST body'] as const)('bounds %s and recovers only via explicit GET, ignoring late completion', async phase => {
+    vi.useFakeTimers()
+    const directory = directoryStore(directoryState('gpt-5'))
+    let recover = false
+    let signal!: AbortSignal
+    let finish!: (value: unknown) => void
+    const stalled = new Promise<unknown>(done => { finish = done })
+    const fetchMock = vi.fn((_path: string, init: RequestInit) => {
+      if (recover || (phase.startsWith('POST') && init.method === 'GET')) return Promise.resolve(json({ enabled: recover }))
+      signal = init.signal!
+      return phase.endsWith('headers') ? stalled : Promise.resolve({ ok: true, json: () => stalled })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OpenAICodexFastModeToggle directory={directory} sessionId="session-a" t={t} />)
+    await act(async () => {})
+    if (phase.startsWith('POST')) fireEvent.click(screen.getByRole('button'))
+    await act(async () => { await vi.advanceTimersByTimeAsync(BROWSER_REQUEST_TIMEOUT_MS) })
+    expect(signal.aborted).toBe(true)
+    const button = screen.getByRole('button', { name: phase.startsWith('POST') ? en.fastModeUnconfirmedTitle : en.fastModeUnavailableTitle })
+    expect(button).toHaveProperty('disabled', false)
+    expect(vi.getTimerCount()).toBe(0)
+    recover = true
+    fireEvent.click(button)
+    await act(async () => {})
+    expect(button.getAttribute('aria-label')).toBe(en.fastModeEnabledTitle)
+    await act(async () => { finish(phase.endsWith('headers') ? json({ enabled: false }) : { enabled: false }) })
+    expect(button.getAttribute('aria-pressed')).toBe('true')
+    expect(fetchMock.mock.calls.filter(([, init]) => init.method === 'POST')).toHaveLength(phase.startsWith('POST') ? 1 : 0)
+  })
+
+  it.each(['GET', 'POST'] as const)('cancels late %s body on session replacement and unmount', async method => {
+    let signal!: AbortSignal
+    let finish!: (value: unknown) => void
+    const directory = directoryStore(directoryState('gpt-5'))
+    vi.stubGlobal('fetch', vi.fn((path: string, init: RequestInit) => {
+      if (path.includes('session-b') || (method === 'POST' && init.method === 'GET')) return Promise.resolve(json({ enabled: false }))
+      signal = init.signal!
+      return Promise.resolve({ ok: true, json: () => new Promise(done => { finish = done }) })
+    }))
+    const view = render(<OpenAICodexFastModeToggle directory={directory} sessionId="session-a" t={t} />)
+    await act(async () => {})
+    if (method === 'POST') { fireEvent.click(screen.getByRole('button')); await act(async () => {}) }
+    view.rerender(<OpenAICodexFastModeToggle directory={directory} sessionId="session-b" t={t} />)
+    expect(signal.aborted).toBe(true)
+    await act(async () => { finish({ enabled: true }) })
+    expect(screen.getByRole('button').getAttribute('aria-pressed')).toBe('false')
+    view.rerender(<OpenAICodexFastModeToggle directory={directory} sessionId="session-a" t={t} />)
+    await act(async () => {})
+    if (method === 'POST') { fireEvent.click(screen.getByRole('button')); await act(async () => {}) }
+    view.unmount()
+    expect(signal.aborted).toBe(true)
+    await act(async () => { finish({ enabled: true }) })
+  })
   it('keeps the bilingual hover copy concise and state-specific', () => {
     expect(en.fastModeDisabledTitle).toBe('Current: Standard speed. Click to enable 1.5× speed.')
     expect(en.fastModeEnabledTitle).toBe('Current: 1.5× speed, with faster quota consumption. Click to switch to Standard speed.')
@@ -137,8 +192,12 @@ describe('OpenAI Codex Fast Mode Composer toggle', () => {
     expect(button.getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(button)
     await waitFor(() => { expect(post).toBe(true) })
-    await waitFor(() => { expect((button as HTMLButtonElement).disabled).toBe(true) })
+    await waitFor(() => { expect(button.getAttribute('aria-label')).toBe(en.fastModeUnconfirmedTitle) })
+    expect((button as HTMLButtonElement).disabled).toBe(false)
     expect(button.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(button)
+    await waitFor(() => { expect(button.getAttribute('aria-label')).toBe(en.fastModeEnabledTitle) })
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1)
   })
 
   it('aborts an in-flight POST when the Composer control unmounts', async () => {

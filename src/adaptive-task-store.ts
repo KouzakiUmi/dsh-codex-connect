@@ -77,12 +77,14 @@ export class AtomicTaskDocumentStore<T> {
   /** Reads do not create a directory or grant anything. */
   async read(sessionId: string): Promise<T | undefined> {
     const filename = this.filename(sessionId)
+    let observed = false
     try {
       const parent = await lstat(this.directory)
       if (!parent.isDirectory() || parent.isSymbolicLink()
         || (process.platform !== 'win32' && (parent.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
       // O_NOFOLLOW is a no-op on Windows; verify path/handle identity before reading.
       const target = await lstat(filename, { bigint: true })
+      observed = true
       if (target.isSymbolicLink()) taskFailure('TASK_STATE_UNAVAILABLE')
       if (!target.isFile()) taskFailure('TASK_STATE_UNSAFE')
       const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
@@ -101,7 +103,8 @@ export class AtomicTaskDocumentStore<T> {
         return this.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, bytesRead))), sessionId)
       } finally { await file.close() }
     } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+      // Only initial absence means no saved state. Never select a fallback after observing a target.
+      if (!observed && (error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
       if (error instanceof AdaptiveTaskError) throw error
       taskFailure('TASK_STATE_UNAVAILABLE')
     }
