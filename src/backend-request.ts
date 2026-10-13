@@ -67,26 +67,40 @@ async function waitUntil(deadline: number, signal: AbortSignal): Promise<void> {
   })
 }
 
-function wrapResponseLifecycle(response: Response, release: () => void, signal: AbortSignal, metric?: MetricAttempt): Response {
+async function wrapResponseLifecycle(response: Response, release: () => void, signal: AbortSignal, metric?: MetricAttempt): Promise<Response> {
   if (response.body === null) { metric?.finish('eof'); release(); return response }
   const reader = response.body.getReader()
   let finished = false
   let cancelling = false
+  let cleanup: Promise<void> | undefined
   let output: ReadableStreamDefaultController<Uint8Array>
   const finish = (outcome: 'eof' | 'cancelled' | 'network-error'): void => {
     if (finished) return
     finished = true
-    metric?.finish(outcome)
+    if (!cancelling) metric?.finish(outcome)
     signal.removeEventListener('abort', onAbort)
     try { reader.releaseLock() } catch { /* pending read cleanup is completed by cancel */ }
     release()
   }
+  const cancelSource = (reason: unknown, outcome: 'cancelled' | 'network-error'): Promise<void> => {
+    if (cleanup !== undefined) return cleanup
+    if (finished) return Promise.resolve()
+    // Cancellation resolves pending reads before asynchronous source cleanup.
+    // Suppress that synthetic EOF and retain admission until cleanup settles.
+    cancelling = true
+    // Record the visible terminal state before dispose closes the metrics journal.
+    // Resource admission remains owned until the separate cleanup settles.
+    metric?.finish(outcome)
+    cleanup = (async () => {
+      try { await reader.cancel(reason) } finally { finish(outcome) }
+    })()
+    return cleanup
+  }
   const onAbort = (): void => {
-    if (finished) return
+    if (finished || cancelling) return
     const error = abortError(signal)
     output.error(error)
-    void reader.cancel(error).catch(() => undefined)
-    finish('cancelled')
+    void cancelSource(error, 'cancelled').catch(() => undefined)
   }
   const body = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -103,26 +117,29 @@ function wrapResponseLifecycle(response: Response, release: () => void, signal: 
         metric?.feed(value)
         controller.enqueue(value)
       } catch (error: unknown) {
-        if (!finished) { controller.error(error); finish('network-error') }
+        if (!finished && !cancelling) {
+          controller.error(error)
+          void cancelSource(error, 'network-error').catch(() => undefined)
+        }
       }
     },
-    async cancel(reason: unknown) {
-      if (finished || cancelling) return
-      // reader.cancel resolves a pending read before asynchronous source cleanup.
-      // Suppress that synthetic EOF, while retaining admission until cleanup ends.
-      cancelling = true
-      try { await reader.cancel(reason) } finally { finish('cancelled') }
+    cancel(reason: unknown) {
+      return cancelSource(reason, 'cancelled')
     },
   }, { highWaterMark: 0 })
   // A paused consumer may never issue another read after a network failure.
-  void reader.closed.catch(error => { if (!finished) { output.error(error); finish('network-error') } })
+  void reader.closed.catch(error => {
+    if (!finished && !cancelling) {
+      output.error(error)
+      void cancelSource(error, 'network-error').catch(() => undefined)
+    }
+  })
   try {
     const wrapped = new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
     for (const key of ['url', 'redirected', 'type'] as const) Object.defineProperty(wrapped, key, { value: response[key] })
     return wrapped
   } catch (error: unknown) {
-    void reader.cancel(error).catch(() => undefined)
-    finish('network-error')
+    await cancelSource(error, 'network-error').catch(() => undefined)
     throw error
   }
 }
@@ -146,6 +163,9 @@ export class OpenAICodexBackendRequests {
   ) {
     if (!Number.isSafeInteger(maxConcurrent) || maxConcurrent < 1) throw new TypeError('maxConcurrent must be a positive safe integer')
   }
+
+  /** Plugin lifecycle signal, shared with pre-fetch work such as authentication. */
+  get signal(): AbortSignal { return this.lifecycle.signal }
 
   private combinedSignal(signal?: AbortSignal): AbortSignal {
     return signal === undefined ? this.lifecycle.signal : AbortSignal.any([this.lifecycle.signal, signal])
@@ -252,8 +272,8 @@ export class OpenAICodexBackendRequests {
       return { response, metric }
     } catch (error: unknown) {
       // Hook/cancellation failures must not orphan an undispatched response body.
-      void response.body?.cancel(error).catch(() => undefined)
       metric?.finish(signal.aborted ? 'cancelled' : 'network-error')
+      await response.body?.cancel(error).catch(() => undefined)
       throw error
     }
   }
@@ -309,7 +329,7 @@ export class OpenAICodexBackendRequests {
       }
       try {
         const { response, metric } = await this.fetchAttempt(options.lane, signal, prepared.input, prepared.init, options)
-        return wrapResponseLifecycle(response, release, signal, metric)
+        return await wrapResponseLifecycle(response, release, signal, metric)
       } catch (error: unknown) {
         release()
         throw error

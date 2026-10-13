@@ -17,6 +17,7 @@ import {
 } from '../src/auth-paths.ts'
 import { OPENAI_CODEX_MODEL_CATALOG_PATH } from '../src/model-contract.ts'
 import { modelCatalogFixture } from './model-catalog-fixture.ts'
+import { BROWSER_REQUEST_TIMEOUT_MS } from '../src/client/request-json.ts'
 import {
   OPENAI_CODEX_PROXY_DETECT_PATH,
   OPENAI_CODEX_PROXY_TEST_PATH,
@@ -130,6 +131,7 @@ afterEach(() => {
   cleanup()
   Reflect.deleteProperty(HTMLDialogElement.prototype, 'showModal')
   Reflect.deleteProperty(HTMLDialogElement.prototype, 'close')
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
@@ -583,11 +585,13 @@ describe('OpenAI Codex Plugin configuration card', () => {
     const enableImageGeneration = screen.getByRole('checkbox', { name: /Enable GPT Image generation/u }) as HTMLInputElement
     const imageModelHint = screen.getByRole('textbox', { name: /Image route model hint/u }) as HTMLInputElement
     const enableAutoReview = screen.getByRole('checkbox', { name: /Codex Auto-review/u }) as HTMLInputElement
+    const quotaPill = screen.getByRole('checkbox', { name: /Composer quota pill/u }) as HTMLInputElement
     const model = screen.getByRole('textbox', { name: en.searchModel }) as HTMLInputElement
     const save = screen.getByRole('button', { name: en.save }) as HTMLButtonElement
     expect(save.style.background).toBe('var(--dsw-alias-button-primary-fill)')
     expect(save.style.color).toBe('var(--dsw-alias-label-primary-foreground)')
     expect(enableSearch.checked).toBe(false)
+    expect(quotaPill.checked).toBe(false)
     expect(enableImageGeneration.checked).toBe(false)
     expect(imageModelHint.placeholder).toContain('gpt-image-2')
     expect(enableAutoReview.checked).toBe(false)
@@ -609,7 +613,10 @@ describe('OpenAI Codex Plugin configuration card', () => {
     fireEvent.click(enableSearch)
     expect(model.disabled).toBe(false)
     fireEvent.change(model, { target: { value: 'temporary-model' } })
+    fireEvent.click(quotaPill)
+    expect(mutate).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: en.discard }))
+    expect(quotaPill.checked).toBe(false)
     expect(enableSearch.checked).toBe(false)
     expect(model.value).toBe(DEFAULT_OPENAI_CODEX_SETTINGS.searchModel)
 
@@ -619,6 +626,7 @@ describe('OpenAI Codex Plugin configuration card', () => {
     fireEvent.change(screen.getByRole('spinbutton', { name: en.searchMaxOutputTokens }), { target: { value: '2048' } })
     fireEvent.click(enableImageGeneration)
     fireEvent.change(imageModelHint, { target: { value: 'custom-image-route' } })
+    fireEvent.click(quotaPill)
     fireEvent.click(enableAutoReview)
     expect(screen.getByRole('dialog', { name: en.autoReviewConfirmTitle })).toBeTruthy()
     expect(enableAutoReview.checked).toBe(false)
@@ -639,6 +647,7 @@ describe('OpenAI Codex Plugin configuration card', () => {
     expect(mutate).toHaveBeenCalledWith(expect.arrayContaining([{ op: 'set', path: ['imageModelHint'], value: 'custom-image-route' }]), expect.any(Number))
     expect(mutate).toHaveBeenCalledWith(expect.arrayContaining([{ op: 'set', path: ['autoReviewDisclosureAcknowledged'], value: true }]), expect.any(Number))
     expect(mutate).toHaveBeenCalledWith(expect.arrayContaining([{ op: 'set', path: ['enableAutoReview'], value: true }]), expect.any(Number))
+    expect(mutate).toHaveBeenCalledWith(expect.arrayContaining([{ op: 'set', path: ['enableComposerQuotaPill'], value: true }]), expect.any(Number))
     fireEvent.click(enableAutoReview)
     fireEvent.click(save)
     expect(await screen.findByText(en.settingsSaved)).toBeTruthy()
@@ -730,6 +739,23 @@ describe('OpenAI Codex Plugin configuration card', () => {
     fireEvent.click(screen.getByRole('button', { name: en.disableProxy }))
     fireEvent.click(screen.getByRole('button', { name: en.save }))
     await waitFor(() => { expect(mutate).toHaveBeenCalledWith(expect.arrayContaining([{ op: 'set', path: ['enableProxy'], value: false }]), expect.any(Number)) })
+  })
+
+  it.each(['invalid-json', 'null'])('rejects a %s manual probe body without enabling a proxy', async failure => {
+    const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
+      if (requestPath(input) === OPENAI_CODEX_MODEL_CATALOG_PATH) return json(modelCatalogFixture([]))
+      return failure === 'invalid-json' ? new Response('not JSON') : json(null)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, proxyUrl: 'http://127.0.0.1:8110' })
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    expect(await screen.findByText(en.proxyTestFailed.replace('{reason}', 'connect-failure'))).toBeTruthy()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: en.testProxy }).disabled).toBe(false)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: en.useThisProxy }).disabled).toBe(true)
+    expect(fetchMock.mock.calls.filter(([input]) => requestPath(input) === OPENAI_CODEX_PROXY_TEST_PATH)).toHaveLength(1)
+    expect(mutate).not.toHaveBeenCalled()
   })
 
   it('activates only the exact manual proxy draft that passed its latest test', async () => {
@@ -824,6 +850,146 @@ describe('OpenAI Codex Plugin configuration card', () => {
     expect(mutate).toHaveBeenCalledWith(expect.arrayContaining([{ op: 'set', path: ['proxyUrl'], value: second }]), expect.any(Number))
     expect(mutate).not.toHaveBeenCalledWith(expect.arrayContaining([{ op: 'set', path: ['enableProxy'], value: false }]), expect.any(Number))
     expect(scope.getSnapshot().value?.enableProxy).toBe(true)
+  })
+
+  it.each([
+    ['replace', 'success'], ['replace', 'failure'], ['disable', 'success'], ['disable', 'failure'],
+  ] as const)('invalidates an external saved proxy %s and ignores old %s without automatically probing the replacement', async (change, outcome) => {
+    const first = 'http://127.0.0.1:8110'
+    const second = 'http://127.0.0.1:8111'
+    const probes: { resolve: (response: Response) => void; reject: (error: Error) => void; signal: AbortSignal | null | undefined }[] = []
+    const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      if (requestPath(input) === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json(modelCatalogFixture([])))
+      return new Promise((resolve, reject) => { probes.push({ resolve, reject, signal: init?.signal }) })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, enableProxy: true, proxyUrl: first })
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('button', { name: en.checkCurrentConnection }))
+    expect(screen.getByText(en.checkingCurrentConnection)).toBeTruthy()
+    await act(async () => { await scope.set(change === 'replace' ? 'proxyUrl' : 'enableProxy', change === 'replace' ? second : false) })
+    expect(probes[0]?.signal?.aborted).toBe(true)
+    expect(screen.queryByText(en.checkingCurrentConnection)).toBeNull()
+    expect(probes).toHaveLength(1)
+    if (change === 'replace') {
+      const check = screen.getByRole<HTMLButtonElement>('button', { name: en.checkCurrentConnection })
+      expect(check.disabled).toBe(false)
+      fireEvent.click(check)
+      expect(probes).toHaveLength(2)
+    }
+    await act(async () => {
+      if (outcome === 'success') probes[0]?.resolve(json({ proxyUrl: first, reachable: true, classification: 'reachable' }))
+      else probes[0]?.reject(new Error('late failure'))
+    })
+    expect(screen.queryByText(en.currentConnectionHealthy)).toBeNull()
+    expect(screen.queryByText(en.currentConnectionFailed)).toBeNull()
+    if (change === 'replace') {
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: en.checkingCurrentConnectionButton }).disabled).toBe(true)
+      expect(probes[1]?.signal?.aborted).toBe(false)
+      await act(async () => { probes[1]?.resolve(json({ proxyUrl: second, reachable: true, classification: 'reachable' })) })
+      expect(screen.getByText(en.currentConnectionHealthy)).toBeTruthy()
+    } else {
+      expect(screen.queryByRole('button', { name: en.checkCurrentConnection })).toBeNull()
+      expect(within(screen.getByRole('group', { name: en.currentConnection })).getByText(en.directConnection)).toBeTruthy()
+    }
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  describe.each(['detect', 'manual', 'current'] as const)('%s bounded proxy requests', mode => {
+    it.each(['headers', 'body'])('bounds stalled %s and permits only explicit retry, ignoring late responses', async stall => {
+      vi.useFakeTimers()
+      const proxyUrl = 'http://127.0.0.1:8110'
+      let finish: ((response: Response) => void) | undefined
+      let finishBody: ((value: unknown) => void) | undefined
+      let probeSignal: AbortSignal | null | undefined
+      let attempts = 0
+      const result = { proxyUrl, reachable: true, classification: 'reachable', status: 401 }
+      const payload = mode === 'detect' ? { candidates: [result], results: [result] } : result
+      vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        if (requestPath(input) === OPENAI_CODEX_MODEL_CATALOG_PATH) return json(modelCatalogFixture([]))
+        attempts += 1
+        if (attempts > 1) return json(payload)
+        probeSignal = init?.signal
+        if (stall === 'headers') return new Promise(resolve => { finish = resolve })
+        const response = json(payload)
+        vi.spyOn(response, 'json').mockImplementation(() => new Promise(resolve => { finishBody = resolve }))
+        return response
+      }))
+      const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, enableProxy: mode === 'current', proxyUrl })
+      await act(async () => { render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />) })
+      if (mode === 'manual') fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+      const actionName = mode === 'detect' ? en.scanLocalProxy : mode === 'manual' ? en.testProxy : en.checkCurrentConnection
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: actionName })) })
+      await act(async () => { await vi.advanceTimersByTimeAsync(BROWSER_REQUEST_TIMEOUT_MS - 1) })
+      expect(attempts).toBe(1)
+      expect(probeSignal?.aborted).toBe(false)
+      await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+      expect(probeSignal?.aborted).toBe(true)
+      expect(screen.getByRole<HTMLButtonElement>('button', { name: actionName }).disabled).toBe(false)
+      expect(attempts).toBe(1)
+      if (mode === 'detect') expect(screen.getByText(en.proxyDetectionFailedTitle)).toBeTruthy()
+      if (mode === 'current') expect(screen.getByText(en.currentConnectionFailed)).toBeTruthy()
+      await act(async () => { fireEvent.click(screen.getByRole('button', { name: actionName })) })
+      expect(attempts).toBe(2)
+      const failed = { proxyUrl, reachable: false, classification: 'connect-failure' }
+      const stale = mode === 'detect' ? { candidates: [], results: [failed] } : failed
+      await act(async () => { finish?.(json(stale)); finishBody?.(stale) })
+      if (mode === 'detect') expect(screen.getByText(en.proxyCandidatesFound)).toBeTruthy()
+      if (mode === 'manual') expect(screen.getByText(en.proxyTestSucceeded.replace('{status}', '401'))).toBeTruthy()
+      if (mode === 'current') expect(screen.getByText(en.currentConnectionHealthy)).toBeTruthy()
+      expect(mutate).not.toHaveBeenCalled()
+      expect(attempts).toBe(2)
+    })
+
+    it('aborts on unmount and ignores a transport that completes afterwards', async () => {
+      const proxyUrl = 'http://127.0.0.1:8110'
+      let probeSignal: AbortSignal | null | undefined
+      let finish: ((response: Response) => void) | undefined
+      const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        if (requestPath(input) === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json(modelCatalogFixture([])))
+        probeSignal = init?.signal
+        return new Promise(resolve => { finish = resolve })
+      })
+      vi.stubGlobal('fetch', fetchMock)
+      const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, enableProxy: mode === 'current', proxyUrl })
+      const view = render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+      if (mode === 'manual') fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+      fireEvent.click(screen.getByRole('button', { name: mode === 'detect' ? en.scanLocalProxy : mode === 'manual' ? en.testProxy : en.checkCurrentConnection }))
+      view.unmount()
+      expect(probeSignal?.aborted).toBe(true)
+      await act(async () => { finish?.(json({ candidates: [], results: [] })) })
+      expect(view.container.textContent).toBe('')
+      expect(mutate).not.toHaveBeenCalled()
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it('aborts an obsolete manual probe without allowing its late completion to clear the new probe busy state', async () => {
+    const first = 'http://127.0.0.1:8110'
+    const second = 'http://127.0.0.1:8111'
+    const probes: { resolve: (response: Response) => void; signal: AbortSignal | null | undefined }[] = []
+    vi.stubGlobal('fetch', vi.fn((input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+      if (requestPath(input) === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json(modelCatalogFixture([])))
+      return new Promise(resolve => { probes.push({ resolve, signal: init?.signal }) })
+    }))
+    const { scope, mutate } = settingsScopeFixture()
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    const address = screen.getByRole('textbox', { name: en.proxyAddress })
+    fireEvent.change(address, { target: { value: first } })
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    fireEvent.change(address, { target: { value: second } })
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    expect(probes[0]?.signal?.aborted).toBe(true)
+    await act(async () => { probes[0]?.resolve(json({ proxyUrl: first, reachable: true, classification: 'reachable' })) })
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: en.testingProxy }).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: en.useThisProxy }).disabled).toBe(true)
+    expect(probes[1]?.signal?.aborted).toBe(false)
+    await act(async () => { probes[1]?.resolve(json({ proxyUrl: second, reachable: true, classification: 'reachable', status: 401 })) })
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: en.testProxy }).disabled).toBe(false)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: en.useThisProxy }).disabled).toBe(false)
+    expect(mutate).not.toHaveBeenCalled()
+    expect(probes).toHaveLength(2)
   })
 
   it('ignores a late current-connection result after the saved proxy changes', async () => {

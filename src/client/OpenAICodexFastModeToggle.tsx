@@ -9,6 +9,7 @@ import { OPENAI_CODEX_FAST_MODE_PATH } from '../fast-mode-paths.ts'
 import { openAICodexExpandedContextWindow, openAICodexDefaultContextWindow } from '../model-contract.ts'
 import { OPENAI_CODEX_EXTENDED_CONTEXT_PATH } from '../extended-context-paths.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
+import { requestJson } from './request-json.ts'
 
 const CODEX_PROVIDER = 'openai-codex'
 const FAST_MODE_ACTIVE_COLOR = '#f97316'
@@ -86,6 +87,7 @@ function OpenAICodexSessionToggle({
   const path = extendedContext ? OPENAI_CODEX_EXTENDED_CONTEXT_PATH : OPENAI_CODEX_FAST_MODE_PATH
   const [state, setState] = useState<FastModeState>({ status: 'loading', enabled: false })
   const [tooltipVisible, setTooltipVisible] = useState(false)
+  const [readAttempt, setReadAttempt] = useState(0)
   const controllerRef = useRef<AbortController | undefined>(undefined)
   const tooltipId = useId()
 
@@ -104,13 +106,13 @@ function OpenAICodexSessionToggle({
     setState({ status: 'loading', enabled: false })
     void (async () => {
       try {
-        const response = await fetch(`${path}?sessionId=${encodeURIComponent(sessionId)}`,  {
+        const { response, value } = await requestJson(`${path}?sessionId=${encodeURIComponent(sessionId)}`, {
           method: 'GET',
           credentials: 'same-origin',
           headers: { accept: 'application/json' },
           signal: controller.signal,
         })
-        const enabled = response.ok ? readEnabled(await response.json().catch(() => undefined)) : undefined
+        const enabled = response.ok ? readEnabled(value) : undefined
         if (!disposed && !controller.signal.aborted) {
           setState(enabled === undefined
             ? { status: 'error', enabled: false }
@@ -127,11 +129,11 @@ function OpenAICodexSessionToggle({
       controller.abort()
       if (controllerRef.current === controller) controllerRef.current = undefined
     }
-  }, [eligible, sessionId, path])
+  }, [eligible, sessionId, path, readAttempt])
 
   if (!eligible) return null
 
-  const busy = state.status !== 'ready'
+  const busy = state.status === 'loading'
   const title = extendedContext
     ? t(state.status === 'loading' ? 'extendedContextLoadingTitle'
       : state.status === 'error' ? 'extendedContextUnavailableTitle'
@@ -145,15 +147,21 @@ function OpenAICodexSessionToggle({
         : t('fastModeDisabledTitle')
 
   const toggle = (): void => {
-    if (state.status !== 'ready' || busy) return
-    controllerRef.current?.abort()
+    if (busy || controllerRef.current !== undefined) return
+    if (state.status === 'error') {
+      // A failed mutation may have committed: recover only by reading it back.
+      setState(current => ({ ...current, status: 'loading' }))
+      setReadAttempt(current => current + 1)
+      return
+    }
+    if (state.status !== 'ready') return
     const controller = new AbortController()
     controllerRef.current = controller
     const next = !state.enabled
     setState(current => ({ ...current, status: 'loading' }))
     void (async () => {
       try {
-        const response = await fetch(path, {
+        const { response, value } = await requestJson(path, {
           method: 'POST',
           credentials: 'same-origin',
           headers: {
@@ -163,14 +171,14 @@ function OpenAICodexSessionToggle({
           body: JSON.stringify({ sessionId, enabled: next }),
           signal: controller.signal,
         })
-        const enabled = response.ok ? readEnabled(await response.json().catch(() => undefined)) : undefined
-        if (!controller.signal.aborted) {
+        const enabled = response.ok ? readEnabled(value) : undefined
+        if (controllerRef.current === controller && !controller.signal.aborted) {
           setState(enabled === undefined
             ? { status: 'error', enabled: state.enabled }
             : { status: 'ready', enabled })
         }
       } catch {
-        if (!controller.signal.aborted) setState({ status: 'error', enabled: state.enabled })
+        if (controllerRef.current === controller && !controller.signal.aborted) setState({ status: 'error', enabled: state.enabled })
       } finally {
         if (controllerRef.current === controller) controllerRef.current = undefined
       }

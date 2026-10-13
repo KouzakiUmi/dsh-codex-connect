@@ -1,12 +1,14 @@
 /** Compact server-driven Codex quota indicator for the Composer tool row. */
 
-import { useEffect, useId, useSyncExternalStore, useState } from 'react'
+import { useEffect, useId, useMemo, useSyncExternalStore, useState } from 'react'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { OpenAICodexUsage, OpenAICodexRateLimitWindow } from '../usage.ts'
 import { OPENAI_CODEX_AUTH_STATUS_PATH } from '../auth-paths.ts'
 import { formatOpenAICodexResetAt } from './OpenAICodexSettings.tsx'
+import type { OpenAICodexConfigForm } from './config-form.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
+import { requestJson } from './request-json.ts'
 
 const WEEK_SECONDS = 7 * 24 * 60 * 60
 const FIVE_HOUR_SECONDS = 5 * 60 * 60
@@ -18,6 +20,8 @@ type Translate = (key: OpenAICodexSettingsKey, params?: Record<string, unknown>)
 export interface OpenAICodexQuotaIndicatorInjected {
   /** Session-scoped model directory shared with the model selection surface. */
   readonly directory: SnapshotStore<ModelDirectoryState>
+  /** Live plugin configuration: the pill renders only when this profile enables it. */
+  readonly configScope?: Pick<OpenAICodexConfigForm, 'getSnapshot' | 'subscribe'>
 }
 
 interface UsageRequestState {
@@ -110,8 +114,22 @@ function subscribeDirectory(directory: SnapshotStore<ModelDirectoryState>, liste
   return directory.subscribe(listener)
 }
 
+/** Off by default: another plugin may own the composer tool row. */
+function composerQuotaPillEnabled(scope: OpenAICodexQuotaIndicatorInjected['configScope']): boolean {
+  return scope?.getSnapshot().value?.enableComposerQuotaPill === true
+}
+
+function useComposerQuotaPill(scope: OpenAICodexQuotaIndicatorInjected['configScope']): boolean {
+  const source = useMemo(() => ({
+    subscribe: (listener: () => void) => scope?.subscribe(listener) ?? (() => {}),
+    getSnapshot: () => composerQuotaPillEnabled(scope),
+  }), [scope])
+  return useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot)
+}
+
 /** Render the recognized quota windows returned for the current model bucket. */
-export function OpenAICodexQuotaIndicator({ directory, t }: OpenAICodexQuotaIndicatorInjected & { t: Translate }) {
+export function OpenAICodexQuotaIndicator({ directory, configScope, t }: OpenAICodexQuotaIndicatorInjected & { t: Translate }) {
+  const enabled = useComposerQuotaPill(configScope)
   const directoryState = useSyncExternalStore(
     listener => subscribeDirectory(directory, listener),
     () => directory.getSnapshot(),
@@ -124,7 +142,7 @@ export function OpenAICodexQuotaIndicator({ directory, t }: OpenAICodexQuotaIndi
   const tooltipId = useId()
 
   useEffect(() => {
-    if (!eligible) {
+    if (!enabled || !eligible) {
       setRequest({ status: 'hidden' })
       return
     }
@@ -147,13 +165,12 @@ export function OpenAICodexQuotaIndicator({ directory, t }: OpenAICodexQuotaIndi
       if (inFlight || disposed || document.hidden) return
       inFlight = true
       try {
-        const response = await fetch(OPENAI_CODEX_AUTH_STATUS_PATH, {
+        const { response, value } = await requestJson(OPENAI_CODEX_AUTH_STATUS_PATH, {
           method: 'GET',
           credentials: 'same-origin',
           headers: { accept: 'application/json' },
           signal: controller.signal,
         })
-        const value: unknown = await response.json().catch(() => undefined)
         const usage = response.ok ? usageFromStatus(value) : undefined
         failures = usage === undefined ? Math.min(failures + 1, 5) : 0
         if (!disposed && !controller.signal.aborted) {
@@ -178,9 +195,9 @@ export function OpenAICodexQuotaIndicator({ directory, t }: OpenAICodexQuotaIndi
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [eligible])
+  }, [eligible, enabled])
 
-  if (!eligible || request.status !== 'ready' || request.usage === undefined) return null
+  if (!enabled || !eligible || request.status !== 'ready' || request.usage === undefined) return null
   const model = directoryState.current?.model
   const fiveHour = quotaOf(request.usage, FIVE_HOUR_SECONDS)
   const weekly = quotaOf(request.usage, WEEK_SECONDS)

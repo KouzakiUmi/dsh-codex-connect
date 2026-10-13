@@ -49,8 +49,8 @@ export function isValidOpenAICodexProxyUrl(value: unknown): value is string {
 
 /**
  * Output-detail level accepted by the Codex Responses API (`text.verbosity`),
- * matching the official ChatGPT "output verbosity" choices. `default` omits
- * the wire field entirely so the model preset decides.
+ * matching the official ChatGPT "output verbosity" choices. `default` sends
+ * the model catalog's default verbosity instead of omitting the wire field.
  */
 export type OpenAICodexOutputVerbosity = 'default' | 'low' | 'medium' | 'high'
 
@@ -156,13 +156,15 @@ export interface OpenAICodexSettingsConfig {
   autoReviewDisclosureAcknowledged: boolean
   /** Let the hidden Codex reviewer answer eligible DSH approval requests. */
   enableAutoReview: boolean
+  /** Opt-in composer quota pill; off by default so other plugins can own the row. */
+  enableComposerQuotaPill: boolean
   searchModel: string
   searchMode: OpenAICodexSearchMode
   searchContextSize: OpenAICodexSearchContextSize
   searchMaxOutputTokens: number
-  /** Output-detail level sent as `text.verbosity`; `default` omits the wire field. */
+  /** Output-detail level sent as `text.verbosity`; `default` sends the catalog default. */
   outputVerbosity: OpenAICodexOutputVerbosity
-  /** Reasoning-summary detail sent as `reasoning.summary`; effective only on explicit-effort requests. */
+  /** Reasoning-summary detail for ordinary requests, including default effort; `none` omits the field. */
   reasoningSummary: OpenAICodexReasoningSummarySetting
 }
 
@@ -182,6 +184,7 @@ export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> 
   imageModelHint: DEFAULT_OPENAI_CODEX_IMAGE_MODEL_HINT,
   autoReviewDisclosureAcknowledged: false,
   enableAutoReview: false,
+  enableComposerQuotaPill: false,
   searchModel: DEFAULT_OPENAI_CODEX_SEARCH_MODEL,
   searchMode: DEFAULT_OPENAI_CODEX_SEARCH_MODE,
   searchContextSize: DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE,
@@ -217,6 +220,9 @@ export function resolveOpenAICodexSettings(
   }
   if (typeof resolved.enableNewSessionFastMode !== 'boolean' || typeof resolved.enableNewSubagentFastMode !== 'boolean') {
     throw new TypeError('OpenAI Codex new-session Fast Mode defaults must be booleans')
+  }
+  if (typeof resolved.enableComposerQuotaPill !== 'boolean') {
+    throw new TypeError('OpenAI Codex enableComposerQuotaPill must be a boolean')
   }
   if (typeof resolved.enableNativeCompaction !== 'boolean') {
     throw new TypeError('OpenAI Codex enableNativeCompaction must be a boolean')
@@ -264,6 +270,7 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   const imageModelHint = value['imageModelHint']
   const autoReviewDisclosureAcknowledged = value['autoReviewDisclosureAcknowledged']
   const enableAutoReview = value['enableAutoReview']
+  const enableComposerQuotaPill = value['enableComposerQuotaPill']
   const searchModel = value['searchModel']
   const searchMode = value['searchMode']
   const searchContextSize = value['searchContextSize']
@@ -285,6 +292,8 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   if (autoReviewDisclosureAcknowledged !== undefined && typeof autoReviewDisclosureAcknowledged !== 'boolean') return undefined
   // Older Host snapshots predate Auto-review; absence maps to its safe default.
   if (enableAutoReview !== undefined && typeof enableAutoReview !== 'boolean') return undefined
+  // Older Host snapshots predate the composer quota pill; absence maps to its safe default.
+  if (enableComposerQuotaPill !== undefined && typeof enableComposerQuotaPill !== 'boolean') return undefined
   if (typeof searchModel !== 'string' || searchModel.trim().length === 0) return undefined
   if (searchMode !== 'cached' && searchMode !== 'indexed' && searchMode !== 'live') return undefined
   if (searchContextSize !== 'low' && searchContextSize !== 'medium' && searchContextSize !== 'high') return undefined
@@ -308,6 +317,7 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
     imageModelHint: imageModelHint ?? DEFAULT_OPENAI_CODEX_IMAGE_MODEL_HINT,
     autoReviewDisclosureAcknowledged: autoReviewDisclosureAcknowledged ?? false,
     enableAutoReview: enableAutoReview ?? false,
+    enableComposerQuotaPill: enableComposerQuotaPill ?? false,
     searchModel,
     searchMode,
     searchContextSize,

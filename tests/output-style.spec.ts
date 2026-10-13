@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { AssistantMessageEventStream, TranscriptContext, Model, Provider, SimpleStreamOptions } from '@earendil-works/pi-ai'
 import { withOpenAICodexOutputStyle } from '../src/adapter.ts'
 import type { CodexSimpleStreamOptions, OpenAICodexOutputStyle } from '../src/adapter.ts'
+import { en, zh } from '../src/client/locales.ts'
 
 function model(provider = 'openai-codex'): Model<'openai-codex-responses'> {
   return { provider, id: 'gpt-6-astra', name: 'GPT-6-Astra', api: 'openai-codex-responses', contextWindow: 1, input: ['text'] } as unknown as Model<'openai-codex-responses'>
@@ -38,6 +39,16 @@ function settle(): Promise<void> {
 }
 
 describe('OpenAI Codex output-style adapter boundary', () => {
+  it('describes the catalog-default and default-effort wire behavior in both locales', () => {
+    expect(en.verbosityDefaultHelp).toContain('catalog')
+    expect(en.verbosityDefaultHelp).not.toContain('Omit')
+    expect(en.outputStyleNote).toContain('including requests using the default reasoning level')
+    expect(en.outputStyleNote).toContain('None omits')
+    expect(zh.verbosityDefaultHelp).toContain('发送模型目录')
+    expect(zh.outputStyleNote).toContain('包括使用默认推理档位')
+    expect(zh.outputStyleNote).toContain('不发送推理摘要字段')
+  })
+
   it('passes explicit verbosity and reasoning summary through stream options without touching the payload', async () => {
     const f = fixture()
     const wrapped = withOpenAICodexOutputStyle(f.provider, style('medium', 'detailed'))

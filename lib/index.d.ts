@@ -384,6 +384,8 @@ declare class OpenAICodexBackendRequests {
   constructor(proxyManager?: OpenAICodexProxyManager | undefined, resolveProxyUrl?: () => string | undefined, maxConcurrent?: number, beforeAuxiliaryAttempt?: (() => Promise<void>) | undefined, metrics?: RequestMetrics | undefined,
   /** Optional owner accounting, before auxiliary checks and every actual fetch. */
   beforeAttempt?: (() => Promise<void>) | undefined);
+  /** Plugin lifecycle signal, shared with pre-fetch work such as authentication. */
+  get signal(): AbortSignal;
   private combinedSignal;
   private drain;
   private release;
@@ -707,8 +709,8 @@ export declare function isValidOpenAICodexImageModelHint(value: unknown): value 
 export declare function isValidOpenAICodexProxyUrl(value: unknown): value is string;
 /**
  * Output-detail level accepted by the Codex Responses API (`text.verbosity`),
- * matching the official ChatGPT "output verbosity" choices. `default` omits
- * the wire field entirely so the model preset decides.
+ * matching the official ChatGPT "output verbosity" choices. `default` sends
+ * the model catalog's default verbosity instead of omitting the wire field.
  */
 type OpenAICodexOutputVerbosity = 'default' | 'low' | 'medium' | 'high';
 /** Official default: send the model's `default_verbosity` (low for every listed model). */
@@ -778,13 +780,15 @@ interface OpenAICodexSettingsConfig {
   autoReviewDisclosureAcknowledged: boolean;
   /** Let the hidden Codex reviewer answer eligible DSH approval requests. */
   enableAutoReview: boolean;
+  /** Opt-in composer quota pill; off by default so other plugins can own the row. */
+  enableComposerQuotaPill: boolean;
   searchModel: string;
   searchMode: OpenAICodexSearchMode;
   searchContextSize: OpenAICodexSearchContextSize;
   searchMaxOutputTokens: number;
-  /** Output-detail level sent as `text.verbosity`; `default` omits the wire field. */
+  /** Output-detail level sent as `text.verbosity`; `default` sends the catalog default. */
   outputVerbosity: OpenAICodexOutputVerbosity;
-  /** Reasoning-summary detail sent as `reasoning.summary`; effective only on explicit-effort requests. */
+  /** Reasoning-summary detail for ordinary requests, including default effort; `none` omits the field. */
   reasoningSummary: OpenAICodexReasoningSummarySetting;
 }
 export declare const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig>;
@@ -1118,6 +1122,8 @@ export interface Config {
   autoReviewDisclosureAcknowledged?: boolean;
   /** Let the hidden Codex reviewer answer eligible DSH approval requests. */
   enableAutoReview?: boolean;
+  /** Show the compact Codex quota pill in the composer tool row; off by default. */
+  enableComposerQuotaPill?: boolean;
   /** Model used for auxiliary standalone searches. */
   searchModel?: string;
   /** Cached, indexed, or live web access. */
@@ -1126,7 +1132,7 @@ export interface Config {
   searchContextSize?: OpenAICodexSearchContextSize;
   /** Maximum generated tokens returned by the standalone search endpoint. */
   searchMaxOutputTokens?: number;
-  /** Output-detail level sent as `text.verbosity`; `default` omits the wire field. */
+  /** Output-detail level sent as `text.verbosity`; `default` sends the catalog default. */
   outputVerbosity?: OpenAICodexOutputVerbosity;
   /** Reasoning-summary detail sent as `reasoning.summary`. */
   reasoningSummary?: OpenAICodexReasoningSummarySetting;
@@ -1152,6 +1158,7 @@ export interface VolatileConfig {
   imageModelHint: Volatile<string>;
   autoReviewDisclosureAcknowledged: Volatile<boolean>;
   enableAutoReview: Volatile<boolean>;
+  enableComposerQuotaPill: Volatile<boolean>;
   searchModel: Volatile<string>;
   searchMode: Volatile<OpenAICodexSearchMode>;
   searchContextSize: Volatile<OpenAICodexSearchContextSize>;

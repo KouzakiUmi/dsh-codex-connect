@@ -2,12 +2,32 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { formatOpenAICodexResetAt } from '../src/client/OpenAICodexSettings.tsx'
 import { OpenAICodexQuotaIndicator } from '../src/client/OpenAICodexQuotaIndicator.tsx'
+import type { OpenAICodexConfigForm } from '../src/client/config-form.ts'
 import { en } from '../src/client/locales.ts'
 import type { OpenAICodexSettingsKey } from '../src/client/locales.ts'
+import { DEFAULT_OPENAI_CODEX_SETTINGS } from '../src/settings-contract.ts'
+import type { OpenAICodexSettingsConfig } from '../src/settings-contract.ts'
+
+/** The pill is opt-in, so every render needs a config scope that enables it. */
+function pillScope(enabled: boolean): Pick<OpenAICodexConfigForm, 'getSnapshot' | 'subscribe'> {
+  const snapshot: ConfigFormSnapshot<OpenAICodexSettingsConfig> = {
+    status: 'ready',
+    value: { ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill: enabled },
+    base: undefined,
+    user: undefined,
+    revision: 7,
+    writable: true,
+    mode: 'host',
+  }
+  return { subscribe: () => () => undefined, getSnapshot: () => snapshot }
+}
+
+const enabledScope = pillScope(true)
 
 function t(key: OpenAICodexSettingsKey, params: Record<string, unknown> = {}): string {
   return Object.entries(params).reduce(
@@ -78,7 +98,7 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(directoryState('gpt-5-codex'))
 
-    render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     const indicator = await screen.findByRole('status')
     const localReset = formatOpenAICodexResetAt(resetAt)
     expect(indicator.textContent).toBe('5h7d')
@@ -107,7 +127,7 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(directoryState('gpt-5-codex'))
 
-    render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     const indicator = await screen.findByRole('status')
     const localReset = formatOpenAICodexResetAt(resetAt)
     expect(screen.queryByRole('tooltip')).toBeNull()
@@ -132,7 +152,7 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(directoryState('gpt-6-astra'))
 
-    render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     let indicator = await screen.findByRole('status')
     expect(indicator.getAttribute('aria-label')).toContain('88.5%')
     expect(indicator.getAttribute('aria-label')).toContain('72.5%')
@@ -154,7 +174,7 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(directoryState('gpt-5'))
 
-    render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     const indicator = await screen.findByRole('status')
     const progress = indicator.querySelector<HTMLElement>('[data-openai-codex-quota-progress="weekly"]')
     expect(progress?.style.width).toBe(`${remainingPercent}%`)
@@ -169,7 +189,7 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(state)
 
-    render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     expect(screen.queryByRole('status')).toBeNull()
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -179,7 +199,7 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(directoryState('gpt-5'))
 
-    render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     const indicator = await screen.findByRole('status')
     expect(indicator.textContent).not.toContain(en.resetUnavailable)
     expect(indicator.getAttribute('aria-label')).toContain(en.resetUnavailable)
@@ -199,7 +219,7 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(directoryState('gpt-5'))
 
-    render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     const indicator = await screen.findByRole('status')
     expect(indicator.textContent).toBe('5h')
     expect(indicator.querySelector<HTMLElement>('[data-openai-codex-quota-progress="five-hour"]')?.style.width)
@@ -212,7 +232,7 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(directoryState('gpt-5'))
 
-    render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     await waitFor(() => { expect(fetchMock).toHaveBeenCalledOnce() })
     await waitFor(() => { expect(screen.queryByRole('status')).toBeNull() })
   })
@@ -222,7 +242,7 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(directoryState('gpt-5'))
 
-    render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     await waitFor(() => { expect(fetchMock).toHaveBeenCalledOnce() })
     expect(screen.queryByRole('status')).toBeNull()
   })
@@ -236,9 +256,46 @@ describe('OpenAI Codex Composer server-driven quota', () => {
     vi.stubGlobal('fetch', fetchMock)
     const directory = directoryStore(directoryState('gpt-5'))
 
-    const rendered = render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    const rendered = render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
     await waitFor(() => { expect(fetchMock).toHaveBeenCalledOnce() })
     rendered.unmount()
     expect(signal?.aborted).toBe(true)
+  })
+
+  it('does not render or request quota when the configuration scope is missing', () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const rendered = render(<OpenAICodexQuotaIndicator directory={directoryStore(directoryState('gpt-5'))} t={t} />)
+    expect(rendered.container.textContent).toBe('')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('aborts an in-flight request when the profile switches the pill off', async () => {
+    let signal: AbortSignal | undefined
+    vi.stubGlobal('fetch', vi.fn((_input: unknown, init?: RequestInit) => {
+      signal = init?.signal ?? undefined
+      return new Promise<Response>(() => {})
+    }))
+    const directory = directoryStore(directoryState('gpt-5'))
+    const rendered = render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
+    await waitFor(() => { expect(signal).toBeDefined() })
+    rendered.rerender(<OpenAICodexQuotaIndicator directory={directory} configScope={pillScope(false)} t={t} />)
+    expect(signal?.aborted).toBe(true)
+    expect(rendered.container.textContent).toBe('')
+  })
+
+  it('stays off without polling until the profile enables the pill', async () => {
+    const fetchMock = vi.fn(async () => json({ status: 'signed-in', usage: usage(1_735_689_600) }))
+    vi.stubGlobal('fetch', fetchMock)
+    const directory = directoryStore(directoryState('gpt-5-codex'))
+
+    const rendered = render(<OpenAICodexQuotaIndicator directory={directory} configScope={pillScope(false)} t={t} />)
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(rendered.container.textContent).toBe('')
+
+    rendered.rerender(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
+    await waitFor(() => { expect(fetchMock).toHaveBeenCalledOnce() })
+    await waitFor(() => { expect(screen.queryByRole('status')).not.toBeNull() })
   })
 })

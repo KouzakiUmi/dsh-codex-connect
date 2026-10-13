@@ -20,6 +20,7 @@ import {
   OPENAI_CODEX_PROXY_TEST_PATH,
 } from '../proxy-paths.ts'
 import type { OpenAICodexProxyProbeResult } from '../provider-proxy.ts'
+import { requestJson } from './request-json.ts'
 
 export interface OpenAICodexConfigurationProps {
   scope?: ConfigForm<OpenAICodexSettingsConfig>
@@ -111,6 +112,7 @@ const CONFIG_FIELDS = [
   'imageModelHint',
   'autoReviewDisclosureAcknowledged',
   'enableAutoReview',
+  'enableComposerQuotaPill',
   'searchModel',
   'searchMode',
   'searchContextSize',
@@ -217,19 +219,33 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   const proxyDetectionRequest = useRef(0)
   const manualProbeRequest = useRef(0)
   const currentProxyCheckRequest = useRef(0)
+  const proxyDetectionController = useRef<AbortController | undefined>(undefined)
+  const manualProbeController = useRef<AbortController | undefined>(undefined)
+  const currentProxyCheckController = useRef<AbortController | undefined>(undefined)
+  const savedProxyUrl = snapshot.value?.enableProxy === true
+    ? normalizeOpenAICodexProxyUrl(snapshot.value.proxyUrl)
+    : undefined
+
+  useEffect(() => {
+    currentProxyCheckRequest.current += 1
+    currentProxyCheckController.current?.abort()
+    currentProxyCheckController.current = undefined
+    setCurrentProxyCheck({ status: 'idle' })
+  }, [scope, savedProxyUrl])
 
   useEffect(() => {
     if (scope === undefined) return
     const controller = new AbortController()
-    void fetch(OPENAI_CODEX_MODEL_CATALOG_PATH, {
+    void requestJson(OPENAI_CODEX_MODEL_CATALOG_PATH, {
       method: 'GET',
       credentials: 'same-origin',
       headers: { accept: 'application/json' },
       signal: controller.signal,
-    }).then(async response => {
+    }).then(({ response, value }) => {
       if (!response.ok) throw new Error(`model catalog request failed: ${String(response.status)}`)
-      const catalog = decodeOpenAICodexModelCatalog(await response.json())
+      const catalog = decodeOpenAICodexModelCatalog(value)
       if (catalog === undefined) throw new Error('model catalog response was invalid')
+      if (controller.signal.aborted) return
       setModelCatalog(catalog)
       setModelCatalogError(false)
     }).catch(() => {
@@ -256,6 +272,9 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     proxyDetectionRequest.current += 1
     manualProbeRequest.current += 1
     currentProxyCheckRequest.current += 1
+    proxyDetectionController.current?.abort()
+    manualProbeController.current?.abort()
+    currentProxyCheckController.current?.abort()
   }, [])
 
   useEffect(() => {
@@ -274,6 +293,8 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
 
   const clearCurrentProxyCheck = (): void => {
     currentProxyCheckRequest.current += 1
+    currentProxyCheckController.current?.abort()
+    currentProxyCheckController.current = undefined
     setCurrentProxyCheck({ status: 'idle' })
   }
 
@@ -289,10 +310,13 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     baseline.current = scope?.getSnapshot().value
     setDraft(baseline.current)
     setFeedback('idle')
+    proxyDetectionRequest.current += 1
+    proxyDetectionController.current?.abort()
     setProxyDetection({ status: 'idle' })
     setProxyMode('auto')
     setManualProxyUrl(scope?.getSnapshot().value?.proxyUrl ?? '')
     manualProbeRequest.current += 1
+    manualProbeController.current?.abort()
     setManualProbe(undefined)
     setManualProbeBusy(false)
     clearCurrentProxyCheck()
@@ -311,15 +335,19 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
 
   const detectProxy = async (): Promise<void> => {
     const request = ++proxyDetectionRequest.current
+    proxyDetectionController.current?.abort()
+    const controller = new AbortController()
+    proxyDetectionController.current = controller
     setProxyDetection({ status: 'detecting' })
     try {
-      const response = await fetch(OPENAI_CODEX_PROXY_DETECT_PATH, {
+      const { response, value: body } = await requestJson(OPENAI_CODEX_PROXY_DETECT_PATH, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { accept: 'application/json' },
+        signal: controller.signal,
       })
       if (!response.ok) throw new Error(`proxy detection failed: ${String(response.status)}`)
-      const value = await response.json() as ProxyDetectionResponse
+      const value = body as ProxyDetectionResponse
       if (!Array.isArray(value.candidates) || !Array.isArray(value.results)) throw new Error('proxy detection response was invalid')
       if (request !== proxyDetectionRequest.current) return
       setProxyDetection(value.candidates.length > 0
@@ -327,6 +355,8 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
         : { status: 'failed', results: value.results })
     } catch {
       if (request === proxyDetectionRequest.current) setProxyDetection({ status: 'failed', results: [] })
+    } finally {
+      if (proxyDetectionController.current === controller) proxyDetectionController.current = undefined
     }
   }
 
@@ -350,16 +380,21 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     const normalized = normalizeOpenAICodexProxyUrl(manualProxyUrl)
     if (normalized === undefined) return
     const request = ++manualProbeRequest.current
+    manualProbeController.current?.abort()
+    const controller = new AbortController()
+    manualProbeController.current = controller
     setManualProbeBusy(true)
     try {
       const path = `${OPENAI_CODEX_PROXY_TEST_PATH}?proxyUrl=${encodeURIComponent(normalized)}`
-      const response = await fetch(path, {
+      const { response, value } = await requestJson(path, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { accept: 'application/json' },
+        signal: controller.signal,
       })
       if (!response.ok) throw new Error(`proxy test failed: ${String(response.status)}`)
-      const result = await response.json() as OpenAICodexProxyProbeResult
+      if (value === undefined || value === null) throw new Error('proxy test response was invalid')
+      const result = value as OpenAICodexProxyProbeResult
       if (request === manualProbeRequest.current && normalizeOpenAICodexProxyUrl(manualProxyUrl) === normalized) setManualProbe(result)
     } catch {
       if (request === manualProbeRequest.current && normalizeOpenAICodexProxyUrl(manualProxyUrl) === normalized) {
@@ -371,6 +406,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
       }
     } finally {
       if (request === manualProbeRequest.current) setManualProbeBusy(false)
+      if (manualProbeController.current === controller) manualProbeController.current = undefined
     }
   }
 
@@ -379,16 +415,20 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     const normalized = saved?.enableProxy === true ? normalizeOpenAICodexProxyUrl(saved.proxyUrl) : undefined
     if (normalized === undefined) return
     const request = ++currentProxyCheckRequest.current
+    currentProxyCheckController.current?.abort()
+    const controller = new AbortController()
+    currentProxyCheckController.current = controller
     setCurrentProxyCheck({ status: 'checking' })
     try {
       const path = `${OPENAI_CODEX_PROXY_TEST_PATH}?proxyUrl=${encodeURIComponent(normalized)}`
-      const response = await fetch(path, {
+      const { response, value } = await requestJson(path, {
         method: 'POST',
         credentials: 'same-origin',
         headers: { accept: 'application/json' },
+        signal: controller.signal,
       })
       if (!response.ok) throw new Error(`proxy test failed: ${String(response.status)}`)
-      const result = await response.json() as OpenAICodexProxyProbeResult
+      const result = value as OpenAICodexProxyProbeResult
       const current = scope?.getSnapshot().value
       if (request !== currentProxyCheckRequest.current || current?.enableProxy !== true || normalizeOpenAICodexProxyUrl(current.proxyUrl) !== normalized) return
       setCurrentProxyCheck(result.reachable ? { status: 'success', result } : { status: 'failed', result })
@@ -397,6 +437,8 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
       if (request === currentProxyCheckRequest.current && current?.enableProxy === true && normalizeOpenAICodexProxyUrl(current.proxyUrl) === normalized) {
         setCurrentProxyCheck({ status: 'failed' })
       }
+    } finally {
+      if (currentProxyCheckController.current === controller) currentProxyCheckController.current = undefined
     }
   }
 
@@ -459,9 +501,6 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   const loading = snapshot.status === 'loading'
   const editable = snapshot.status === 'ready' && snapshot.writable && !busy
   const searchDisabled = !editable || draft?.enableSearch !== true
-  const savedProxyUrl = snapshot.value?.enableProxy === true
-    ? normalizeOpenAICodexProxyUrl(snapshot.value.proxyUrl)
-    : undefined
   const draftProxyUrl = draft?.enableProxy === true
     ? normalizeOpenAICodexProxyUrl(draft.proxyUrl)
     : undefined
@@ -676,6 +715,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
                   aria-invalid={manualProxyEntered && normalizedManualProxy === undefined}
                   onChange={event => {
                     manualProbeRequest.current += 1
+                    manualProbeController.current?.abort()
                     setManualProbeBusy(false)
                     setManualProbe(undefined)
                     setManualProxyUrl(event.currentTarget.value)
@@ -901,6 +941,17 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
               onChange={event => { update('imageModelHint', event.currentTarget.value) }}
             />
             <span style={bodyStyle}>{t('imageModelHintHelp')}</span>
+          </label>
+          <label style={toggleRowStyle}>
+            <input
+              type="checkbox"
+              checked={draft.enableComposerQuotaPill}
+              onChange={event => { update('enableComposerQuotaPill', event.currentTarget.checked) }}
+            />
+            <span style={toggleCopyStyle}>
+              <span style={labelStyle}>{t('enableComposerQuotaPill')}</span>
+              <span style={bodyStyle}>{t('enableComposerQuotaPillHelp')}</span>
+            </span>
           </label>
           <label style={toggleRowStyle}>
             <input

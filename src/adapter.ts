@@ -1,5 +1,6 @@
 /** OpenAI Codex adapter assembled from public dsh-llm-pi-ai extension points. */
 
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { defaultProviderAuthContext, InMemoryCredentialStore } from '@earendil-works/pi-ai'
 import type { Provider, SimpleStreamOptions, TranscriptContext } from '@earendil-works/pi-ai'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
@@ -353,9 +354,13 @@ export function createOpenAICodexAdapter(
     provider, fastMode, proxyManager, resolveProxyUrl, undefined, backendRequests, taskDispatch?.wrapProvider, outputStyle,
   )]])
   const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => profiles
+  // The host resolver has no signal argument and runs before its stream watchdog.
+  // Keep auth cancellation request-local across the host's lazy iterator boundary.
+  const authScope = new AsyncLocalStorage<{ signal: AbortSignal | undefined }>()
   const adapterOptions = {
     resolveApiKey: async () => {
-      const operation = async () => (await readOpenAICodexRequestAuth(credentials)).access
+      const signal = authScope.getStore()?.signal ?? backendRequests?.signal
+      const operation = async () => (await readOpenAICodexRequestAuth(credentials, signal)).access
       return proxyManager?.run(resolveProxyUrl?.(), operation) ?? operation()
     },
     auth: { credentials: new InMemoryCredentialStore(), authContext: defaultProviderAuthContext() },
@@ -378,6 +383,26 @@ export function createOpenAICodexAdapter(
   const expansionAdapter = (model: string): PiAiAdapter => maximumContextModels?.()?.includes(model) === true
     ? maximumAdapter : expandedAdapter
   class OpenAICodexAdapter extends PiAiAdapter {
+    private async *streamAuthenticated(
+      stream: (options: GenerateOptions) => AsyncIterable<StreamChunk>,
+      options: GenerateOptions,
+    ): AsyncIterable<StreamChunk> {
+      const lifecycle = backendRequests?.signal
+      const signal = lifecycle === undefined ? options.signal
+        : options.signal === undefined ? lifecycle : AbortSignal.any([options.signal, lifecycle])
+      const scope = { signal }
+      const iterator = authScope.run(scope, () => stream(options)[Symbol.asyncIterator]())
+      try {
+        while (true) {
+          const next = await authScope.run(scope, () => iterator.next())
+          if (next.done) return
+          yield next.value
+        }
+      } finally {
+        await authScope.run(scope, () => iterator.return?.())
+      }
+    }
+
     private streamPrepared(
       stream: (options: GenerateOptions) => AsyncIterable<StreamChunk>,
       options: GenerateOptions,
@@ -385,7 +410,7 @@ export function createOpenAICodexAdapter(
       const dispatch = (request: GenerateOptions) => {
         const projected = imageEditingEnabled?.() === true ? withOpenAICodexImageSelectionHandles(request) : request
         const observed = (nextOptions: GenerateOptions) => streamWithCodexRequestDiagnostics(
-          next => streamWithNativeCompactionScope(stream, next, nativeCompactionEnabled?.() === true), nextOptions,
+          next => streamWithNativeCompactionScope(request => this.streamAuthenticated(stream, request), next, nativeCompactionEnabled?.() === true), nextOptions,
         )
         return backendRequests?.metrics?.stream(observed, projected) ?? observed(projected)
       }

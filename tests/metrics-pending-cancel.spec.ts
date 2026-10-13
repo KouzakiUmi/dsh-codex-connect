@@ -52,7 +52,7 @@ describe('pending read cancellation accounting', () => {
     } finally { release(); manager.dispose(); await rm(directory, { recursive: true, force: true }) }
   })
 
-  it('retains existing prompt abort semantics while source cleanup is delayed', async () => {
+  it('reports prompt abort immediately but retains admission until source cleanup settles', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'metrics-abort-policy-'))
     const metrics = new RequestMetrics(directory)
     const manager = new OpenAICodexBackendRequests(undefined, undefined, 1, undefined, metrics)
@@ -69,14 +69,44 @@ describe('pending read cancellation accounting', () => {
       const first = await fetch(endpoint, { signal: abort.signal })
       const next = fetch(endpoint)
       abort.abort(new Error('cancel logical attempt'))
-      await vi.waitFor(() => { expect(calls).toBe(2) })
-      expect(await (await next).text()).toBe('next')
-      expect(cancel).toHaveBeenCalledOnce()
       await expect(first.text()).rejects.toThrow('cancel logical attempt')
+      await vi.waitFor(() => { expect(cancel).toHaveBeenCalledOnce() })
+      await new Promise<void>(resolve => setTimeout(resolve, 10))
+      expect(calls).toBe(1)
+      release()
+      expect(await (await next).text()).toBe('next')
+      expect(calls).toBe(2)
+      expect(cancel).toHaveBeenCalledOnce()
       manager.dispose()
       const report = buildMetricReport([await readMetricJournal(metrics.filename)])
       expect(report.total.attempts).toBe(2)
       expect(report.total.outcomes).toEqual({ cancelled: 1, unobserved: 1 })
+    } finally { release(); manager.dispose(); await rm(directory, { recursive: true, force: true }) }
+  })
+
+  it('records a failed response hook before disposal closes the journal during cleanup', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'metrics-hook-cleanup-'))
+    const metrics = new RequestMetrics(directory)
+    const manager = new OpenAICodexBackendRequests(undefined, undefined, 1, undefined, metrics)
+    let release!: () => void
+    const cleanup = new Promise<void>(resolve => { release = resolve })
+    const cancel = vi.fn(() => cleanup)
+    const failure = new Error('synthetic response hook failure')
+    try {
+      const fetch = manager.wrapFetch({
+        lane: 'model',
+        fetch: async () => new Response(new ReadableStream<Uint8Array>({ cancel })),
+        onResponse: () => { throw failure },
+      })
+      const pending = fetch(endpoint).catch((error: unknown) => error)
+      await vi.waitFor(() => { expect(cancel).toHaveBeenCalledOnce() })
+      manager.dispose()
+      release()
+      expect(await pending).toBe(failure)
+      const report = buildMetricReport([await readMetricJournal(metrics.filename)])
+      expect(report.total.attempts).toBe(1)
+      expect(report.total.outcomes).toEqual({ 'network-error': 1 })
+      expect(report.recording.closed).toBe(1)
     } finally { release(); manager.dispose(); await rm(directory, { recursive: true, force: true }) }
   })
 })

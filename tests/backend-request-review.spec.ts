@@ -45,6 +45,151 @@ describe('PR 227 review regressions', () => {
     }
   })
 
+  it.each([false, true])('holds admission until abort cleanup settles, rejection=%s', async rejects => {
+    const requests = manager()
+    const controller = new AbortController()
+    const reason = new DOMException('fixture abort', 'AbortError')
+    let settle!: () => void
+    const cleanup = new Promise<void>((resolve, reject) => {
+      settle = () => rejects ? reject(new Error('fixture cleanup rejection')) : resolve()
+    })
+    const cancel = vi.fn(() => cleanup)
+    const base = vi.fn(async () => new Response(new ReadableStream<Uint8Array>({ cancel })))
+    const fetch = requests.wrapFetch({ lane: 'model', fetch: base })
+    const first = await fetch(endpoint, { signal: controller.signal })
+    const reader = first.body!.getReader()
+    const read = reader.read()
+    await flush()
+    const next = fetch(endpoint)
+    controller.abort(reason)
+    try {
+      await expect(read).rejects.toBe(reason)
+      controller.abort(reason)
+      await expect(reader.cancel(reason)).rejects.toBe(reason)
+      await flush()
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(base).toHaveBeenCalledOnce()
+      settle()
+      const second = await next
+      expect(base).toHaveBeenCalledTimes(2)
+      await second.body!.cancel().catch(() => undefined)
+    } finally { settle(); reader.releaseLock(); requests.dispose() }
+  })
+
+  it.each([false, true])('suppresses synthetic EOF until explicit cancel cleanup settles, rejection=%s', async rejects => {
+    const requests = manager()
+    let settle!: () => void
+    const cleanup = new Promise<void>((resolve, reject) => {
+      settle = () => rejects ? reject(new Error('fixture cleanup rejection')) : resolve()
+    })
+    const cancel = vi.fn(() => cleanup)
+    const base = vi.fn(async () => new Response(new ReadableStream<Uint8Array>({ cancel })))
+    const fetch = requests.wrapFetch({ lane: 'model', fetch: base })
+    const first = await fetch(endpoint)
+    const reader = first.body!.getReader()
+    const read = reader.read()
+    await flush()
+    const cancellation = reader.cancel('fixture cancellation').catch(error => error)
+    await expect(read).resolves.toEqual({ done: true, value: undefined })
+    const next = fetch(endpoint)
+    try {
+      await reader.cancel('repeat cancellation')
+      await flush()
+      expect(base).toHaveBeenCalledOnce()
+      expect(cancel).toHaveBeenCalledOnce()
+      settle()
+      const result = await cancellation
+      if (rejects) expect(result).toEqual(new Error('fixture cleanup rejection'))
+      else expect(result).toBeUndefined()
+      const second = await next
+      await second.body!.cancel().catch(() => undefined)
+      expect(base).toHaveBeenCalledTimes(2)
+      expect(cancel).toHaveBeenCalledTimes(2)
+    } finally { settle(); reader.releaseLock(); requests.dispose() }
+  })
+
+  it('holds an unread aborted response until source cleanup ends', async () => {
+    const requests = manager()
+    const controller = new AbortController()
+    let settle!: () => void
+    const cleanup = new Promise<void>(resolve => { settle = resolve })
+    const cancel = vi.fn(() => cleanup)
+    const base = vi.fn(async () => new Response(new ReadableStream<Uint8Array>({ cancel })))
+    const fetch = requests.wrapFetch({ lane: 'model', fetch: base })
+    const first = await fetch(endpoint, { signal: controller.signal })
+    const next = fetch(endpoint)
+    controller.abort()
+    try {
+      await expect(first.text()).rejects.toMatchObject({ name: 'AbortError' })
+      await flush()
+      expect(base).toHaveBeenCalledOnce()
+      expect(cancel).toHaveBeenCalledOnce()
+      settle()
+      const second = await next
+      await second.body!.cancel()
+      expect(base).toHaveBeenCalledTimes(2)
+    } finally { settle(); requests.dispose() }
+  })
+
+  it.each([false, true])('shares explicit cancel cleanup with repeated cancel and dispose, rejection=%s', async rejects => {
+    const requests = manager()
+    const controller = new AbortController()
+    let settle!: () => void
+    const cleanup = new Promise<void>((resolve, reject) => {
+      settle = () => rejects ? reject(new Error('fixture cleanup rejection')) : resolve()
+    })
+    const cancel = vi.fn(() => cleanup)
+    const base = vi.fn(async () => new Response(new ReadableStream<Uint8Array>({ cancel })))
+    const fetch = requests.wrapFetch({ lane: 'model', fetch: base })
+    const first = await fetch(endpoint, { signal: controller.signal })
+    const reader = first.body!.getReader()
+    const read = reader.read()
+    await flush()
+    const cancellation = reader.cancel('fixture cancellation').catch(error => error)
+    await reader.cancel('repeat cancellation')
+    await expect(read).resolves.toEqual({ done: true, value: undefined })
+    const next = fetch(endpoint).catch(error => error)
+    controller.abort()
+    requests.dispose()
+    requests.dispose()
+    try {
+      expect(requests.signal.aborted).toBe(true)
+      expect(await next).toMatchObject({ name: 'AbortError' })
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(base).toHaveBeenCalledOnce()
+      settle()
+      const result = await cancellation
+      if (rejects) expect(result).toEqual(new Error('fixture cleanup rejection'))
+      else expect(result).toBeUndefined()
+      expect(cancel).toHaveBeenCalledOnce()
+    } finally { settle(); reader.releaseLock(); requests.dispose() }
+  })
+
+  it('exposes one stable lifecycle signal and immediately aborts consumers on dispose', async () => {
+    const requests = manager()
+    const signal = requests.signal
+    expect(signal).toBe(requests.signal)
+    expect(signal.aborted).toBe(false)
+    let settle!: () => void
+    const cleanup = new Promise<void>(resolve => { settle = resolve })
+    const cancel = vi.fn(() => cleanup)
+    const base = vi.fn(async () => new Response(new ReadableStream<Uint8Array>({ cancel })))
+    const fetch = requests.wrapFetch({ lane: 'model', fetch: base })
+    const first = await fetch(endpoint)
+    const reader = first.body!.getReader()
+    const read = reader.read()
+    const next = fetch(endpoint).catch(error => error)
+    requests.dispose()
+    try {
+      await expect(read).rejects.toBe(signal.reason)
+      expect(await next).toBe(signal.reason)
+      await expect(fetch(endpoint)).rejects.toBe(signal.reason)
+      requests.dispose()
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(base).toHaveBeenCalledOnce()
+    } finally { settle(); await flush(); reader.releaseLock() }
+  })
+
   it('cancels the response body if a response hook throws', async () => {
     const requests = manager()
     const cancel = vi.fn()
@@ -55,6 +200,56 @@ describe('PR 227 review regressions', () => {
       await expect(fetch(endpoint)).rejects.toBe(hookError)
       expect(cancel).toHaveBeenCalledOnce()
     } finally { await raw.body?.cancel().catch(() => undefined) }
+  })
+
+  it.each([false, true])('retains admission for response-hook cleanup and preserves its error, rejection=%s', async rejects => {
+    const requests = manager()
+    let settle!: () => void
+    const cleanup = new Promise<void>((resolve, reject) => {
+      settle = () => rejects ? reject(new Error('fixture cleanup rejection')) : resolve()
+    })
+    const cancel = vi.fn(() => cleanup)
+    const error = new Error('fixture hook error')
+    const first = requests.wrapFetch({ lane: 'model', fetch: async () => new Response(new ReadableStream({ cancel })),
+      onResponse() { throw error } })(endpoint).catch(value => value)
+    await flush()
+    const base = vi.fn(async () => new Response(null))
+    const next = requests.wrapFetch({ lane: 'model', fetch: base })(endpoint)
+    try {
+      await flush()
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(base).not.toHaveBeenCalled()
+      settle()
+      expect(await first).toBe(error)
+      expect((await next).status).toBe(200)
+      expect(base).toHaveBeenCalledOnce()
+    } finally { settle(); requests.dispose() }
+  })
+
+  it('releases an errored source once even when a pending pull also rejects', async () => {
+    const requests = manager()
+    let source!: ReadableStreamDefaultController<Uint8Array>
+    const cancel = vi.fn()
+    const first = await requests.wrapFetch({ lane: 'model', fetch: async () => new Response(new ReadableStream<Uint8Array>({
+      start(controller) { source = controller }, cancel,
+    })) })(endpoint)
+    const reader = first.body!.getReader()
+    const read = reader.read()
+    await flush()
+    const base = vi.fn(async () => new Response(new ReadableStream<Uint8Array>()))
+    const fetch = requests.wrapFetch({ lane: 'model', fetch: base })
+    const next = fetch(endpoint)
+    const error = new Error('fixture network failure')
+    source.error(error)
+    await expect(read).rejects.toBe(error)
+    const second = await next
+    const third = fetch(endpoint)
+    await flush()
+    expect(base).toHaveBeenCalledOnce()
+    expect(cancel).not.toHaveBeenCalled()
+    await second.body!.cancel()
+    await (await third).body!.cancel()
+    reader.releaseLock()
   })
 
   it('preserves the signal embedded in a Request passed to a logical context', async () => {
