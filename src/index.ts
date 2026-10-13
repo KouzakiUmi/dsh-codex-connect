@@ -36,7 +36,7 @@ import {
 } from './update.ts'
 import { CODEX_CONNECT_VERSION } from './version.ts'
 import { FastModeRegistry } from './fast-mode.ts'
-import { ExtendedContextRegistry, registerExtendedContextRequests } from './extended-context.ts'
+import type { OpenAICodexContextTiers } from './model-contract.ts'
 import { registerOpenAICodexFastModeDefaults } from './fast-mode-defaults.ts'
 import { assertNoOpenAICodexProviderConflict } from './doctor.ts'
 import { imageGenerateTool } from './image-tool.ts'
@@ -124,6 +124,7 @@ import {
   DEFAULT_OPENAI_CODEX_REASONING_SUMMARY,
   parseOpenAICodexImageModelHint,
   isValidMaximumContextModels,
+  parseOpenAICodexContextTiers,
   OPENAI_CODEX_SETTINGS_NAMESPACE,
   resolveOpenAICodexProxyUrl,
   resolveOpenAICodexSettings,
@@ -265,7 +266,9 @@ export interface Config {
   oauthTimeoutMs?: number
   /** Model ids advertised in selectors; omitted to advertise the full catalog. */
   models?: string[] | undefined
-  /** Use the official maximum ON budget for these models; OFF remains 272K. */
+  /** Persisted named window tiers; applies to existing/new sessions and manual compaction. */
+  modelContextTiers?: OpenAICodexContextTiers | null
+  /** Retired ON-only preference; retained as inert stored compatibility data. */
   maximumContextModels?: string[] | null
   /** Route Codex Connect requests through proxyUrl after explicit activation. */
   enableProxy?: boolean
@@ -328,6 +331,10 @@ const configSchema = z.object({
   requestMetricsMaxBytes: z.number().step(1).min(4096).max(64 * 1024 * 1024).default(16 * 1024 * 1024),
   oauthTimeoutMs: z.number().step(1).min(1_000).max(1_800_000).default(OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS),
   models: z.union([z.const(undefined), z.array(z.string())]).volatile(),
+  modelContextTiers: z.transform(
+    z.dict(z.union(['standard', 'extended', 'maximum', z.const(null)] as const)),
+    parseOpenAICodexContextTiers,
+  ).default({}).volatile(),
   maximumContextModels: z.transform(z.array(z.string()), value => {
     if (!isValidMaximumContextModels(value)) throw new TypeError('OpenAI Codex maximumContextModels must contain at most 256 bounded model ids')
     return [...new Set(value)]
@@ -362,6 +369,7 @@ export interface VolatileConfig {
   requestMetricsMaxBytes: number
   oauthTimeoutMs: number
   models: Volatile<string[] | undefined>
+  modelContextTiers: Volatile<OpenAICodexContextTiers>
   maximumContextModels: Volatile<string[]>
   enableProxy: Volatile<boolean>
   proxyUrl: Volatile<string>
@@ -398,6 +406,7 @@ export const Config: z<Config, VolatileConfig> = configSchema
 export function apply(ctx: Context, config: Config | VolatileConfig): void {
   const current = (): OpenAICodexSettingsInput => Object.fromEntries(Object.entries({
     models: configValue(config.models), maximumContextModels: configValue(config.maximumContextModels),
+    modelContextTiers: configValue(config.modelContextTiers),
     enableProxy: configValue(config.enableProxy), proxyUrl: configValue(config.proxyUrl),
     contextWindowOverrides: configValue(config.contextWindowOverrides), enableSearch: configValue(config.enableSearch),
     enableReserveFallback: configValue(config.enableReserveFallback), enableNativeCompaction: configValue(config.enableNativeCompaction),
@@ -430,7 +439,6 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
     join(dirname(credentials.filename), OPENAI_CODEX_TRUSTED_ORIGINS_FILENAME),
   )
   const fastMode = new FastModeRegistry()
-  const extendedContext = new ExtendedContextRegistry()
   registerOpenAICodexFastModeDefaults(ctx, fastMode, () => resolveOpenAICodexSettings(current()))
   const taskDirectory = join(dirname(credentials.filename), 'codex-connect-tasks')
   taskRuntime = new AdaptiveTaskControlRuntime(ctx, {
@@ -457,8 +465,6 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
     permits: reservePermits,
     enabled: () => resolveOpenAICodexSettings(current()).enableReserveFallback,
   })
-  // Capture the final routed model after Reserve's waterfall has completed.
-  registerExtendedContextRequests(ctx, extendedContext)
   assertNoOpenAICodexProviderConflict(ctx.llm.listProviders().map(provider => provider.id))
   new OpenAICodexTransport(
     ctx,
@@ -495,8 +501,9 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
         const resolved = resolveOpenAICodexSettings(current())
         return { verbosity: resolved.outputVerbosity, reasoningSummary: resolved.reasoningSummary }
       },
-      extendedContext,
-      () => resolveOpenAICodexSettings(current()).maximumContextModels,
+      undefined,
+      undefined,
+      () => resolveOpenAICodexSettings(current()).modelContextTiers,
     ),
   )
   registerImageHandleBridge(ctx, {
@@ -513,7 +520,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
   // Protected routes follow Connection's lifetime as well as WebServer's; no unauthenticated fallback.
   ctx.inject(['webServer', 'connection'], webCtx => {
     registerOpenAICodexAuthRoutes(webCtx, credentials, trustedOrigins, fastMode, proxyManager, resolveProviderProxyUrl,
-      configValue(config.oauthTimeoutMs) ?? OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS, quota, extendedContext)
+      configValue(config.oauthTimeoutMs) ?? OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS, quota)
     registerOpenAICodexProxyRoutes(webCtx, trustedOrigins, proxyManager)
     registerOpenAICodexOriginalImageRoute(webCtx, trustedOrigins, imageAssets)
   })

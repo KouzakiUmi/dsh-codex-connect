@@ -70,7 +70,20 @@ function bodyOf(responseValue: { body?: string }): unknown {
   return JSON.parse(responseValue.body ?? 'null') as unknown
 }
 
-describe.each([OPENAI_CODEX_FAST_MODE_PATH, OPENAI_CODEX_EXTENDED_CONTEXT_PATH])('session toggle route %s', path => {
+it.each(['GET', 'POST'])('rejects retired context %s without reading a body or pretending to change capacity', async method => {
+  const registry = new FastModeRegistry()
+  const set = vi.spyOn(registry, 'set')
+  const read = vi.fn(async function* () { yield Buffer.from('{"sessionId":"a","enabled":true}') })
+  const req = request({ method, url: `${OPENAI_CODEX_EXTENDED_CONTEXT_PATH}?sessionId=a`, contentType: 'application/json' })
+  Object.defineProperty(req, Symbol.asyncIterator, { value: read })
+  const res = response()
+  await fastRoute(registry, OPENAI_CODEX_EXTENDED_CONTEXT_PATH).handler(req, res)
+  expect(res.status).toBe(410)
+  expect(bodyOf(res)).toEqual({ error: 'MODEL_CONTEXT_TIERS_REQUIRED' })
+  expect(set).not.toHaveBeenCalled(); expect(read).not.toHaveBeenCalled()
+})
+
+describe.each([OPENAI_CODEX_FAST_MODE_PATH])('session toggle route %s', path => {
   it.each(rejectedHttpAdmissions)('rejects $admission before reading or mutating Fast Mode state', async ({ admission, status, error }) => {
     const registry = new FastModeRegistry()
     registry.set('a', true)

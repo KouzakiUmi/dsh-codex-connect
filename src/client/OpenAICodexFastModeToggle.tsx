@@ -1,13 +1,9 @@
 /** Per-conversation OpenAI Codex Fast Mode control for the Composer row. */
 
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
-import type { ConfigForm } from '@deepseek-ai/dsh-client-ui-settings/client'
-import type { OpenAICodexSettingsConfig } from '../settings-contract.ts'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import { OPENAI_CODEX_FAST_MODE_PATH } from '../fast-mode-paths.ts'
-import { openAICodexExpandedContextWindow, openAICodexDefaultContextWindow } from '../model-contract.ts'
-import { OPENAI_CODEX_EXTENDED_CONTEXT_PATH } from '../extended-context-paths.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
 import { requestJson } from './request-json.ts'
 
@@ -19,7 +15,6 @@ type Translate = (key: OpenAICodexSettingsKey, params?: Record<string, unknown>)
 export interface OpenAICodexFastModeToggleInjected {
   /** Session-scoped model directory shared with the model selector and quota. */
   readonly directory: SnapshotStore<ModelDirectoryState>
-  readonly configScope?: ConfigForm<OpenAICodexSettingsConfig>
 }
 
 interface FastModeState {
@@ -50,10 +45,6 @@ function subscribeDirectory(directory: SnapshotStore<ModelDirectoryState>, liste
 
 type ToggleProps = OpenAICodexFastModeToggleInjected & { sessionId: string; t: Translate }
 
-export function OpenAICodexExtendedContextToggle(props: ToggleProps) {
-  return <OpenAICodexSessionToggle {...props} extendedContext />
-}
-
 export function OpenAICodexFastModeToggle(props: ToggleProps) {
   return <OpenAICodexSessionToggle {...props} />
 }
@@ -67,24 +58,14 @@ function OpenAICodexSessionToggle({
   directory,
   sessionId,
   t,
-  extendedContext = false,
-  configScope,
-}: ToggleProps & { extendedContext?: boolean }) {
+}: ToggleProps) {
   const directoryState = useSyncExternalStore(
     listener => subscribeDirectory(directory, listener),
     () => directory.getSnapshot(),
     () => directory.getSnapshot(),
   )
-  const config = useSyncExternalStore(
-    listener => configScope?.subscribe(listener) ?? (() => undefined),
-    () => configScope?.getSnapshot().value,
-    () => configScope?.getSnapshot().value,
-  )
-  const model = directoryState.current?.model ?? ''
-  const standard = openAICodexDefaultContextWindow(model)
-  const maximum = openAICodexExpandedContextWindow(model, standard, config?.maximumContextModels?.includes(model) === true)
-  const eligible = isEligible(directoryState) && (!extendedContext || maximum > standard)
-  const path = extendedContext ? OPENAI_CODEX_EXTENDED_CONTEXT_PATH : OPENAI_CODEX_FAST_MODE_PATH
+  const eligible = isEligible(directoryState)
+  const path = OPENAI_CODEX_FAST_MODE_PATH
   const [state, setState] = useState<FastModeState>({ status: 'loading', enabled: false })
   const [tooltipVisible, setTooltipVisible] = useState(false)
   const [readAttempt, setReadAttempt] = useState(0)
@@ -134,11 +115,7 @@ function OpenAICodexSessionToggle({
   if (!eligible) return null
 
   const busy = state.status === 'loading'
-  const title = extendedContext
-    ? t(state.status === 'loading' ? 'extendedContextLoadingTitle'
-      : state.status === 'error' || state.status === 'unconfirmed' ? 'extendedContextUnavailableTitle'
-        : state.enabled ? 'extendedContextEnabledTitle' : 'extendedContextDisabledTitle', { maximum: `${maximum / 1000}K`, standard: `${standard / 1000}K` })
-    : state.status === 'loading'
+  const title = state.status === 'loading'
     ? t('fastModeLoadingTitle')
     : state.status === 'unconfirmed'
       ? t('fastModeUnconfirmedTitle')
@@ -202,8 +179,7 @@ function OpenAICodexSessionToggle({
     >
       <button
         type="button"
-        data-openai-codex-fast-mode={extendedContext ? undefined : active ? 'on' : 'off'}
-        data-openai-codex-extended-context={extendedContext ? active ? 'on' : 'off' : undefined}
+        data-openai-codex-fast-mode={active ? 'on' : 'off'}
         aria-label={title}
         aria-describedby={tooltipVisible ? tooltipId : undefined}
         aria-pressed={active}
@@ -225,10 +201,7 @@ function OpenAICodexSessionToggle({
           opacity: busy ? 0.6 : 1,
         }}
       >
-        {extendedContext ? <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5" />
-          <path d="M3 3l5 5M21 3l-5 5M21 21l-5-5M3 21l5-5" />
-        </svg> : <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
           <path
             data-openai-codex-fast-mode-bolt={active ? 'filled' : 'outline'}
             d="M13.1 2.75 5.35 13.1h5.8l-.95 8.15 8.45-11.2h-5.9l.35-7.3Z"
@@ -237,7 +210,7 @@ function OpenAICodexSessionToggle({
             strokeWidth="1.8"
             strokeLinejoin="round"
           />
-        </svg>}
+        </svg>
       </button>
       {tooltipVisible && (
         <span
@@ -256,13 +229,11 @@ function OpenAICodexSessionToggle({
             color: 'var(--dsw-alias-label-primary, #fff)',
             fontSize: 12,
             lineHeight: '18px',
-            whiteSpace: extendedContext ? 'normal' : 'nowrap',
-            width: extendedContext ? 'min(300px, calc(100vw - 32px))' : undefined,
+            whiteSpace: 'nowrap',
             pointerEvents: 'none',
           }}
         >
           {title}
-          {extendedContext ? <span style={{ display: 'block', marginTop: 6 }}>{t('extendedContextWarning')}</span> : null}
         </span>
       )}
     </span>

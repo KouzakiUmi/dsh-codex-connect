@@ -15,6 +15,10 @@ declare module '@deepseek-ai/dsh-llm' {
   }
 }
 //#endregion
+//#region src/model-contract.d.ts
+type OpenAICodexContextTier = 'standard' | 'extended' | 'maximum';
+type OpenAICodexContextTiers = Readonly<Record<string, OpenAICodexContextTier | null>>;
+//#endregion
 //#region node_modules/.pnpm/@earendil-works+pi-ai@1.1.0_ebe77346f275513ef308ff2607b62b41/node_modules/@earendil-works/pi-ai/dist/types.d.ts
 /** Provider-scoped environment overrides. Values take precedence over process.env. */
 type ProviderEnv = Record<string, string>;
@@ -696,7 +700,6 @@ export declare function parseOpenAICodexUsage(value: unknown): OpenAICodexUsage;
 export declare function readOpenAICodexRateLimits(store: Pick<OpenAICodexCredentialStore, 'captureActiveAccount'>): Promise<OpenAICodexUsage>;
 //#endregion
 //#region src/settings-contract.d.ts
-/** Node-free settings contract shared by the Host plugin and browser card. */
 /** Stable Harness settings namespace owned by this plugin. */
 export declare const OPENAI_CODEX_SETTINGS_NAMESPACE = "llm-openai-codex";
 /** Suggested local HTTP proxy shown by the settings UI; it is never enabled by default. */
@@ -750,7 +753,9 @@ export declare const DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS = 10000;
 interface OpenAICodexSettingsConfig {
   /** Model ids advertised in selectors; undefined advertises the full catalog. */
   models: string[] | undefined;
-  /** Models whose session expansion ON budget uses the maximum instead of 500K. */
+  /** Persistent model budgets shared by every conversation and manual compaction. */
+  modelContextTiers?: OpenAICodexContextTiers;
+  /** Retired ON-only preference, accepted without automatically expanding a model. */
   maximumContextModels?: string[];
   /** Route Codex Connect requests through the explicitly configured proxy. */
   enableProxy: boolean;
@@ -793,10 +798,11 @@ interface OpenAICodexSettingsConfig {
 }
 export declare const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig>;
 /** Input settings allow null to disable overrides inherited from a lower settings layer. */
-interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides' | 'maximumContextModels'>> {
+interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides' | 'maximumContextModels' | 'modelContextTiers'>> {
   contextWindowOverrides?: Readonly<Record<string, number | null>> | null | undefined;
   /** Host null resets this defaulted list, leaving every maximum preference off. */
   maximumContextModels?: string[] | null;
+  modelContextTiers?: OpenAICodexContextTiers | null;
 }
 /** Fill the schema defaults even when called without Cordis validation. */
 export declare function resolveOpenAICodexSettings(value: OpenAICodexSettingsInput): OpenAICodexSettingsConfig;
@@ -1086,7 +1092,9 @@ export interface Config {
   oauthTimeoutMs?: number;
   /** Model ids advertised in selectors; omitted to advertise the full catalog. */
   models?: string[] | undefined;
-  /** Use the official maximum ON budget for these models; OFF remains 272K. */
+  /** Persisted named window tiers; applies to existing/new sessions and manual compaction. */
+  modelContextTiers?: OpenAICodexContextTiers | null;
+  /** Retired ON-only preference; retained as inert stored compatibility data. */
   maximumContextModels?: string[] | null;
   /** Route Codex Connect requests through proxyUrl after explicit activation. */
   enableProxy?: boolean;
@@ -1143,6 +1151,7 @@ export interface VolatileConfig {
   requestMetricsMaxBytes: number;
   oauthTimeoutMs: number;
   models: Volatile<string[] | undefined>;
+  modelContextTiers: Volatile<OpenAICodexContextTiers>;
   maximumContextModels: Volatile<string[]>;
   enableProxy: Volatile<boolean>;
   proxyUrl: Volatile<string>;

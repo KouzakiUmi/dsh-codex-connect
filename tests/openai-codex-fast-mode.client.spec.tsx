@@ -2,15 +2,12 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { ConfigForm, ConfigFormSnapshot } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { DEFAULT_OPENAI_CODEX_SETTINGS, type OpenAICodexSettingsConfig } from '../src/settings-contract.ts'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { OpenAICodexExtendedContextToggle, OpenAICodexFastModeToggle } from '../src/client/OpenAICodexFastModeToggle.tsx'
+import { OpenAICodexFastModeToggle } from '../src/client/OpenAICodexFastModeToggle.tsx'
 import { en, zh } from '../src/client/locales.ts'
 import type { OpenAICodexSettingsKey } from '../src/client/locales.ts'
 import { OPENAI_CODEX_FAST_MODE_PATH } from '../src/fast-mode-paths.ts'
-import { OPENAI_CODEX_EXTENDED_CONTEXT_PATH } from '../src/extended-context-paths.ts'
 import { BROWSER_REQUEST_TIMEOUT_MS } from '../src/client/request-json.ts'
 
 function t(key: OpenAICodexSettingsKey, params: Record<string, unknown> = {}): string {
@@ -112,7 +109,6 @@ describe('OpenAI Codex Fast Mode Composer toggle', () => {
   })
   describe.each([
     ['Fast Mode', OpenAICodexFastModeToggle, OPENAI_CODEX_FAST_MODE_PATH],
-    ['Extended Context', OpenAICodexExtendedContextToggle, OPENAI_CODEX_EXTENDED_CONTEXT_PATH],
   ] as const)('%s readback recovery', (_label, Toggle, path) => {
     it.each(['http', 'invalid-json', 'invalid-state', 'offline'])('recovers a failed GET (%s) only on user action, including after an eligible model change', async failure => {
       const fetchMock = vi.fn(async (_input: string | URL | Request, init?: RequestInit): Promise<Response> => {
@@ -234,58 +230,6 @@ describe('OpenAI Codex Fast Mode Composer toggle', () => {
       expect(button.getAttribute('aria-pressed')).toBe('false')
       expect(fetchMock.mock.calls.map(([, init]) => init?.method)).toEqual(['GET', 'POST', 'GET'])
     })
-  })
-
-  it('loads and toggles the independent extended-context state with model-specific budgets', async () => {
-    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        expect(input).toBe(OPENAI_CODEX_EXTENDED_CONTEXT_PATH)
-        expect(JSON.parse(String(init.body))).toEqual({ sessionId: 'session-a', enabled: true })
-        return json({ enabled: true })
-      }
-      expect(String(input)).toContain(`${OPENAI_CODEX_EXTENDED_CONTEXT_PATH}?sessionId=session-a`)
-      return json({ enabled: false })
-    })
-    vi.stubGlobal('fetch', fetchMock)
-    render(<OpenAICodexExtendedContextToggle directory={directoryStore(directoryState('gpt-6.1-sol'))} sessionId="session-a" t={t} />)
-    const button = await screen.findByRole('button')
-    await waitFor(() => { expect(button.getAttribute('aria-busy')).toBe('false') })
-    expect(button.getAttribute('aria-label')).toContain('500K')
-    expect(button.getAttribute('aria-label')).toContain('272K')
-    expect(button.querySelector('[data-openai-codex-fast-mode-bolt]')).toBeNull()
-    fireEvent.click(button)
-    await waitFor(() => { expect(button.getAttribute('aria-pressed')).toBe('true') })
-    expect(button.getAttribute('data-openai-codex-extended-context')).toBe('on')
-  })
-
-  it('uses the saved maximum only for the selected model and exposes the risk on keyboard focus', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json({ enabled: false })))
-    const value = { ...DEFAULT_OPENAI_CODEX_SETTINGS, maximumContextModels: ['gpt-6.1-sol'] }
-    const snapshot: ConfigFormSnapshot<OpenAICodexSettingsConfig> = {
-      status: 'ready', value, base: value, user: undefined, revision: 0, writable: true, mode: 'host',
-    }
-    const configScope: ConfigForm<OpenAICodexSettingsConfig> = {
-      getSnapshot: () => snapshot, subscribe: () => () => undefined,
-      set: vi.fn(async () => true), unset: vi.fn(async () => true), mutate: vi.fn(async () => true),
-    }
-    const view = render(<OpenAICodexExtendedContextToggle directory={directoryStore(directoryState('gpt-6.1-sol'))} configScope={configScope} sessionId="session-a" t={t} />)
-    const button = await screen.findByRole('button')
-    await waitFor(() => { expect(button.getAttribute('aria-busy')).toBe('false') })
-    expect(button.getAttribute('aria-label')).toContain('272K')
-    expect(button.getAttribute('aria-label')).toContain('872K')
-    fireEvent.focus(button)
-    expect(screen.getByRole('tooltip').textContent).toContain(en.extendedContextWarning)
-    view.rerender(<OpenAICodexExtendedContextToggle directory={directoryStore(directoryState('gpt-6-astra'))} configScope={configScope} sessionId="session-a" t={t} />)
-    expect(screen.getByRole('button').getAttribute('aria-label')).toContain('500K')
-    expect(screen.getByRole('button').getAttribute('aria-label')).not.toContain('872K')
-  })
-
-  it.each(['gpt-5.5', 'unknown-model'])('does not render or fetch an invented extension for %s', model => {
-    const fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-    render(<OpenAICodexExtendedContextToggle directory={directoryStore(directoryState(model))} sessionId="session-a" t={t} />)
-    expect(screen.queryByRole('button')).toBeNull()
-    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it('keeps the bilingual hover copy concise and state-specific', () => {

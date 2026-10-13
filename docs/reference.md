@@ -136,7 +136,7 @@ The main plugin options are:
 | `models` | full catalog | Visible Codex model ids; an empty array hides all entries |
 | `enableProxy` | `false` | Use `proxyUrl` for Codex Connect traffic |
 | `proxyUrl` | `http://127.0.0.1:7890` | Credential-free HTTP(S) proxy origin; inactive until enabled |
-| `maximumContextModels` | empty list | Models whose conversation expansion uses the official maximum instead of 500K; the OFF budget remains 272K |
+| `modelContextTiers` | empty map / standard | Per-model `standard`, `extended`, or `maximum` window; saved by Host settings and shared by existing/new conversations and `/compact` |
 | `enableSearch` | `false` | Register Codex search and select it when the setting is saved |
 | `enableReserveFallback` | `false` | Follow identity-matched, backend-authorized Luna Reserve transitions for agent requests |
 | `enableImageTool` | `false` | Register `view_image` |
@@ -151,7 +151,9 @@ The main plugin options are:
 | `requestMetricsDirectory` | absent / off | Startup-only private absolute directory for [local request evidence](request-metrics.md); no telemetry upload |
 | `requestMetricsMaxBytes` | `16777216` | Startup-only per-process journal cap, integer `4096`–`67108864`; no directory means no collection |
 
-The Composer expand icon immediately before Fast Mode controls only the current conversation. OFF uses 272K; ON uses 500K, bounded by the model's catalog maximum. Each model's default-unchecked **Use maximum context window when expanded** option changes only its ON budget to the catalog maximum (872K for expandable models), not its OFF budget. Models without expansion support show no expand icon. Toggle state is process-local and resets on plugin restart. Saved `contextWindowOverrides` is retired and ignored without deleting old data. These are client budgets, not verified server capacity. Expansion may increase token/quota consumption and the risk of request errors or failures; turn it off if problems occur. See [the dated design and evidence](agent-notes/session-extended-context.md). Settings remain manually staged with Save/Discard above the fields; changing modules retains the draft, and closing the Models dialog requires confirmation before discarding edits.
+Each Models row has a saved **Context window** dropdown: Standard (272K), Extended (500K, bounded by the catalog maximum), or Maximum (currently 872K for expandable models). Non-expandable models offer only Standard. Save applies the choice to that model's existing and new conversations, metadata/pressure checks and manual `/compact`, without changing an already prepared request. The Host owns settings persistence; plugin restart does not reset saved tiers. A per-model `null` selects Standard and masks an inherited expansion; whole-map `null` resets the map. `maximumContextModels` and `contextWindowOverrides` are retained as inert compatibility data: neither silently enables persistent expansion.
+
+The former Composer switch is a read-only capacity indicator: gray Standard, blue Extended, amber Maximum, with keyboard/hover guidance. It reports the saved raw window, not used tokens or verified server capacity; unavailable settings show an unconfirmed indicator rather than a false 272K. Change the dropdown and Save before compressing an old conversation whose history exceeds 272K. Expansion may increase token/quota consumption and request failures, and unsupported server capacity still requires a supported model/tier. See [the repair and synthetic evidence](agent-notes/model-context-tiers.md). Settings remain manually staged with Save/Discard above the fields; changing modules retains the draft, and closing the Models dialog requires confirmation before discarding edits.
 
 ## Diagnostics and recovery
 

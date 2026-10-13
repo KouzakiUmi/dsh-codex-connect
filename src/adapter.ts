@@ -14,8 +14,8 @@ import { readOpenAICodexRequestAuth } from './auth.ts'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
 import type { FastModeRegistry } from './fast-mode.ts'
 import type { ExtendedContextRegistry } from './extended-context.ts'
-import type { OpenAICodexModelCatalogEntry } from './model-contract.ts'
-import { isValidOpenAICodexContextBudget, openAICodexContextLimit, openAICodexExpandedContextWindow } from './model-contract.ts'
+import type { OpenAICodexModelCatalogEntry, OpenAICodexContextTiers } from './model-contract.ts'
+import { isValidOpenAICodexContextBudget, openAICodexModelContextWindow, openAICodexContextLimit } from './model-contract.ts'
 import { OPENAI_CODEX_TRANSPORT, withOpenAICodexModels } from './model-catalog.ts'
 import type { OpenAICodexProxyManager } from './provider-proxy.ts'
 import type { OpenAICodexBackendRequests } from './backend-request.ts'
@@ -345,15 +345,30 @@ export function createOpenAICodexAdapter(
   imageEditingEnabled?: () => boolean,
   /** Profile-scoped output-detail and reasoning-summary preferences read on every request. */
   outputStyle?: () => OpenAICodexOutputStyle | undefined,
-  extendedContext?: ExtendedContextRegistry,
-  maximumContextModels?: () => readonly string[] | undefined,
+  /** Retired session-toggle arguments kept for positional compatibility; never consulted. */
+  _extendedContext?: ExtendedContextRegistry,
+  _maximumContextModels?: () => readonly string[] | undefined,
+  modelContextTiers?: () => OpenAICodexContextTiers | undefined,
 ): PiAiAdapter {
   const baseline = withOpenAICodexModels(openaiCodexProvider())
   const provider = reservePermits === undefined ? baseline : withOpenAICodexReserve(baseline, reservePermits)
-  const profiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
-    provider, fastMode, proxyManager, resolveProxyUrl, undefined, backendRequests, taskDispatch?.wrapProvider, outputStyle,
-  )]])
-  const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => profiles
+  let profiles: Map<string, ResolvedPiAiProviderProfile> | undefined
+  let previousBudgets: string | undefined
+  const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => {
+    const tiers = modelContextTiers?.()
+    const budgets = Object.fromEntries(provider.getModels().map(model => [
+      model.id, openAICodexModelContextWindow(model.id, model.contextWindow, tiers?.[model.id]),
+    ]))
+    const identity = JSON.stringify(budgets)
+    if (profiles === undefined || identity !== previousBudgets) {
+      profiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
+        provider, fastMode, proxyManager, resolveProxyUrl, budgets, backendRequests, taskDispatch?.wrapProvider, outputStyle,
+      )]])
+      previousBudgets = identity
+    }
+    // The Host snapshots by map identity; prepared calls retain their original budget generation.
+    return profiles
+  }
   // The host resolver has no signal argument and runs before its stream watchdog.
   // Keep auth cancellation request-local across the host's lazy iterator boundary.
   const authScope = new AsyncLocalStorage<{ signal: AbortSignal | undefined }>()
@@ -366,22 +381,6 @@ export function createOpenAICodexAdapter(
     auth: { credentials: new InMemoryCredentialStore(), authContext: defaultProviderAuthContext() },
     resolveAttachments,
   }
-  const maximumBudgets = Object.fromEntries(provider.getModels().map(model => [
-    model.id, openAICodexContextLimit(model.id, model.contextWindow).maxContextWindow,
-  ]))
-  const maximumProfiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
-    provider, fastMode, proxyManager, resolveProxyUrl, maximumBudgets, backendRequests, taskDispatch?.wrapProvider, outputStyle,
-  )]])
-  const maximumAdapter = new PiAiAdapter({ ...adapterOptions, profiles: () => maximumProfiles })
-  const expandedBudgets = Object.fromEntries(provider.getModels().map(model => [
-    model.id, openAICodexExpandedContextWindow(model.id, model.contextWindow),
-  ]))
-  const expandedProfiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
-    provider, fastMode, proxyManager, resolveProxyUrl, expandedBudgets, backendRequests, taskDispatch?.wrapProvider, outputStyle,
-  )]])
-  const expandedAdapter = new PiAiAdapter({ ...adapterOptions, profiles: () => expandedProfiles })
-  const expansionAdapter = (model: string): PiAiAdapter => maximumContextModels?.()?.includes(model) === true
-    ? maximumAdapter : expandedAdapter
   class OpenAICodexAdapter extends PiAiAdapter {
     private async *streamAuthenticated(
       stream: (options: GenerateOptions) => AsyncIterable<StreamChunk>,
@@ -417,19 +416,8 @@ export function createOpenAICodexAdapter(
       return taskDispatch?.stream(options, dispatch) ?? dispatch(options)
     }
 
-    override async resolveModel(providerId: string, model: string, signal?: AbortSignal) {
-      // Host pressure goes through llm.resolveModelInfo, not prepareCall. Only the
-      // step/request-bound route receives a larger window; unbound catalog reads stay baseline.
-      return providerId === OPENAI_CODEX_PROVIDER && extendedContext?.forRequest(signal, model) === true
-        ? expansionAdapter(model).resolveModel(providerId, model, signal)
-        : super.resolveModel(providerId, model, signal)
-    }
-
     override async prepareCall(providerId: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall> {
-      const extended = providerId === OPENAI_CODEX_PROVIDER && extendedContext?.forRequest(signal, model) === true
-      const prepared = extended
-        ? await expansionAdapter(model).prepareCall(providerId, model, signal)
-        : await super.prepareCall(providerId, model, signal)
+      const prepared = await super.prepareCall(providerId, model, signal)
       return {
         model: prepared.model,
         stream: options => this.streamPrepared(prepared.stream, options),
@@ -437,8 +425,7 @@ export function createOpenAICodexAdapter(
     }
 
     override stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
-      return this.streamPrepared(next => extendedContext?.isEnabled(next.sessionId) === true
-        ? expansionAdapter(next.model).stream(next) : super.stream(next), options)
+      return this.streamPrepared(next => super.stream(next), options)
     }
 
     override async listModels(providerId: string) {

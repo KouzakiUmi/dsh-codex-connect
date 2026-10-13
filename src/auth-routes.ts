@@ -762,6 +762,8 @@ export function registerOpenAICodexAuthRoutes(
         handler: async (req, res) => {
           if (req.method !== 'GET' && req.method !== 'POST') return json(res, 405, { error: 'method not allowed' })
           if (!await authorize(req, res)) return
+          // Old browser bundles must not report a session toggle that no longer controls model capacity.
+          if (path === OPENAI_CODEX_EXTENDED_CONTEXT_PATH) return json(res, 410, { error: 'MODEL_CONTEXT_TIERS_REQUIRED' })
           if (req.method === 'GET') {
             const sessionId = fastModeSessionIdFromQuery(req)
             if (sessionId === undefined) return json(res, 400, { error: 'invalid input' })

@@ -22,6 +22,15 @@ export function openAICodexExpandedContextWindow(id: string, standard: number, m
   return maximum ? limit : Math.max(standard, Math.min(500_000, limit))
 }
 
+export type OpenAICodexContextTier = 'standard' | 'extended' | 'maximum'
+export type OpenAICodexContextTiers = Readonly<Record<string, OpenAICodexContextTier | null>>
+
+/** One saved model budget for metadata, admission, ordinary calls and manual compaction. */
+export function openAICodexModelContextWindow(id: string, standard: number, tier: OpenAICodexContextTier | null | undefined): number {
+  return tier === 'extended' || tier === 'maximum'
+    ? openAICodexExpandedContextWindow(id, standard, tier === 'maximum') : standard
+}
+
 const CONFIGURATION_LIMITS: Readonly<Record<string, number>> = Object.freeze({
   'gpt-6.1-sol': 872_000,
   'gpt-6-astra': 872_000,

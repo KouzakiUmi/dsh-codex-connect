@@ -11,9 +11,11 @@ import {
 } from '../settings-contract.ts'
 import {
   decodeOpenAICodexModelCatalog,
+  openAICodexModelContextWindow,
+  openAICodexExpandedContextWindow,
   OPENAI_CODEX_MODEL_CATALOG_PATH,
 } from '../model-contract.ts'
-import type { OpenAICodexModelCatalogEntry } from '../model-contract.ts'
+import type { OpenAICodexModelCatalogEntry, OpenAICodexContextTier } from '../model-contract.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
 import {
   OPENAI_CODEX_PROXY_DETECT_PATH,
@@ -100,7 +102,7 @@ const UNAVAILABLE_SNAPSHOT = {
 
 const CONFIG_FIELDS = [
   'models',
-  'maximumContextModels',
+  'modelContextTiers',
   'enableProxy',
   'enableReserveFallback',
   'enableNewSessionFastMode',
@@ -178,10 +180,11 @@ function sameField(
   left: OpenAICodexSettingsConfig[keyof OpenAICodexSettingsConfig],
   right: OpenAICodexSettingsConfig[keyof OpenAICodexSettingsConfig],
 ): boolean {
-  if (field === 'maximumContextModels') {
-    const l = left ?? []
-    const r = right ?? []
-    return Array.isArray(l) && Array.isArray(r) && l.length === r.length && l.every(id => r.includes(id))
+  if (field === 'modelContextTiers') {
+    const l = left as OpenAICodexSettingsConfig['modelContextTiers']
+    const r = right as OpenAICodexSettingsConfig['modelContextTiers']
+    return Object.keys(l ?? {}).length === Object.keys(r ?? {}).length
+      && Object.entries(l ?? {}).every(([id, tier]) => r?.[id] === tier)
   }
   if (field !== 'models') return left === right
   if (left === undefined || right === undefined) return left === right
@@ -614,17 +617,26 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
                           {model.name === model.id ? null : <span style={modelIdStyle}> ({model.id})</span>}
                         </span>
                       </label>
-                      {model.maxContextWindow > model.contextWindow ? <label style={{ ...modelRowStyle, flexWrap: 'wrap', minHeight: 44 }}>
-                        <input type="checkbox" checked={draft.maximumContextModels?.includes(model.id) === true}
-                          aria-label={`${t('maximumContextModel')} (${model.id})`}
+                      <label style={{ ...modelRowStyle, flexWrap: 'wrap', minHeight: 44 }}>
+                        <span>{t('modelContextTier')}</span>
+                        <select style={{ ...controlStyle, width: 'auto', minHeight: 36 }}
+                          aria-label={`${t('modelContextTier')} (${model.id})`}
+                          value={draft.modelContextTiers?.[model.id] ?? 'standard'}
                           onChange={event => {
-                            const maximum = new Set(draft.maximumContextModels ?? [])
-                            if (event.currentTarget.checked) maximum.add(model.id)
-                            else maximum.delete(model.id)
-                            update('maximumContextModels', [...maximum])
-                          }} />
-                        <span>{t('maximumContextModel')} · {model.maxContextWindow / 1000}K</span>
-                      </label> : null}
+                            const tier = event.currentTarget.value as OpenAICodexContextTier
+                            const tiers = { ...draft.modelContextTiers, [model.id]: tier }
+                            // Returning to the original implicit default must not leave a spurious dirty draft.
+                            if (tier === 'standard' && baseline.current?.modelContextTiers?.[model.id] === undefined) delete tiers[model.id]
+                            update('modelContextTiers', tiers)
+                          }}>
+                          <option value="standard">{t('contextTierStandard', { window: model.contextWindow / 1000 })}</option>
+                          {model.maxContextWindow > model.contextWindow ? <>
+                            <option value="extended">{t('contextTierExtended', { window: openAICodexExpandedContextWindow(model.id, model.contextWindow) / 1000 })}</option>
+                            <option value="maximum">{t('contextTierMaximum', { window: model.maxContextWindow / 1000 })}</option>
+                          </> : null}
+                        </select>
+                        <span style={modelIdStyle}>{openAICodexModelContextWindow(model.id, model.contextWindow, draft.modelContextTiers?.[model.id]) / 1000}K</span>
+                      </label>
                     </div>
                   </div>
                 )

@@ -24,7 +24,9 @@ import { OpenAICodexPluginCard } from './OpenAICodexPluginCard.tsx'
 import type { OpenAICodexPluginCardInjected } from './OpenAICodexPluginCard.tsx'
 import { OpenAICodexQuotaIndicator } from './OpenAICodexQuotaIndicator.tsx'
 import type { OpenAICodexQuotaIndicatorInjected } from './OpenAICodexQuotaIndicator.tsx'
-import { OpenAICodexExtendedContextToggle, OpenAICodexFastModeToggle } from './OpenAICodexFastModeToggle.tsx'
+import { OpenAICodexFastModeToggle } from './OpenAICodexFastModeToggle.tsx'
+import { OpenAICodexContextIndicator } from './OpenAICodexContextIndicator.tsx'
+import type { OpenAICodexContextIndicatorInjected } from './OpenAICodexContextIndicator.tsx'
 import type { OpenAICodexFastModeToggleInjected } from './OpenAICodexFastModeToggle.tsx'
 import { en, zh } from './locales.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
@@ -119,14 +121,14 @@ export function apply(ctx: ClientContext): void {
   ctx.inject(['slots', 'modelDirectories'], (scope: ClientContext) => {
     scope.slots.inject('conversation.input.right', () => scope.slots.register({
       name: 'conversation.input.right',
-      id: 'openai-codex-extended-context',
+      id: 'openai-codex-context-indicator',
       order: 9,
       locale: namespace,
-      inject: (sessionId): OpenAICodexFastModeToggleInjected => ({
+      inject: (sessionId): OpenAICodexContextIndicatorInjected => ({
         directory: scope.modelDirectories.directoryFor(sessionId).store,
         configScope,
       }),
-    }, OpenAICodexExtendedContextToggle))
+    }, OpenAICodexContextIndicator))
     scope.slots.inject('conversation.input.right', () => scope.slots.register({
       name: 'conversation.input.right',
       id: 'openai-codex-fast-mode',

@@ -136,7 +136,7 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `models` | 完整目录 | 可见的 Codex model id；空数组隐藏全部条目 |
 | `enableProxy` | `false` | Codex Connect 流量是否使用 `proxyUrl` |
 | `proxyUrl` | `http://127.0.0.1:7890` | 不带凭据的 HTTP(S) proxy origin；启用前不生效 |
-| `maximumContextModels` | 空列表 | 这些模型的会话扩展开启值使用官方最大窗口而非 500K；关闭值仍为 272K |
+| `modelContextTiers` | 空映射／标准 | 每模型 `standard`、`extended` 或 `maximum` 窗口；由宿主设置保存，对已有和新会话及 `/compact` 共用 |
 | `enableSearch` | `false` | 注册 Codex 搜索，并在保存时将它选为搜索提供方 |
 | `enableReserveFallback` | `false` | 为 agent 请求执行身份匹配、后端授权的 Luna Reserve 切换 |
 | `enableImageTool` | `false` | 注册 `view_image` |
@@ -151,7 +151,9 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `requestMetricsDirectory` | 不设置／关闭 | 启动配置中的私有绝对路径，记录[本地请求计量](request-metrics.zh.md)，不上传遥测 |
 | `requestMetricsMaxBytes` | `16777216` | 每进程单日志上限，整数 `4096`–`67108864`；不配置目录则不采集 |
 
-输入区 Fast Mode 左侧的扩展图标只控制当前对话。关闭时为 272K；开启时为 500K，但不超过模型目录上限。模型列表中默认不勾选的“扩展时使用最大上下文窗口”只将该模型的开启值改为目录最大值（支持扩展的模型为 872K），关闭值不变。不支持扩展的模型不显示扩展图标。会话图标状态保存在进程内，插件重启后恢复关闭。旧的 `contextWindowOverrides` 已退役并忽略，不删除已有数据。这些值是客户端预算，不代表已验证的服务端容量。扩展可能增加 Token／额度消耗及会话请求错误或失败风险，出现问题时请关闭。调查与设计依据见[带日期的记录](agent-notes/session-extended-context.md)。设置继续手动保存，保存／放弃位于字段上方；切换模块保留草稿，关闭模型设置弹窗前需确认放弃未保存的改动。
+模型列表每行提供持久化的“上下文窗口”下拉框：标准（272K）、扩展（500K，不超过目录上限）、最大（当前可扩展模型为 872K）。不支持扩展的模型只提供标准档。保存后，对该模型的已有和新会话、模型信息／压力检测和手动 `/compact` 共用同一窗口，已准备的请求不变。持久化由宿主设置管理，插件重启不重置已保存档位。单模型 `null` 选择标准并屏蔽继承的扩展；整个映射 `null` 重置映射。旧的 `maximumContextModels` 和 `contextWindowOverrides` 保留为无效的兼容数据，不会悄悄开启持久扩展。
+
+原输入区开关改为只读容量指示器：灰色标准、蓝色扩展、琥珀色最大，支持悬停／键盘提示。显示的是已保存的原始窗口容量，不是已使用的 Token，也不代表验证过的服务端容量；设置不可用时显示未确认状态，而非虚假的 272K。历史超过 272K 的已有会话，请先在下拉框选择合适窗口并保存，再执行压缩。扩展可能增加 Token／额度消耗及请求失败风险；服务端不支持的容量仍需切换受支持的模型／档位。修复与合成验证见[记录](agent-notes/model-context-tiers.md)。设置继续手动保存，保存／放弃位于字段上方；切换模块保留草稿，关闭模型设置弹窗前需确认放弃未保存的改动。
 
 ## 诊断与恢复
 

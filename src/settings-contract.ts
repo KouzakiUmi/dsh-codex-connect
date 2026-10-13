@@ -1,5 +1,7 @@
 /** Node-free settings contract shared by the Host plugin and browser card. */
 
+import type { OpenAICodexContextTiers } from './model-contract.ts'
+
 /** Stable Harness settings namespace owned by this plugin. */
 export const OPENAI_CODEX_SETTINGS_NAMESPACE = 'llm-openai-codex'
 
@@ -126,7 +128,9 @@ export const DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS = 10_000
 export interface OpenAICodexSettingsConfig {
   /** Model ids advertised in selectors; undefined advertises the full catalog. */
   models: string[] | undefined
-  /** Models whose session expansion ON budget uses the maximum instead of 500K. */
+  /** Persistent model budgets shared by every conversation and manual compaction. */
+  modelContextTiers?: OpenAICodexContextTiers
+  /** Retired ON-only preference, accepted without automatically expanding a model. */
   maximumContextModels?: string[]
   /** Route Codex Connect requests through the explicitly configured proxy. */
   enableProxy: boolean
@@ -171,6 +175,7 @@ export interface OpenAICodexSettingsConfig {
 export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> = Object.freeze({
   models: undefined,
   maximumContextModels: [],
+  modelContextTiers: Object.freeze({}),
   enableProxy: false,
   proxyUrl: DEFAULT_OPENAI_CODEX_PROXY_URL,
   contextWindowOverrides: undefined,
@@ -194,10 +199,24 @@ export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> 
 })
 
 /** Input settings allow null to disable overrides inherited from a lower settings layer. */
-export interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides' | 'maximumContextModels'>> {
+export interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides' | 'maximumContextModels' | 'modelContextTiers'>> {
   contextWindowOverrides?: Readonly<Record<string, number | null>> | null | undefined
   /** Host null resets this defaulted list, leaving every maximum preference off. */
   maximumContextModels?: string[] | null
+  modelContextTiers?: OpenAICodexContextTiers | null
+}
+
+/** Finite named tiers only; null masks an inherited choice back to the standard window. */
+export function isValidOpenAICodexContextTiers(value: unknown): value is OpenAICodexContextTiers {
+  return isRecord(value) && Object.keys(value).length <= 256
+    && Object.entries(value).every(([id, tier]) => id.length > 0 && id.length <= 128 && id.trim() === id
+      && (tier === null || tier === 'standard' || tier === 'extended' || tier === 'maximum'))
+}
+
+export function parseOpenAICodexContextTiers(value: unknown): OpenAICodexContextTiers {
+  if (value === undefined || value === null) return {}
+  if (!isValidOpenAICodexContextTiers(value)) throw new TypeError('OpenAI Codex modelContextTiers must contain bounded model ids and standard, extended, maximum or null tiers')
+  return { ...value }
 }
 
 /** Bounded per-model preferences; these are not arbitrary token budgets. */
@@ -237,7 +256,7 @@ export function resolveOpenAICodexSettings(
   if (!isValidOpenAICodexReasoningSummary(resolved.reasoningSummary)) {
     throw new TypeError('OpenAI Codex reasoningSummary must be auto, concise, detailed, or none')
   }
-  return { ...resolved, maximumContextModels: [...new Set(maximumContextModels)], contextWindowOverrides: undefined }
+  return { ...resolved, maximumContextModels: [...new Set(maximumContextModels)], modelContextTiers: parseOpenAICodexContextTiers(resolved.modelContextTiers), contextWindowOverrides: undefined }
 }
 
 /** Resolve the active proxy without treating a disabled value as a route. */
@@ -255,6 +274,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Narrow the redacted settings wire payload before it enters React state. */
 export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsConfig | undefined {
   if (!isRecord(value)) return undefined
+  const modelContextTiers = value['modelContextTiers']
+  if (modelContextTiers !== undefined && modelContextTiers !== null && !isValidOpenAICodexContextTiers(modelContextTiers)) return undefined
   const models = value['models']
   const maximumContextModels = value['maximumContextModels']
   if (maximumContextModels !== undefined && maximumContextModels !== null && !isValidMaximumContextModels(maximumContextModels)) return undefined
@@ -304,6 +325,7 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   return {
     models: models === undefined ? undefined : [...new Set(models)],
     maximumContextModels: [...new Set(maximumContextModels ?? [])],
+    modelContextTiers: parseOpenAICodexContextTiers(modelContextTiers),
     enableProxy: enableProxy ?? false,
     proxyUrl: proxyUrl === undefined ? DEFAULT_OPENAI_CODEX_PROXY_URL : normalizeOpenAICodexProxyUrl(proxyUrl)!,
     contextWindowOverrides: undefined,

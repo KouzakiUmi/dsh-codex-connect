@@ -1,5 +1,7 @@
 # Session extended context — 2026-10-13
 
+> Historical design: the session switch and ON-only maximum preference are superseded by [persistent model tiers and a read-only indicator](model-context-tiers.md). The catalog observations below remain dated capacity evidence, not current UI or runtime behavior.
+
 ## Product decision and evidence
 
 The arbitrary per-model context slider/input and profile override feature are retired. A Composer expand icon immediately before the Fast Mode lightning button selects only the current conversation's standard or expanded context budget. Switching does not change other conversations or profile settings. Like Fast Mode, the toggle is process-local; plugin restart returns it to the default.

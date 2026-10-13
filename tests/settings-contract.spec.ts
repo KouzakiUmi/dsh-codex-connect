@@ -23,6 +23,19 @@ function configSettings(config: ReturnType<typeof Config>): OpenAICodexSettingsI
 }
 
 describe('OpenAI Codex proxy settings contract', () => {
+  it.each([undefined, null, {}, { 'gpt-6.1-sol': 'standard' }, { 'gpt-6.1-sol': 'extended' }, { 'gpt-6.1-sol': 'maximum' }, { 'gpt-6.1-sol': null }])('accepts finite named context tiers at Host and browser boundaries: %j', modelContextTiers => {
+    const input = { modelContextTiers } as OpenAICodexSettingsInput
+    const expected = modelContextTiers ?? {}
+    expect(configSettings(Config(input)).modelContextTiers).toEqual(expected)
+    expect(resolveOpenAICodexSettings(input).modelContextTiers).toEqual(expected)
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, ...input })?.modelContextTiers).toEqual(expected)
+  })
+  it.each([[], 'extended', { model: 600_000 }, { model: 'arbitrary' }, { ' padded': 'extended' }, { '': 'standard' }, Object.fromEntries(Array.from({ length: 257 }, (_, i) => [`m${i}`, 'maximum']))])('rejects malformed context tiers without relaxing Host validation: %j', modelContextTiers => {
+    const input = { modelContextTiers } as never
+    expect(() => Config(input)).toThrow()
+    expect(() => resolveOpenAICodexSettings(input)).toThrow()
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, modelContextTiers })).toBeUndefined()
+  })
   it.each(['gpt-image-2\n', 'gpt-image-2\r', 'gpt-image-2\u2028', 'gpt-image-2\u2029', 'a'.repeat(129), 'model\tname'])('rejects padded or oversized image hints on Host and browser: %j', imageModelHint => {
     expect(isValidOpenAICodexImageModelHint(imageModelHint)).toBe(false)
     expect(() => Config({ imageModelHint })).toThrow()
