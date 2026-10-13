@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { formatOpenAICodexResetAt } from '../src/client/OpenAICodexSettings.tsx'
 import { OpenAICodexQuotaIndicator } from '../src/client/OpenAICodexQuotaIndicator.tsx'
 import { en } from '../src/client/locales.ts'
+import { BROWSER_REQUEST_TIMEOUT_MS } from '../src/client/request-json.ts'
 import type { OpenAICodexSettingsKey } from '../src/client/locales.ts'
 
 function t(key: OpenAICodexSettingsKey, params: Record<string, unknown> = {}): string {
@@ -90,11 +91,79 @@ function directoryStore(state: ModelDirectoryState): SnapshotStore<ModelDirector
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 
 describe('OpenAI Codex Composer server-driven quota', () => {
+  it.each(['headers', 'body'] as const)('bounds hung %s and releases no-overlap for visibility-aware backoff recovery', async phase => {
+    vi.useFakeTimers()
+    let hidden = false
+    vi.spyOn(document, 'hidden', 'get').mockImplementation(() => hidden)
+    const signals: AbortSignal[] = []
+    const finishes: ((value: unknown) => void)[] = []
+    let recover = false
+    const fetchMock = vi.fn((_path: string, init: RequestInit) => {
+      expect(init.method).toBe('GET')
+      expect(init.credentials).toBe('same-origin')
+      signals.push(init.signal!)
+      if (recover) return Promise.resolve(json({ status: 'signed-in', usage: usage() }))
+      const stalled = new Promise<unknown>(done => { finishes.push(done) })
+      return phase === 'headers' ? stalled : Promise.resolve({ ok: true, json: () => stalled })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const view = render(<OpenAICodexQuotaIndicator directory={directoryStore(directoryState('gpt-5'))} t={t} />)
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); await vi.advanceTimersByTimeAsync(BROWSER_REQUEST_TIMEOUT_MS - 1) })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+    expect(signals[0]?.aborted).toBe(true)
+    expect(screen.queryByRole('status')).toBeNull()
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000 - 1) })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    await act(async () => { await vi.advanceTimersByTimeAsync(1 + BROWSER_REQUEST_TIMEOUT_MS) })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(signals[1]?.aborted).toBe(true)
+    hidden = true
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); await vi.advanceTimersByTimeAsync(120_000) })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    recover = true
+    hidden = false
+    await act(async () => { document.dispatchEvent(new Event('visibilitychange')); await vi.advanceTimersByTimeAsync(0) })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(screen.getByRole('status').getAttribute('aria-label')).toContain('72.5%')
+    await act(async () => { finishes.forEach(done => done(phase === 'headers' ? json({ status: 'signed-out' }) : { status: 'signed-out' })) })
+    expect(screen.getByRole('status')).toBeTruthy()
+    // Success restores the ordinary one-minute read schedule.
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    view.unmount()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it.each(['headers', 'body'] as const)('cancels pending %s on eligibility loss/unmount and ignores late state', async phase => {
+    vi.useFakeTimers()
+    let signal!: AbortSignal
+    let finish!: (value: unknown) => void
+    vi.stubGlobal('fetch', vi.fn((_path: string, init: RequestInit) => {
+      signal = init.signal!
+      const stalled = new Promise<unknown>(done => { finish = done })
+      return phase === 'headers' ? stalled : Promise.resolve({ ok: true, json: () => stalled })
+    }))
+    const directory = directoryStore(directoryState('gpt-5'))
+    const view = render(<OpenAICodexQuotaIndicator directory={directory} t={t} />)
+    await act(async () => {})
+    await act(async () => { directory.set(directoryState('o3')) })
+    expect(signal.aborted).toBe(true)
+    await act(async () => { finish(phase === 'headers' ? json({ status: 'signed-in', usage: usage() }) : { status: 'signed-in', usage: usage() }) })
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(vi.getTimerCount()).toBe(0)
+    await act(async () => { directory.set(directoryState('gpt-5')) })
+    view.unmount()
+    expect(signal.aborted).toBe(true)
+    await act(async () => { finish(phase === 'headers' ? json({ status: 'signed-in', usage: usage() }) : { status: 'signed-in', usage: usage() }) })
+    expect(vi.getTimerCount()).toBe(0)
+  })
   it('shows only for a GPT model on the exact OpenAI Codex provider', async () => {
     const resetAt = 1_735_689_600
     const fetchMock = vi.fn(async () => json({ status: 'signed-in', usage: usage(resetAt) }))
