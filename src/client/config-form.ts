@@ -32,8 +32,8 @@ export class OpenAICodexConfigForm implements ConfigForm<OpenAICodexSettingsConf
     if (view === undefined) return (this.projected = { ...form, status: 'unavailable' })
     const value = decodeOpenAICodexSettings(view.value)
     this.projected = value === undefined ? { ...form, status: 'unavailable' } : {
-      status: 'ready', value, base: view.base, user: view.user,
-      revision: view.revision, writable: mirror.view.writable, mode: form.mode,
+      ...form, status: 'ready', value, base: view.base, user: view.user,
+      revision: view.revision, writable: mirror.view.writable,
     }
     return this.projected
   }

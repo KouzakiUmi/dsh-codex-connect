@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
 import {
   createOpenAICodexAdapter,
@@ -118,6 +119,33 @@ describe('OpenAI Codex rc.2 adapter profile', () => {
       provider: OPENAI_CODEX_PROVIDER,
       id: OPENAI_CODEX_ASTRA_MODEL_ID,
     })
+  })
+
+  it('keeps static Codex discovery independent of the Host credential-gated catalog', async () => {
+    // alpha.3's generic catalog resolves credentials before listing models.
+    const hostCatalog = vi.spyOn(PiAiAdapter.prototype, 'listModels').mockRejectedValue(new Error('credential-gated Host catalog'))
+    const captureActiveAccount = vi.fn(async () => { throw new Error('catalog must not capture or refresh an account') })
+    try {
+      let visible: readonly string[] | undefined
+      const adapter = createOpenAICodexAdapter({ captureActiveAccount } as unknown as OpenAICodexCredentialStore,
+        () => undefined, undefined, () => visible)
+      const listed = await adapter.listModels(OPENAI_CODEX_PROVIDER)
+      expect(listed.map(model => model.id)).toEqual(openAICodexModelCatalog().map(model => model.id))
+      expect(listed.every(model => model.provider === OPENAI_CODEX_PROVIDER)).toBe(true)
+      const astra = listed.find(model => model.id === OPENAI_CODEX_ASTRA_MODEL_ID)!
+      expect(astra.inputModalities).toEqual(['text', 'image'])
+      ;(astra.inputModalities as string[]).pop()
+      expect((await adapter.listModels(OPENAI_CODEX_PROVIDER)).find(model => model.id === astra.id)!.inputModalities)
+        .toEqual(['text', 'image'])
+      visible = [listed[1]!.id]
+      expect((await adapter.listModels(OPENAI_CODEX_PROVIDER)).map(model => model.id)).toEqual(visible)
+      visible = []
+      expect(await adapter.listModels(OPENAI_CODEX_PROVIDER)).toEqual([])
+      expect(hostCatalog).not.toHaveBeenCalled()
+      expect(captureActiveAccount).not.toHaveBeenCalled()
+    } finally {
+      hostCatalog.mockRestore()
+    }
   })
 
   it('resolves every advertised model and prepares its request without accessing credentials', async () => {

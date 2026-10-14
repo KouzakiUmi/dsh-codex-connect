@@ -121,12 +121,20 @@ it('refreshes captured A and sends its token even when B becomes active', async 
   expect(await credentials.read(OPENAI_CODEX_PROVIDER)).toEqual(bCredential)
 })
 
-it('reports missing credentials without sending a request', async () => {
+it('lists and prepares while signed out but rejects dispatch without sending a request', async () => {
   const credentials = await store()
+  const capture = vi.spyOn(credentials, 'captureActiveAccount')
   const fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
-  const result = await runAdapter(credentials)
-  expect(result.error).toMatchObject({ code: 'MISSING_CREDENTIAL' })
+  const adapter = createOpenAICodexAdapter(credentials, () => undefined)
+  const models = await adapter.listModels(OPENAI_CODEX_PROVIDER)
+  expect(models.length).toBeGreaterThan(0)
+  const prepared = await adapter.prepareCall(OPENAI_CODEX_PROVIDER, models[0]!.id)
+  expect(capture).not.toHaveBeenCalled()
+  await expect(async () => {
+    for await (const _chunk of prepared.stream({ provider: OPENAI_CODEX_PROVIDER, model: models[0]!.id, messages: [] })) { /* drain */ }
+  }).rejects.toMatchObject({ code: 'MISSING_CREDENTIAL' })
+  expect(capture).toHaveBeenCalledTimes(1)
   expect(fetchMock).not.toHaveBeenCalled()
 })
 

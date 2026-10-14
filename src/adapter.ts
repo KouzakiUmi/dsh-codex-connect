@@ -282,7 +282,13 @@ export function createOpenAICodexAdapter(
     }
 
     override async listModels(providerId: string) {
-      const catalog = (await super.listModels(providerId)).filter(model => model.id !== OPENAI_CODEX_RESERVE_MODEL)
+      // Codex advertises a static catalog even while signed out. alpha.3's
+      // generic Host listing resolves credentials; only request dispatch may
+      // capture/refresh our account. Project our current provider metadata here.
+      const provider = currentProfiles().get(providerId)?.piProvider
+      if (provider === undefined) return super.listModels(providerId)
+      const catalog = provider.getModels().filter(model => model.id !== OPENAI_CODEX_RESERVE_MODEL)
+        .map(model => ({ provider: providerId, id: model.id, name: model.name, inputModalities: [...model.input] }))
       const configured = visibleModelIds?.()
       if (configured === undefined) return catalog
       const visible = new Set(configured)

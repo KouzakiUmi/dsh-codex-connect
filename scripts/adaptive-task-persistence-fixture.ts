@@ -13,7 +13,8 @@ import Agents from '@deepseek-ai/dsh-agent'
 import Loop from '@deepseek-ai/dsh-agent-loop'
 import Prompt from '@deepseek-ai/dsh-system-prompt'
 import Tools from '@deepseek-ai/dsh-tools'
-import Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { selectPersistencePlugin } from './persistence-plugin-fixture.mjs'
 import { createOpenAICodexAdapter } from '../src/adapter.ts'
 import { OpenAICodexCredentialStore } from '../src/store.ts'
 import { OpenAICodexBackendRequests } from '../src/backend-request.ts'
@@ -47,7 +48,7 @@ const ctx = new Context()
 try {
   for (const module of [Llm, Sessions, Projection, Agents, Prompt, Tools]) await ctx.plugin(module)
   await ctx.plugin(Loop, { agents: [] })
-  await ctx.plugin(Persistence, { root: join(directory, 'sessions'), compression: compression as 'none' | 'zstd', packChunks: true })
+  await ctx.plugin(selectPersistencePlugin(Persistence), { root: join(directory, 'sessions'), compression: compression as 'none' | 'zstd', packChunks: true })
   const credentials = new OpenAICodexCredentialStore()
   const claim = Buffer.from(JSON.stringify({ 'https://api.openai.com/auth': { chatgpt_account_id: 'synthetic-persistence' } })).toString('base64url')
   await credentials.modify('openai-codex', async () => ({ type: 'oauth', access: `e30.${claim}.fixture`, refresh: 'fixture', accountId: 'synthetic-persistence', expires: Date.now() + 3600000 }))
