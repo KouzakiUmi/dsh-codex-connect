@@ -54,14 +54,19 @@ for (const platform of ['win32', 'linux'] as const) for (const operation of ['ge
     io.open.mockImplementation(async (filename: string, flags: number) => {
       if (filename !== target) return { sync: vi.fn(async () => {}), close: vi.fn(async () => {}) }
       if (scenario === 'replaced before open' || scenario === 'large inode mismatch') current = snapshot(9007199254740993n)
-      const writable = (flags & constants.O_RDWR) === constants.O_RDWR
       opened++
+      // POSIX flush uses O_RDONLY (O_RDONLY is 0), so reuse distinguishes get vs flush by open order.
+      const flushing = platform === 'win32'
+        ? (flags & constants.O_RDWR) === constants.O_RDWR
+        : opened > 1
+      expect(flags).toBe((flushing && platform === 'win32' ? constants.O_RDWR : constants.O_RDONLY)
+        | constants.O_NOFOLLOW | constants.O_NONBLOCK)
       const held = { ...current }
-      const content = Buffer.from(scenario === 'wrong digest' || scenario === 'replacement after get' && writable
+      const content = Buffer.from(scenario === 'wrong digest' || scenario === 'replacement after get' && flushing
         ? text.replace('synthetic', 'different') : text)
       const close = vi.fn(async () => {
-        if (!writable && scenario === 'replaced during close') current = snapshot(2n)
-        if (!writable && scenario === 'missing during close') missing = true
+        if (!flushing && scenario === 'replaced during close') current = snapshot(2n)
+        if (!flushing && scenario === 'missing during close') missing = true
         if (scenario === 'close failure') throw new Error('synthetic close failure')
       })
       closes.push(close)

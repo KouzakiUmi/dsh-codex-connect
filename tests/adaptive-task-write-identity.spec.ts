@@ -21,14 +21,15 @@ for (const platform of ['win32', 'linux'] as const) for (const kind of ['state',
     'large inode mismatch', 'replaced after open', 'wrong content before observation', 'changed during read',
     'growth during read', 'replaced during sync', 'hardlinked during sync', 'mtime changed during sync',
     'ctime changed during sync', 'missing after sync', 'sync failure', 'close failure', 'file close replacement',
-    ...(platform === 'linux' ? ['directory open replacement', 'directory sync replacement', 'directory close replacement',
-      'directory sync failure', 'directory close failure'] : []),
+    ...(platform === 'linux' ? ['read-only private file', 'directory open replacement', 'directory sync replacement',
+      'directory close replacement', 'directory sync failure', 'directory close failure'] : []),
   ])(`${kind}: ${platform}: %s`, async scenario => {
     vi.spyOn(process, 'platform', 'get').mockReturnValue(platform)
     const value = { state: 'synthetic' }
     let expected = Buffer.alloc(0), target = '', observations = 0, identities = 0, readCalls = 0, replaced = false
     const snapshot = (ino = 1n) => ({
-      dev: 1n, ino, nlink: 1n, size: BigInt(expected.length), mode: 0o600n, uid: 1000n,
+      dev: 1n, ino, nlink: 1n, size: BigInt(expected.length),
+      mode: scenario === 'read-only private file' ? 0o400n : 0o600n, uid: 1000n,
       mtimeNs: 10000000000000000n, ctimeNs: 10000000000000000n,
       isFile: () => true, isSymbolicLink: () => false,
     })
@@ -89,7 +90,8 @@ for (const platform of ['win32', 'linux'] as const) for (const kind of ['state',
         expect(flags).toBe(constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
         return { sync: directorySync, close: directoryClose }
       }
-      expect(flags & constants.O_RDWR).toBe(constants.O_RDWR)
+      const access = platform === 'win32' ? constants.O_RDWR : constants.O_RDONLY
+      expect(flags).toBe(access | constants.O_NOFOLLOW | constants.O_NONBLOCK)
       return file
     })
     const store = new AtomicTaskDocumentStore('synthetic-state', (document: unknown) => document)
@@ -98,7 +100,7 @@ for (const platform of ['win32', 'linux'] as const) for (const kind of ['state',
     vi.spyOn(artifacts, 'get').mockRejectedValue(missing)
     const dispatch = vi.fn()
     const operation = kind === 'state' ? store.update('fixture', () => value) : artifacts.put(value)
-    const accepted = scenario === 'unchanged' || scenario === 'partial reads'
+    const accepted = scenario === 'unchanged' || scenario === 'partial reads' || scenario === 'read-only private file'
     if (accepted) {
       await operation.then(dispatch)
       expect(sync).toHaveBeenCalledOnce()

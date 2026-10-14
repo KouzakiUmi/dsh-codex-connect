@@ -77,8 +77,10 @@ export async function syncTaskFile(filename: string, text: string, failure: stri
     && stat.mode === before.mode && stat.uid === before.uid
     && (process.platform === 'win32' || (stat.mode & 0o077n) === 0n)
   if (!stable(before)) taskFailure(failure)
-  // Windows requires a writable flush handle and ignores O_NOFOLLOW; verify both identities.
-  const file = await open(filename, constants.O_RDWR | constants.O_NOFOLLOW | constants.O_NONBLOCK)
+  // Windows FlushFileBuffers needs a writable handle and ignores O_NOFOLLOW.
+  // POSIX fsync works from O_RDONLY, including 0400 files after a write-stripping umask.
+  const access = process.platform === 'win32' ? constants.O_RDWR : constants.O_RDONLY
+  const file = await open(filename, access | constants.O_NOFOLLOW | constants.O_NONBLOCK)
   let after: BigIntStats
   try {
     if (!stable(await file.stat({ bigint: true })) || !stable(await lstat(filename, { bigint: true }))) taskFailure(failure)
