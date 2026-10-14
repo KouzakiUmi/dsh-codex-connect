@@ -15,7 +15,8 @@ import Sessions from '@deepseek-ai/dsh-session'
 import Projection from '@deepseek-ai/dsh-session-projection'
 import Prompt from '@deepseek-ai/dsh-system-prompt'
 import Tools from '@deepseek-ai/dsh-tools'
-import Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { selectPersistencePlugin } from '../scripts/persistence-plugin-fixture.mjs'
 import Meter from '@deepseek-ai/dsh-token-meter'
 import Compaction from '@deepseek-ai/dsh-compaction-basic'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -62,7 +63,7 @@ async function setup(options: { persistence?: 'none' | 'zstd'; maxConcurrent?: n
   const ctx = new Context(); context = ctx
   for (const plugin of [Llm, Sessions, Projection, AgentRegistry, Prompt, Tools]) await ctx.plugin(plugin)
   await ctx.plugin(AgentLoop, { agents: [] })
-  if (options.persistence !== undefined) await ctx.plugin(Persistence, { root: join(root, 'sessions'), compression: options.persistence })
+  if (options.persistence !== undefined) await ctx.plugin(selectPersistencePlugin(Persistence), { root: join(root, 'sessions'), compression: options.persistence })
   const credentials = new OpenAICodexCredentialStore(join(root, '.synthetic-oauth.json'))
   const claim = Buffer.from(JSON.stringify({ 'https://api.openai.com/auth': { chatgpt_account_id: 'synthetic-only' } })).toString('base64url')
   await credentials.modify('openai-codex', async () => ({ type: 'oauth', access: `e30.${claim}.fixture`, refresh: 'fixture', accountId: 'synthetic-only', expires: Date.now() + 3600000 }))

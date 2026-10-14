@@ -467,7 +467,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     try {
       const current = scope.getSnapshot()
       const original = baseline.current
-      if (!current.writable || current.status !== 'ready' || current.mode === 'memory' || current.value === undefined || original === undefined || current.revision === undefined) {
+      if (!current.writable || current.status !== 'ready' || ('mode' in current && current.mode === 'memory') || current.value === undefined || original === undefined || current.revision === undefined) {
         throw new Error('Host settings are unavailable')
       }
       const changed = CONFIG_FIELDS.filter(field => !sameField(field, original[field], desired[field]))

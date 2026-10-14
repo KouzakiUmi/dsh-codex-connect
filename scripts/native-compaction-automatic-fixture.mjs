@@ -1,3 +1,4 @@
+import { selectPersistencePlugin } from './persistence-plugin-fixture.mjs'
 /** Offline acceptance through actual AgentLoop pre-step and request-error events. */
 import assert from 'node:assert/strict'
 import { join } from 'node:path'
@@ -70,7 +71,7 @@ export async function runNativeAutomaticScenario(scenario, { root, importHost, p
     for (const module of [llm, sessions, projections, system, tools, agents]) await ctx.plugin(module.default)
     await ctx.plugin(loop.default, { agents: [] })
     await ctx.plugin(meter.default)
-    await ctx.plugin(persistence.default, { root: join(root, scenario, 'sessions'), compression, packChunks: true })
+    await ctx.plugin(selectPersistencePlugin(persistence), { root: join(root, scenario, 'sessions'), compression, packChunks: true })
     ctx.on('agent/request-error', async ({ failure }, next) => { failures.push(failure.code); return next() })
     await ctx.plugin(compaction.default, { auto: scenario !== 'auto-disabled', thresholdRatio: 0.8, headroomTokens: 1024, maxTokens: 1024, retainTokens: 0, compactionRetries: 0, maxOverflowRetries: 1 })
     await ctx.plugin(plugin, { enableNativeCompaction: true, contextWindowOverrides: { [MODEL]: capacity } })

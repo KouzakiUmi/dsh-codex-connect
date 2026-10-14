@@ -13,7 +13,8 @@ import Sessions, { SessionId } from '@deepseek-ai/dsh-session'
 import Projection from '@deepseek-ai/dsh-session-projection'
 import Prompt from '@deepseek-ai/dsh-system-prompt'
 import Tools from '@deepseek-ai/dsh-tools'
-import Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { selectPersistencePlugin } from './persistence-plugin-fixture.mjs'
 import { AdaptiveTaskDelegation, TASK_DELEGATE_TOOL } from '../src/adaptive-task-delegation.ts'
 import { TaskDelegationHost } from '../src/adaptive-task-delegation-host.ts'
 import { TaskEvidenceManifest } from '../src/adaptive-task-evidence.ts'
@@ -75,7 +76,7 @@ Object.defineProperty(globalThis, 'WebSocket', { configurable: true, value: clas
 const ctx = new Context()
 for (const plugin of [Llm, Sessions, Projection, AgentRegistry, Prompt, Tools]) await ctx.plugin(plugin)
 await ctx.plugin(AgentLoop, { agents: [] })
-await ctx.plugin(Persistence, { root: join(root, 'sessions'), packChunks: true,
+await ctx.plugin(selectPersistencePlugin(Persistence), { root: join(root, 'sessions'), packChunks: true,
   compression: process.env.CRASH_COMPRESSION === 'zstd' ? 'zstd' : 'none' })
 const credentials = new OpenAICodexCredentialStore(join(root, 'synthetic-oauth.json'))
 if (phase === 'write') {

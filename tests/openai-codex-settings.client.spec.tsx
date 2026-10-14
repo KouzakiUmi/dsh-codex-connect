@@ -61,19 +61,21 @@ function popupFixture(): { popup: Window; close: ReturnType<typeof vi.fn>; repla
 function settingsScopeFixture(
   writable = true,
   initial: OpenAICodexSettingsConfig = DEFAULT_OPENAI_CODEX_SETTINGS,
+  snapshotMode: 'host' | 'memory' | 'absent' = 'host',
 ): {
   scope: ConfigForm<OpenAICodexSettingsConfig>
   set: ReturnType<typeof vi.fn>
   mutate: ReturnType<typeof vi.fn>
 } {
-  let snapshot: ConfigFormSnapshot<OpenAICodexSettingsConfig> = {
+  // Alpha.3 omits mode; the dev SDK still requires the legacy property.
+  let snapshot: Omit<ConfigFormSnapshot<OpenAICodexSettingsConfig>, 'mode'> & { mode?: 'host' | 'memory' } = {
     status: 'ready',
     value: { ...initial },
     base: { ...initial },
     user: undefined,
     revision: 0,
     writable,
-    mode: 'host',
+    ...(snapshotMode === 'absent' ? {} : { mode: snapshotMode }),
   }
   const listeners = new Set<() => void>()
   const set = vi.fn(async (field: string, value: unknown) => {
@@ -103,7 +105,7 @@ function settingsScopeFixture(
     set,
     mutate,
     scope: {
-      getSnapshot: () => snapshot,
+      getSnapshot: () => snapshot as ConfigFormSnapshot<OpenAICodexSettingsConfig>,
       subscribe(listener) {
         listeners.add(listener)
         return () => { listeners.delete(listener) }
@@ -1342,15 +1344,47 @@ describe('unchanged Host-accepted context budgets', () => {
     await waitFor(() => { expect(mutate).toHaveBeenLastCalledWith([{ op: 'set', path: ['contextWindowOverrides'], value: { sol: null } }], 1) })
   })
 
-  it('preserves unrelated concurrent changes with latest revision and rejects conflicting same-field edits', async () => {
+  it('rejects legacy memory snapshots even if a fixture advertises writable settings', async () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
-    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: { sol: 400_000 }, enableSearch: true })
+    const { scope, mutate } = settingsScopeFixture(true, DEFAULT_OPENAI_CODEX_SETTINGS, 'memory')
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
+    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
+    await screen.findByText(en.settingsSaveFailed)
+    expect(mutate).not.toHaveBeenCalled()
+    expect(scope.getSnapshot().value?.enableSearch).toBe(false)
+  })
+
+  it.each([
+    { writable: false },
+    { revision: undefined },
+    { status: 'unavailable' as const },
+    { value: undefined },
+  ])('refuses an absent-mode save when the latest Host snapshot loses its fence or authority (%j)', async latest => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
+    const { scope, mutate } = settingsScopeFixture(true, DEFAULT_OPENAI_CODEX_SETTINGS, 'absent')
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
+    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
+    const changed = { ...scope.getSnapshot(), ...latest }
+    // Silent replacement simulates a Host update between rendering and save.
+    vi.spyOn(scope, 'getSnapshot').mockReturnValue(changed)
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
+    await screen.findByText(en.settingsSaveFailed)
+    expect(mutate).not.toHaveBeenCalled()
+    expect('mode' in scope.getSnapshot()).toBe(false)
+  })
+
+  it.each(['host', 'absent'] as const)('preserves unrelated concurrent changes with latest revision and rejects conflicting same-field edits (%s mode)', async snapshotMode => {
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
+    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: { sol: 400_000 }, enableSearch: true }, snapshotMode)
     render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
     fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
     await act(async () => { await scope.set('enableNativeCompaction', true) })
     fireEvent.click(screen.getByRole('button', { name: en.save }))
     await screen.findByText(en.settingsSaved)
     expect(mutate).toHaveBeenCalledWith([{ op: 'set', path: ['enableSearch'], value: false }], 1)
+    expect(scope.getSnapshot().revision).toBe(2)
+    expect('mode' in scope.getSnapshot()).toBe(snapshotMode !== 'absent')
     expect(scope.getSnapshot().value?.enableNativeCompaction).toBe(true)
     fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
     fireEvent.change(screen.getByRole('textbox', { name: en.searchModel }), { target: { value: 'mine' } })
@@ -1361,18 +1395,20 @@ describe('unchanged Host-accepted context budgets', () => {
     expect(scope.getSnapshot().value?.searchModel).toBe('theirs')
   })
 
-  it('honors Host refusal and read-only state without using the missing catalog as authority', async () => {
+  it.each(['host', 'absent'] as const)('honors Host refusal and read-only state without using the missing catalog as authority (%s mode)', async snapshotMode => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
     const initial = { ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: { sol: 400_000 }, enableSearch: true }
-    const { scope, mutate } = settingsScopeFixture(true, initial)
+    const { scope, mutate } = settingsScopeFixture(true, initial, snapshotMode)
     mutate.mockResolvedValueOnce(false)
     const view = render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
     fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
     fireEvent.click(screen.getByRole('button', { name: en.save }))
     await screen.findByText(en.settingsSaveFailed)
+    expect(mutate).toHaveBeenCalledWith([{ op: 'set', path: ['enableSearch'], value: false }], 0)
     expect(scope.getSnapshot().value?.enableSearch).toBe(true)
+    expect(scope.getSnapshot().revision).toBe(0)
     view.unmount()
-    const readonly = settingsScopeFixture(false, initial)
+    const readonly = settingsScopeFixture(false, initial, snapshotMode)
     render(<OpenAICodexConfiguration scope={readonly.scope} t={t} activeModule="capabilities" />)
     expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
     expect(readonly.mutate).not.toHaveBeenCalled()

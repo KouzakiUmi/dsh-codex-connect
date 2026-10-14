@@ -1,3 +1,4 @@
+import { selectPersistencePlugin } from './persistence-plugin-fixture.mjs'
 /** Opt-in Luna-only real DSH persistence acceptance. Default: synthetic, two fresh processes. */
 import assert from 'node:assert/strict'
 import { createHash, randomBytes } from 'node:crypto'
@@ -200,7 +201,7 @@ async function child(phase, root) {
     for (const module of [llm, sessions, projections, system, tools, agents]) await ctx.plugin(module.default)
     await ctx.plugin(loop.default, { agents: [] })
     await ctx.plugin(meter.default)
-    await ctx.plugin(persistence.default, { root: join(root, 'sessions'), compression: 'none', packChunks: true })
+    await ctx.plugin(selectPersistencePlugin(persistence), { root: join(root, 'sessions'), compression: 'none', packChunks: true })
     await ctx.plugin(compaction.default, { auto: false, compactionRetries: 0, maxOverflowRetries: 0, ...(controlled ? { retainTokens: 0, maxTokens: 1024 } : {}) })
     const adapter = adapterModule.createOpenAICodexAdapter(captured, () => undefined, undefined, () => [MODEL], undefined, undefined, undefined, undefined, () => phase === 'write')
     ctx.llm.registerAdapter([PROVIDER], adapter)

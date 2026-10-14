@@ -14,7 +14,8 @@ import Projection from '@deepseek-ai/dsh-session-projection'
 import Prompt from '@deepseek-ai/dsh-system-prompt'
 import Tools from '@deepseek-ai/dsh-tools'
 import LocalAttachments from '@deepseek-ai/dsh-attachment-local'
-import Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { selectPersistencePlugin } from '../scripts/persistence-plugin-fixture.mjs'
 import { afterEach, expect, it, vi } from 'vitest'
 import * as CodexConnect from '../src/index.ts'
 import { OpenAICodexCredentialStore } from '../src/store.ts'
@@ -51,7 +52,7 @@ async function host(root: string, compression: 'none' | 'zstd') {
   const ctx = new Context(); contexts.push(ctx)
   for (const plugin of [Llm, Sessions, Projection, AgentRegistry, Prompt, Tools]) await ctx.plugin(plugin)
   await ctx.plugin(AgentLoop, { agents: [] })
-  await ctx.plugin(Persistence, { root: join(root, 'sessions'), compression })
+  await ctx.plugin(selectPersistencePlugin(Persistence), { root: join(root, 'sessions'), compression })
   await ctx.plugin(LocalAttachments, { dshHome: root })
   await ctx.plugin(CodexConnect, { enableImageGeneration: true })
   await new Promise(resolve => setImmediate(resolve))

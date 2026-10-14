@@ -43,6 +43,9 @@ describe('compatibility contract', () => {
       && pkg.peerDependenciesMeta[name]?.optional !== true).sort()
     expect([...COMPATIBILITY_CONTRACT.dshPluginApi.packages].sort()).toEqual(mandatory)
     expect(COMPATIBILITY_CONTRACT.dshPluginApi.packages).not.toContain('@deepseek-ai/dsh-commands')
+    for (const [name, range] of Object.entries(pkg.peerDependencies)) {
+      if (name.startsWith('@deepseek-ai/dsh-')) expect(range).toBe(SUPPORTED_DSH_PLUGIN_API_RANGE)
+    }
   })
 
   it('retains the legacy invariant export without requiring its retired host package', async () => {
@@ -71,7 +74,7 @@ describe('compatibility contract', () => {
     ]) expect(evaluateCompatibility({ nodeVersion: 'v24.15.0', packageVersions: packages }).status).toBe('unverified')
   })
 
-  it.each(['0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1'])('accepts exact consistent %s and pi-ai 0.85.1', version => {
+  it.each(['0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1', '0.2.1-alpha.2', '0.2.1-alpha.3'])('accepts exact consistent %s and pi-ai 0.85.1', version => {
     const packages = { ...compatiblePackages, '@deepseek-ai/dsh-llm': version,
       '@deepseek-ai/dsh-llm-pi-ai': version, '@deepseek-ai/dsh-compaction': version }
     expect(evaluateCompatibility({ nodeVersion: 'v24.15.0', packageVersions: packages }).status).toBe('compatible')
@@ -86,8 +89,17 @@ describe('compatibility contract', () => {
     },
   )
 
-  it('does not infer rc.3, alpha.2, or a new pi-ai pair from rc.2 support', () => {
-    for (const version of ['0.1.7-rc.3', '0.1.7-alpha.2', '0.2.0-rc.3', '0.2.0', '0.2.1-alpha.2', '0.2.1', '0.2.2-alpha.1']) {
+  it.each(['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-compaction'] as const)(
+    'does not accept mixed alpha.2/alpha.3 or missing %s metadata', name => {
+      const alpha3 = { ...compatiblePackages, '@deepseek-ai/dsh-llm': '0.2.1-alpha.3',
+        '@deepseek-ai/dsh-llm-pi-ai': '0.2.1-alpha.3', '@deepseek-ai/dsh-compaction': '0.2.1-alpha.3' }
+      expect(evaluateCompatibility({ nodeVersion: 'v24.13.0', packageVersions: { ...alpha3, [name]: '0.2.1-alpha.2' } }).status).toBe('unverified')
+      expect(evaluateCompatibility({ nodeVersion: 'v24.13.0', packageVersions: { ...alpha3, [name]: undefined } }).status).toBe('unknown')
+    },
+  )
+
+  it('does not infer later prereleases, stable releases, or a new pi-ai pair from declared support', () => {
+    for (const version of ['0.1.7-rc.3', '0.1.7-alpha.2', '0.2.0-rc.3', '0.2.0', '0.2.1-alpha.4', '0.2.1', '0.2.2-alpha.1']) {
       const packages = { ...compatiblePackages, '@deepseek-ai/dsh-llm': version,
         '@deepseek-ai/dsh-llm-pi-ai': version, '@deepseek-ai/dsh-compaction': version }
       expect(evaluateCompatibility({ nodeVersion: 'v24.15.0', packageVersions: packages }).status).toBe('unverified')

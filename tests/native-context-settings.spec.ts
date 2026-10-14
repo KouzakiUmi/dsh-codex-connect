@@ -12,7 +12,8 @@ import Agents from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import TokenMeter from '@deepseek-ai/dsh-token-meter'
 import Compaction from '@deepseek-ai/dsh-compaction-basic'
-import Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { selectPersistencePlugin } from '../scripts/persistence-plugin-fixture.mjs'
 import { afterEach, expect, it, vi } from 'vitest'
 import * as plugin from '../src/index.ts'
 import { loadSettingsPlugin } from './support/settings-loader-fixture.ts'
@@ -69,7 +70,7 @@ async function fixture(initial: Record<string, unknown> = {}, auto?: boolean) {
   await runtime.plugin(Agents)
   await runtime.plugin(AgentLoop, { agents: [] })
   await runtime.plugin(TokenMeter)
-  await runtime.plugin(Persistence, { root: join(root, 'sessions'), compression: 'none' })
+  await runtime.plugin(selectPersistencePlugin(Persistence), { root: join(root, 'sessions'), compression: 'none' })
   await runtime.plugin(Compaction, {
     ...(auto === undefined ? {} : { auto }),
     thresholdRatio: 0.8,
