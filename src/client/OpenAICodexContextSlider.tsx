@@ -1,5 +1,5 @@
 /** Compact discrete slider shared by staged settings and the immediate-save popover. */
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent } from 'react'
 import { openAICodexContextChoices, openAICodexModelContextWindow } from '../model-contract.ts'
 import type { OpenAICodexContextTier } from '../model-contract.ts'
@@ -17,6 +17,7 @@ export function OpenAICodexContextSlider({ model, standard, tier, label, disable
   const selected = Math.max(0, choices.findIndex(choice => choice.window === openAICodexModelContextWindow(model, standard, tier)))
   const [preview, setPreview] = useState<number | undefined>()
   const drag = useRef<{ pointer: number; index: number } | undefined>(undefined)
+  useEffect(() => { if (drag.current === undefined) setPreview(undefined) }, [tier])
   const locked = disabled || choices.length === 1
   const current = preview ?? selected
   const active = choices[Math.max(0, Math.min(choices.length - 1, Math.round(current)))]!
@@ -59,8 +60,11 @@ export function OpenAICodexContextSlider({ model, standard, tier, label, disable
     onPointerUp={event => {
       const state = drag.current
       if (state === undefined || state.pointer !== event.pointerId) return
-      const index = state.index; cancel()
+      const index = state.index
+      drag.current = undefined
       if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
+      // Keep the released detent visible until the parent accepts the selection.
+      setPreview(index)
       choose(index)
     }} onPointerCancel={cancel} onLostPointerCapture={cancel}
     style={{ position: 'relative', width: 140, maxWidth: '100%', height: 30, flexShrink: 0, touchAction: 'pan-y', userSelect: 'none', cursor: locked ? 'default' : 'ew-resize', opacity: disabled ? .5 : 1 }}>
@@ -69,6 +73,6 @@ export function OpenAICodexContextSlider({ model, standard, tier, label, disable
     </span>
     <span aria-hidden="true" style={{ position: 'absolute', left: position(0), right: position(0), bottom: 5, height: 2, borderRadius: 999, background: 'var(--dsw-alias-border-l2)' }} />
     {choices.map((choice, index) => <span key={choice.tier} aria-hidden="true" style={{ position: 'absolute', left: position(index), transform: 'translateX(-50%)', bottom: 3, width: 6, height: 6, borderRadius: '50%', background: 'var(--dsw-alias-border-l2)' }} />)}
-    <span aria-hidden="true" data-openai-codex-context-thumb style={{ position: 'absolute', left: position(current), transform: 'translateX(-50%)', bottom: 0, width: 12, height: 12, borderRadius: '50%', border: '2px solid var(--dsw-alias-bg-layer-1)', boxSizing: 'border-box', background: color, transition: `left ${drag.current === undefined ? 240 : 65}ms cubic-bezier(.22,1.16,.36,1)` }} />
+    <span aria-hidden="true" data-openai-codex-context-thumb style={{ position: 'absolute', left: position(current), transform: 'translateX(-50%)', bottom: 0, width: 12, height: 12, borderRadius: '50%', border: 0, boxSizing: 'border-box', background: color, transition: drag.current === undefined ? 'left 100ms ease-out' : 'none' }} />
   </div>
 }

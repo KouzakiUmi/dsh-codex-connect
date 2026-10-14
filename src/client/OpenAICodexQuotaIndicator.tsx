@@ -74,7 +74,8 @@ function quotaOf(
 
 function isGptModel(state: ModelDirectoryState): boolean {
   const current = state.current
-  return state.status === 'ready'
+  // Preserve quota and its polling lifecycle while the catalog refreshes a retained selection.
+  return (state.status === 'ready' || state.status === 'loading' || state.status === 'selecting')
     && current?.provider === CODEX_PROVIDER
     && typeof current.model === 'string'
     && current.model.toLowerCase().startsWith('gpt-')

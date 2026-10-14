@@ -35,7 +35,7 @@ function directoryStore(state: ModelDirectoryState): SnapshotStore<ModelDirector
       return () => { listeners.delete(listener) }
     },
     update: () => undefined,
-    set: () => undefined,
+    set: next => { state = next; listeners.forEach(listener => { listener() }) },
   }
 }
 
@@ -54,6 +54,46 @@ afterEach(() => {
 })
 
 describe('OpenAI Codex Fast Mode Composer toggle', () => {
+  it('preserves the button and confirmed state without rereading during catalog refresh', async () => {
+    const directory = directoryStore(directoryState('gpt-6.1-sol'))
+    const fetchMock = vi.fn(async () => json({ enabled: true }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OpenAICodexFastModeToggle directory={directory} sessionId="session-a" t={t} />)
+    const button = await screen.findByRole('button', { name: en.fastModeEnabledTitle })
+    for (const status of ['loading', 'selecting', 'ready'] as const) {
+      act(() => { directory.set({ ...directory.getSnapshot(), status }) })
+      expect(screen.getByRole('button')).toBe(button)
+      expect(button.getAttribute('aria-pressed')).toBe('true')
+      expect(button.getAttribute('aria-busy')).toBe('false')
+    }
+    expect(fetchMock).toHaveBeenCalledOnce()
+    act(() => { directory.set({ ...directory.getSnapshot(), status: 'loading', current: null }) })
+    expect(screen.queryByRole('button')).toBeNull()
+  })
+  it.each(['GET', 'POST'] as const)('does not cancel an in-flight %s on catalog refresh', async method => {
+    const directory = directoryStore(directoryState('gpt-6.1-sol'))
+    let signal!: AbortSignal
+    let finish!: (value: Response) => void
+    const fetchMock = vi.fn((_path: string, init: RequestInit) => {
+      if (method === 'POST' && init.method === 'GET') return Promise.resolve(json({ enabled: false }))
+      signal = init.signal!
+      return new Promise<Response>(resolve => { finish = resolve })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OpenAICodexFastModeToggle directory={directory} sessionId="session-a" t={t} />)
+    if (method === 'POST') {
+      await screen.findByRole('button', { name: en.fastModeDisabledTitle })
+      fireEvent.click(screen.getByRole('button'))
+    }
+    const button = screen.getByRole('button')
+    act(() => { directory.set({ ...directory.getSnapshot(), status: 'loading' }) })
+    expect(screen.getByRole('button')).toBe(button)
+    expect(signal.aborted).toBe(false)
+    act(() => { directory.set({ ...directory.getSnapshot(), status: 'ready' }) })
+    await act(async () => { finish(json({ enabled: true })) })
+    expect(button.getAttribute('aria-pressed')).toBe('true')
+    expect(fetchMock).toHaveBeenCalledTimes(method === 'POST' ? 2 : 1)
+  })
   it.each(['GET headers', 'GET body', 'POST headers', 'POST body'] as const)('bounds %s and recovers only via explicit GET, ignoring late completion', async phase => {
     vi.useFakeTimers()
     const directory = directoryStore(directoryState('gpt-5'))

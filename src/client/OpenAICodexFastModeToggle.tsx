@@ -33,7 +33,8 @@ function readEnabled(value: unknown): boolean | undefined {
 
 function isEligible(state: ModelDirectoryState): boolean {
   const current = state.current
-  return state.status === 'ready'
+  // A catalog refresh retains the selected model; it is not a selection reset.
+  return (state.status === 'ready' || state.status === 'loading' || state.status === 'selecting')
     && current?.provider === CODEX_PROVIDER
     && typeof current.model === 'string'
     && current.model.startsWith('gpt-')

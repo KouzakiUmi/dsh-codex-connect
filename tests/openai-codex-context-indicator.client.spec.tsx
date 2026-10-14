@@ -95,6 +95,42 @@ describe('shared context quick editor', () => {
     expect(screen.getByRole('slider').getAttribute('aria-valuetext')).toBe('500K')
     expect(configScope.mutate).toHaveBeenCalledOnce()
   })
+  it('keeps the same editor mounted while the selected model catalog refreshes', () => {
+    const source = directory()
+    let state = source.getSnapshot()
+    const listeners = new Set<() => void>()
+    const store = { ...source, getSnapshot: () => state, subscribe: (listener: () => void) => {
+      listeners.add(listener); return () => { listeners.delete(listener) }
+    } }
+    render(<OpenAICodexContextIndicator directory={store} configScope={scope()} t={translator(en)} />)
+    fireEvent.click(screen.getByRole('button'))
+    const slider = screen.getByRole('slider')
+    act(() => { state = { ...state, status: 'loading' }; listeners.forEach(listener => { listener() }) })
+    expect(screen.getByRole('slider')).toBe(slider)
+    act(() => { state = { ...state, status: 'ready' }; listeners.forEach(listener => { listener() }) })
+    expect(screen.getByRole('slider')).toBe(slider)
+  })
+  it('keeps the editor and optimistic detent stable during a delayed save', async () => {
+    const configScope = scope('extended')
+    let finish: (() => void) | undefined
+    configScope.mutate.mockImplementation(() => new Promise<boolean>(resolve => {
+      finish = () => { configScope.save('maximum'); resolve(true) }
+    }))
+    render(<OpenAICodexContextIndicator directory={directory()} configScope={configScope} t={translator(en)} />)
+    const button = screen.getByRole('button')
+    fireEvent.click(button)
+    const slider = screen.getByRole('slider')
+    fireEvent.keyDown(slider, { key: 'End' })
+    expect(slider.getAttribute('aria-valuetext')).toBe('872K')
+    expect(slider.getAttribute('aria-disabled')).toBe('false')
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    await act(async () => { finish?.() })
+    expect(screen.getByRole('slider')).toBe(slider)
+    expect(slider.getAttribute('aria-valuetext')).toBe('872K')
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    fireEvent.click(button)
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
   it('disables writes to read-only settings and does not invent unknown-model capacity', () => {
     const configScope = scope('extended', false)
     const view = render(<OpenAICodexContextIndicator directory={directory()} configScope={configScope} t={translator(en)} />)

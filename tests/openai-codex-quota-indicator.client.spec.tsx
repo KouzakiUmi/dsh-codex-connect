@@ -94,6 +94,20 @@ afterEach(() => {
 })
 
 describe('OpenAI Codex Composer server-driven quota', () => {
+  it('preserves quota DOM and polling during catalog refresh, but clears a reset selection', async () => {
+    const directory = directoryStore(directoryState('gpt-6.1-sol'))
+    const fetchMock = vi.fn(async () => json({ status: 'signed-in', usage: usage() }))
+    vi.stubGlobal('fetch', fetchMock)
+    render(<OpenAICodexQuotaIndicator directory={directory} configScope={enabledScope} t={t} />)
+    const pill = await screen.findByRole('status')
+    for (const status of ['loading', 'selecting', 'ready'] as const) {
+      act(() => { directory.set({ ...directory.getSnapshot(), status }) })
+      expect(screen.getByRole('status')).toBe(pill)
+    }
+    expect(fetchMock).toHaveBeenCalledOnce()
+    act(() => { directory.set({ ...directory.getSnapshot(), status: 'loading', current: null }) })
+    expect(screen.queryByRole('status')).toBeNull()
+  })
   it.each(['headers', 'body'] as const)('bounds hung %s and releases no-overlap for visibility-aware backoff recovery', async phase => {
     vi.useFakeTimers()
     let hidden = false
