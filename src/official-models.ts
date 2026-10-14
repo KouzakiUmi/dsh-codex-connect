@@ -1,12 +1,12 @@
 /**
  * Official Codex model metadata mirrored from openai/codex `codex-rs/models-manager/models.json`
- * at commit 47bcb3a3f9e0904aed485389aaf410282b6b23fa. Values here decide wire defaults that the
+ * at commit d63a9b8344cfe58bc78bbe319b560378fc8756ef. Values here decide wire defaults that the
  * official client derives from the catalog: `default_reasoning_level`, `default_verbosity`,
  * and the reasoning-summary default. `ultra` is a client multi-agent mode, not a request effort,
  * so it is intentionally absent from the effort lists.
  */
 
-export const OFFICIAL_CODEX_CATALOG_SOURCE = 'https://github.com/openai/codex/blob/47bcb3a3f9e0904aed485389aaf410282b6b23fa/codex-rs/models-manager/models.json'
+export const OFFICIAL_CODEX_CATALOG_SOURCE = 'https://github.com/openai/codex/blob/d63a9b8344cfe58bc78bbe319b560378fc8756ef/codex-rs/models-manager/models.json'
 
 /** Request effort levels accepted on the Codex Responses wire (no `ultra`). */
 export type OfficialCodexEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'

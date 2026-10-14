@@ -354,7 +354,7 @@ const configSchema = z.object({
   imageModelHint: z.transform(z.string(), parseOpenAICodexImageModelHint).default('').volatile(),
   autoReviewDisclosureAcknowledged: z.boolean().default(false).volatile(),
   enableAutoReview: z.boolean().default(false).volatile(),
-  enableComposerQuotaPill: z.boolean().default(false).volatile(),
+  enableComposerQuotaPill: z.boolean().default(true).volatile(),
   searchModel: z.string().default(DEFAULT_OPENAI_CODEX_SEARCH_MODEL).volatile(),
   searchMode: z.union(['cached', 'indexed', 'live'] as const).default(DEFAULT_OPENAI_CODEX_SEARCH_MODE).volatile(),
   searchContextSize: z.union(['low', 'medium', 'high'] as const).default(DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE).volatile(),

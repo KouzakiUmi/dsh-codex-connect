@@ -32,7 +32,7 @@ describe('persistent model context tiers', () => {
     expect((await runtime.resolveModel('openai-codex', 'gpt-6.1-sol')).context?.contextWindow).toBe(872_000)
     tiers = { 'gpt-6.1-sol': null }
     expect((await runtime.resolveModel('openai-codex', 'gpt-6.1-sol')).context?.contextWindow).toBe(272_000)
-    expect(old.model.context?.contextWindow).toBe(272_000)
+    expect(old.model.context?.contextWindow).toBe(500_000)
     expect(expanded.model.context?.contextWindow).toBe(500_000)
   })
   it('clamps finite tiers to supported windows without inventing unknown-model capacity', () => {

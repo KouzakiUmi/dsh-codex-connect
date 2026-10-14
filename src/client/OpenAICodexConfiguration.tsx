@@ -11,11 +11,12 @@ import {
 } from '../settings-contract.ts'
 import {
   decodeOpenAICodexModelCatalog,
-  openAICodexModelContextWindow,
-  openAICodexExpandedContextWindow,
+  openAICodexDefaultContextTier,
+  resolveOpenAICodexContextTier,
   OPENAI_CODEX_MODEL_CATALOG_PATH,
 } from '../model-contract.ts'
-import type { OpenAICodexModelCatalogEntry, OpenAICodexContextTier } from '../model-contract.ts'
+import { OpenAICodexContextSlider } from './OpenAICodexContextSlider.tsx'
+import type { OpenAICodexModelCatalogEntry } from '../model-contract.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
 import {
   OPENAI_CODEX_PROXY_DETECT_PATH,
@@ -617,26 +618,16 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
                           {model.name === model.id ? null : <span style={modelIdStyle}> ({model.id})</span>}
                         </span>
                       </label>
-                      <label style={{ ...modelRowStyle, flexWrap: 'wrap', minHeight: 44 }}>
-                        <span>{t('modelContextTier')}</span>
-                        <select style={{ ...controlStyle, width: 'auto', minHeight: 36 }}
-                          aria-label={`${t('modelContextTier')} (${model.id})`}
-                          value={draft.modelContextTiers?.[model.id] ?? 'standard'}
-                          onChange={event => {
-                            const tier = event.currentTarget.value as OpenAICodexContextTier
-                            const tiers = { ...draft.modelContextTiers, [model.id]: tier }
-                            // Returning to the original implicit default must not leave a spurious dirty draft.
-                            if (tier === 'standard' && baseline.current?.modelContextTiers?.[model.id] === undefined) delete tiers[model.id]
-                            update('modelContextTiers', tiers)
-                          }}>
-                          <option value="standard">{t('contextTierStandard', { window: model.contextWindow / 1000 })}</option>
-                          {model.maxContextWindow > model.contextWindow ? <>
-                            <option value="extended">{t('contextTierExtended', { window: openAICodexExpandedContextWindow(model.id, model.contextWindow) / 1000 })}</option>
-                            <option value="maximum">{t('contextTierMaximum', { window: model.maxContextWindow / 1000 })}</option>
-                          </> : null}
-                        </select>
-                        <span style={modelIdStyle}>{openAICodexModelContextWindow(model.id, model.contextWindow, draft.modelContextTiers?.[model.id]) / 1000}K</span>
-                      </label>
+                      <OpenAICodexContextSlider model={model.id} standard={model.contextWindow}
+                        label={`${t('modelContextTier')} (${model.id})`}
+                        tier={resolveOpenAICodexContextTier(model.id, draft.modelContextTiers?.[model.id])}
+                        disabled={busy || !snapshot.writable}
+                        onChange={tier => {
+                          const tiers = { ...draft.modelContextTiers, [model.id]: tier }
+                          // Returning to the original model default must not leave a spurious dirty draft.
+                          if (tier === openAICodexDefaultContextTier(model.id) && baseline.current?.modelContextTiers?.[model.id] === undefined) delete tiers[model.id]
+                          update('modelContextTiers', tiers)
+                        }} />
                     </div>
                   </div>
                 )

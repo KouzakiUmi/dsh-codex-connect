@@ -785,7 +785,7 @@ interface OpenAICodexSettingsConfig {
   autoReviewDisclosureAcknowledged: boolean;
   /** Let the hidden Codex reviewer answer eligible DSH approval requests. */
   enableAutoReview: boolean;
-  /** Opt-in composer quota pill; off by default so other plugins can own the row. */
+  /** Composer quota pill; enabled by default, with explicit user opt-out preserved. */
   enableComposerQuotaPill: boolean;
   searchModel: string;
   searchMode: OpenAICodexSearchMode;

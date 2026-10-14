@@ -4,19 +4,24 @@
 export const OPENAI_CODEX_MODEL_CATALOG_PATH = '/plugins/dsh-codex-connect/models'
 
 /** Versioned official-client override policy, pinned to the mirrored catalog revision. */
-export const OPENAI_CODEX_CONTEXT_LIMIT_SOURCE = 'https://github.com/openai/codex/blob/47bcb3a3f9e0904aed485389aaf410282b6b23fa/codex-rs/models-manager/models.json'
+export const OPENAI_CODEX_CONTEXT_LIMIT_SOURCE = 'https://github.com/openai/codex/blob/d63a9b8344cfe58bc78bbe319b560378fc8756ef/codex-rs/models-manager/models.json'
 
 /** Provenance of a configuration ceiling; every listed model shares the pinned official catalog. */
 export function openAICodexContextLimitSource(_id: string): string {
   return OPENAI_CODEX_CONTEXT_LIMIT_SOURCE
 }
 
-/** Plugin standard budget; intentionally separate from Codex Desktop's 500K default. */
-export function openAICodexDefaultContextWindow(id: string, fallback = 272_000): number {
+/** Pinned official standard tier; unlisted provider capacities are retained. */
+export function openAICodexStandardContextWindow(id: string, fallback = 272_000): number {
   return Object.hasOwn(CONFIGURATION_LIMITS, id) ? 272_000 : fallback
 }
 
-/** The per-model preference only changes the ON budget, never the standard/OFF budget. */
+/** Plugin default: Sol 6.1 uses 500K; other known defaults follow the verified official catalog. */
+export function openAICodexDefaultContextWindow(id: string, fallback = 272_000): number {
+  return id === 'gpt-6.1-sol' ? 500_000 : openAICodexStandardContextWindow(id, fallback)
+}
+
+/** Finite expanded and maximum tiers, bounded by the pinned model ceiling. */
 export function openAICodexExpandedContextWindow(id: string, standard: number, maximum = false): number {
   const limit = openAICodexContextLimit(id, standard).maxContextWindow
   return maximum ? limit : Math.max(standard, Math.min(500_000, limit))
@@ -25,10 +30,32 @@ export function openAICodexExpandedContextWindow(id: string, standard: number, m
 export type OpenAICodexContextTier = 'standard' | 'extended' | 'maximum'
 export type OpenAICodexContextTiers = Readonly<Record<string, OpenAICodexContextTier | null>>
 
+/** Plugin preference: Sol 6.1 starts at 500K; explicit standard/null still selects the catalog baseline. */
+export function openAICodexDefaultContextTier(id: string): OpenAICodexContextTier {
+  return id === 'gpt-6.1-sol' ? 'extended' : 'standard'
+}
+
+export function resolveOpenAICodexContextTier(id: string, tier: OpenAICodexContextTier | null | undefined): OpenAICodexContextTier {
+  return tier === undefined ? openAICodexDefaultContextTier(id) : tier ?? 'standard'
+}
+
+/** Finite, non-duplicated capacities shared by both context selectors. */
+export function openAICodexContextChoices(id: string, standard: number): readonly { tier: OpenAICodexContextTier; window: number }[] {
+  const baseline = openAICodexStandardContextWindow(id, standard)
+  const choices = [
+    { tier: 'standard' as const, window: baseline },
+    { tier: 'extended' as const, window: openAICodexExpandedContextWindow(id, baseline) },
+    { tier: 'maximum' as const, window: openAICodexExpandedContextWindow(id, baseline, true) },
+  ]
+  return choices.filter((choice, index) => !choices.slice(0, index).some(previous => previous.window === choice.window))
+}
+
 /** One saved model budget for metadata, admission, ordinary calls and manual compaction. */
 export function openAICodexModelContextWindow(id: string, standard: number, tier: OpenAICodexContextTier | null | undefined): number {
-  return tier === 'extended' || tier === 'maximum'
-    ? openAICodexExpandedContextWindow(id, standard, tier === 'maximum') : standard
+  const selected = resolveOpenAICodexContextTier(id, tier)
+  const baseline = openAICodexStandardContextWindow(id, standard)
+  return selected === 'extended' || selected === 'maximum'
+    ? openAICodexExpandedContextWindow(id, baseline, selected === 'maximum') : baseline
 }
 
 const CONFIGURATION_LIMITS: Readonly<Record<string, number>> = Object.freeze({
@@ -63,7 +90,7 @@ export function isValidOpenAICodexContextBudget(value: number, maximum: number):
 export interface OpenAICodexModelCatalogEntry {
   id: string
   name: string
-  /** Unmodified provider-catalog default, even when an override is active. */
+  /** Standard-tier raw capacity, independent of the plugin's default or saved tier. */
   contextWindow: number
   /** Local configuration ceiling; account/route capacity can differ. */
   maxContextWindow: number

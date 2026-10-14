@@ -578,7 +578,7 @@ describe('OpenAI Codex Plugin configuration card', () => {
     const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => requestPath(input) === OPENAI_CODEX_MODEL_CATALOG_PATH
       ? json(modelCatalogFixture([{ id: 'gpt-5.6-luna', name: 'GPT-5.6 Luna' }, { id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' }]))
       : json({ status: 'signed-out' }))
-    const { scope, mutate } = settingsScopeFixture()
+    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill: false })
     vi.stubGlobal('fetch', fetchMock)
 
     render(<OpenAICodexSettings t={t} configScope={scope} embedded />)
@@ -1216,18 +1216,18 @@ describe('unchanged Host-accepted context budgets', () => {
   })
 
   it.each([undefined, { sol: 400_000 }])('keeps arbitrary budgets retired while staging the bounded maximum preference (%j)', async overrides => {
-    vi.stubGlobal('fetch', vi.fn(async () => json(modelCatalogFixture([{ id: 'sol', name: 'Sol' }]))))
+    vi.stubGlobal('fetch', vi.fn(async () => json(modelCatalogFixture([{ id: 'gpt-6.1-sol', name: 'Sol' }]))))
     const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: overrides })
     render(<OpenAICodexConfiguration scope={scope} t={t} />)
     await screen.findByRole('checkbox', { name: /Sol/ })
     expect(screen.queryByRole('spinbutton')).toBeNull()
-    const maximum = screen.getByRole('combobox', { name: `${en.modelContextTier} (sol)` })
-    expect(maximum).toHaveProperty('value', 'standard')
-    fireEvent.change(maximum, { target: { value: 'maximum' } })
+    const maximum = screen.getByRole('slider', { name: `${en.modelContextTier} (gpt-6.1-sol)` })
+    expect(maximum.getAttribute('aria-valuetext')).toBe('500K')
+    fireEvent.keyDown(maximum, { key: 'End' })
     expect(mutate).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: en.save }))
     await screen.findByText(en.settingsSaved)
-    expect(mutate).toHaveBeenCalledWith([{ op: 'set', path: ['modelContextTiers'], value: { sol: 'maximum' } }], 0)
+    expect(mutate).toHaveBeenCalledWith([{ op: 'set', path: ['modelContextTiers'], value: { 'gpt-6.1-sol': 'maximum' } }], 0)
     expect(scope.getSnapshot().value?.contextWindowOverrides).toEqual(overrides)
   })
 

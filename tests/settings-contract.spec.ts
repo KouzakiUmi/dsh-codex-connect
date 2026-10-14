@@ -143,14 +143,14 @@ describe('OpenAI Codex proxy settings contract', () => {
     })
   })
 
-  it('keeps the composer quota pill opt-in for fresh and legacy profiles', () => {
-    expect(DEFAULT_OPENAI_CODEX_SETTINGS.enableComposerQuotaPill).toBe(false)
-    expect(Config({}).enableComposerQuotaPill.get()).toBe(false)
-    expect(resolveOpenAICodexSettings({}).enableComposerQuotaPill).toBe(false)
-    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill: undefined })?.enableComposerQuotaPill).toBe(false)
-    expect(Config({ enableComposerQuotaPill: true }).enableComposerQuotaPill.get()).toBe(true)
-    expect(resolveOpenAICodexSettings({ enableComposerQuotaPill: true }).enableComposerQuotaPill).toBe(true)
-    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill: true })?.enableComposerQuotaPill).toBe(true)
+  it('defaults the composer quota pill on while preserving explicit opt-out at every boundary', () => {
+    expect(DEFAULT_OPENAI_CODEX_SETTINGS.enableComposerQuotaPill).toBe(true)
+    expect(Config({}).enableComposerQuotaPill.get()).toBe(true)
+    expect(resolveOpenAICodexSettings({}).enableComposerQuotaPill).toBe(true)
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill: undefined })?.enableComposerQuotaPill).toBe(true)
+    expect(Config({ enableComposerQuotaPill: false }).enableComposerQuotaPill.get()).toBe(false)
+    expect(resolveOpenAICodexSettings({ enableComposerQuotaPill: false }).enableComposerQuotaPill).toBe(false)
+    expect(decodeOpenAICodexSettings({ ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill: false })?.enableComposerQuotaPill).toBe(false)
   })
 
   it.each(['yes', 1, null, {}, []])('rejects a malformed composer quota pill setting: %j', enableComposerQuotaPill => {

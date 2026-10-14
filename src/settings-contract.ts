@@ -160,7 +160,7 @@ export interface OpenAICodexSettingsConfig {
   autoReviewDisclosureAcknowledged: boolean
   /** Let the hidden Codex reviewer answer eligible DSH approval requests. */
   enableAutoReview: boolean
-  /** Opt-in composer quota pill; off by default so other plugins can own the row. */
+  /** Composer quota pill; enabled by default, with explicit user opt-out preserved. */
   enableComposerQuotaPill: boolean
   searchModel: string
   searchMode: OpenAICodexSearchMode
@@ -189,7 +189,7 @@ export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> 
   imageModelHint: DEFAULT_OPENAI_CODEX_IMAGE_MODEL_HINT,
   autoReviewDisclosureAcknowledged: false,
   enableAutoReview: false,
-  enableComposerQuotaPill: false,
+  enableComposerQuotaPill: true,
   searchModel: DEFAULT_OPENAI_CODEX_SEARCH_MODEL,
   searchMode: DEFAULT_OPENAI_CODEX_SEARCH_MODE,
   searchContextSize: DEFAULT_OPENAI_CODEX_SEARCH_CONTEXT_SIZE,
@@ -339,7 +339,7 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
     imageModelHint: imageModelHint ?? DEFAULT_OPENAI_CODEX_IMAGE_MODEL_HINT,
     autoReviewDisclosureAcknowledged: autoReviewDisclosureAcknowledged ?? false,
     enableAutoReview: enableAutoReview ?? false,
-    enableComposerQuotaPill: enableComposerQuotaPill ?? false,
+    enableComposerQuotaPill: enableComposerQuotaPill ?? DEFAULT_OPENAI_CODEX_SETTINGS.enableComposerQuotaPill,
     searchModel,
     searchMode,
     searchContextSize,

@@ -136,14 +136,14 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `models` | 完整目录 | 可见的 Codex model id；空数组隐藏全部条目 |
 | `enableProxy` | `false` | Codex Connect 流量是否使用 `proxyUrl` |
 | `proxyUrl` | `http://127.0.0.1:7890` | 不带凭据的 HTTP(S) proxy origin；启用前不生效 |
-| `modelContextTiers` | 空映射／标准 | 每模型 `standard`、`extended` 或 `maximum` 窗口；由宿主设置保存，对已有和新会话及 `/compact` 共用 |
+| `modelContextTiers` | Sol 6.1 为 500K，其余标准 | 每模型 `standard`、`extended` 或 `maximum` 窗口；由宿主设置保存，对已有和新会话及 `/compact` 共用 |
 | `enableSearch` | `false` | 注册 Codex 搜索，并在保存时将它选为搜索提供方 |
 | `enableReserveFallback` | `false` | 为 agent 请求执行身份匹配、后端授权的 Luna Reserve 切换 |
 | `enableImageTool` | `false` | 注册 `view_image` |
 | `enableImageGeneration` | `false` | 注册 GPT Image 图片生成及 Alpha 4.48 的显式编辑 |
 | `imageModelHint` | 空字符串 | 可选的未验证图片路由提示；留空保持默认请求 |
 | `enableAutoReview` | `false` | 使用 Codex 审查符合条件的审批请求 |
-| `enableComposerQuotaPill` | `false` | 在输入框右侧显示 Codex 的 5 小时与每周额度药丸；该位置已由其他插件占用时保持关闭 |
+| `enableComposerQuotaPill` | `true` | 在输入框右侧显示 Codex 的 5 小时与每周额度药丸；该位置已由其他插件占用时保持关闭 |
 | `searchModel` | `gpt-5.6-sol` | 独立搜索使用的模型 |
 | `searchMode` | `cached` | `cached`、`indexed` 或 `live` |
 | `searchContextSize` | `medium` | `low`、`medium` 或 `high` |
@@ -151,9 +151,9 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `requestMetricsDirectory` | 不设置／关闭 | 启动配置中的私有绝对路径，记录[本地请求计量](request-metrics.zh.md)，不上传遥测 |
 | `requestMetricsMaxBytes` | `16777216` | 每进程单日志上限，整数 `4096`–`67108864`；不配置目录则不采集 |
 
-模型列表每行提供持久化的“上下文窗口”下拉框：标准（272K）、扩展（500K，不超过目录上限）、最大（当前可扩展模型为 872K）。不支持扩展的模型只提供标准档。保存后，对该模型的已有和新会话、模型信息／压力检测和手动 `/compact` 共用同一窗口，已准备的请求不变。持久化由宿主设置管理，插件重启不重置已保存档位。单模型 `null` 选择标准并屏蔽继承的扩展；整个映射 `null` 重置映射。旧的 `maximumContextModels` 和 `contextWindowOverrides` 保留为无效的兼容数据，不会悄悄开启持久扩展。
+模型列表每行提供持久化的微型上下文滑杆：标准（272K）、扩展（500K，不超过目录上限）、最大（当前可扩展模型为 872K）。不支持扩展的模型只提供标准档。未保存档位的 GPT-6.1 Sol 默认 500K，其余现有型号默认 272K；已显式保存的标准／null 仍为 272K。保存后，对该模型的已有和新会话、模型信息／压力检测和手动 `/compact` 共用同一窗口，已准备的请求不变。持久化由宿主设置管理，插件重启不重置已保存档位。单模型 `null` 选择标准并屏蔽继承的扩展；整个映射 `null` 重置映射。旧的 `maximumContextModels` 和 `contextWindowOverrides` 保留为无效的兼容数据，不会悄悄开启持久扩展。
 
-原输入区开关改为只读容量指示器：灰色标准、蓝色扩展、琥珀色最大，支持悬停／键盘提示。显示的是已保存的原始窗口容量，不是已使用的 Token，也不代表验证过的服务端容量；设置不可用时显示未确认状态，而非虚假的 272K。历史超过 272K 的已有会话，请先在下拉框选择合适窗口并保存，再执行压缩。扩展可能增加 Token／额度消耗及请求失败风险；服务端不支持的容量仍需切换受支持的模型／档位。修复与合成验证见[记录](agent-notes/model-context-tiers.md)。设置继续手动保存，保存／放弃位于字段上方；切换模块保留草稿，关闭模型设置弹窗前需确认放弃未保存的改动。
+输入区保留原扩展图标及短容量 tooltip：悬停显示已保存档位，点击才打开约两行大小的微型滑杆。上方是三档容量，下方细线内嵌扁平圆点卡位；拖动有吸附阈值，松手提交一次。图标入口立即写入同一模型的宿主设置，设置页仍用保存／放弃提交草稿。灰色标准、蓝色扩展、琥珀色最大；不显示内联数字。容量是客户端预算，不代表已使用 Token 或服务端权限。读写不可用时不提交；失败保留原档位并显示简短提示，不自动重放。历史超过 272K 的会话应保存足够大的档位后再压缩。额度药丸默认开启，但显式关闭仍保留。模型默认及来源依据见[记录](agent-notes/model-context-tiers.md)。
 
 ## 诊断与恢复
 
