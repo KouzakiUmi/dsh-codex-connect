@@ -922,6 +922,279 @@ describe('OpenAI Codex Plugin configuration card', () => {
 })
 
 
+describe('local manual proxy input drafts', () => {
+  it('releases manual input ownership after Use and Save accepts the exact input, then follows the Host', async () => {
+    const accepted = 'http://127.0.0.1:8111'
+    const next = 'http://127.0.0.1:8112'
+    const fetchMock = vi.fn(async (path: string) => {
+      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return json([])
+      expect(path).toBe(`${OPENAI_CODEX_PROXY_TEST_PATH}?proxyUrl=${encodeURIComponent(accepted)}`)
+      return json({ proxyUrl: accepted, reachable: true, classification: 'reachable' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const { scope, mutate } = settingsScopeFixture()
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    const address = screen.getByRole('textbox', { name: en.proxyAddress })
+    fireEvent.change(address, { target: { value: accepted } })
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    await waitFor(() => { expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', false) })
+    fireEvent.click(screen.getByRole('button', { name: en.useThisProxy }))
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
+    await screen.findByText(en.settingsSaved)
+    expect(scope.getSnapshot().value).toMatchObject({ enableProxy: true, proxyUrl: accepted })
+    expect(address).toHaveProperty('value', accepted)
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
+    await act(async () => { await scope.set('proxyUrl', next) })
+    expect(address).toHaveProperty('value', next)
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
+    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
+    expect(mutate).toHaveBeenCalledExactlyOnceWith([
+      { op: 'set', path: ['enableProxy'], value: true },
+      { op: 'set', path: ['proxyUrl'], value: accepted },
+    ], 0)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('becomes clean on returning to exact accepted text without reviving a stale pending probe', async () => {
+    const accepted = 'http://127.0.0.1:8111'
+    const next = 'http://127.0.0.1:8112'
+    let signal: AbortSignal | null | undefined
+    let complete!: (response: Response) => void
+    vi.stubGlobal('fetch', vi.fn((path: string, init: RequestInit) => {
+      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json([]))
+      signal = init.signal
+      return new Promise<Response>(done => { complete = done })
+    }))
+    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, proxyUrl: accepted })
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    const address = screen.getByRole('textbox', { name: en.proxyAddress })
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    // Normalized equality alone is not exact-text equality and must retain the edit.
+    fireEvent.change(address, { target: { value: ` ${accepted}/ ` } })
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', false)
+    fireEvent.change(address, { target: { value: accepted } })
+    expect(signal?.aborted).toBe(true)
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
+    await act(async () => { complete(json({ proxyUrl: accepted, reachable: true, classification: 'reachable' })) })
+    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
+    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
+    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
+    await act(async () => { await scope.set('proxyUrl', next) })
+    expect(address).toHaveProperty('value', next)
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it('preserves a different tested candidate across an unrelated save without applying or saving it', async () => {
+    const accepted = 'http://127.0.0.1:8110'
+    const candidate = 'http://127.0.0.1:8111'
+    vi.stubGlobal('fetch', vi.fn(async (path: string) => {
+      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return json([])
+      expect(path).toBe(`${OPENAI_CODEX_PROXY_TEST_PATH}?proxyUrl=${encodeURIComponent(candidate)}`)
+      return json({ proxyUrl: candidate, reachable: true, classification: 'reachable' })
+    }))
+    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, enableProxy: true, proxyUrl: accepted })
+    const view = render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: candidate } })
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    await waitFor(() => { expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', false) })
+    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
+    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
+    await screen.findByText(en.settingsSaved)
+    expect(mutate).toHaveBeenCalledExactlyOnceWith([{ op: 'set', path: ['enableSearch'], value: true }], 0)
+    expect(scope.getSnapshot().value).toMatchObject({ enableProxy: true, proxyUrl: accepted })
+    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', candidate)
+    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', false)
+    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', false)
+    expect(screen.queryByText(t('pendingProxy', { proxyUrl: candidate }))).toBeNull()
+  })
+
+  it('preserves typed input across unrelated Host snapshots without enabling Save or mutating settings', async () => {
+    const fetchMock = vi.fn(async () => json([]))
+    vi.stubGlobal('fetch', fetchMock)
+    const { scope, set, mutate } = settingsScopeFixture()
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    const address = screen.getByRole('textbox', { name: en.proxyAddress })
+    const candidate = 'http://127.0.0.1:8111'
+    fireEvent.change(address, { target: { value: candidate } })
+    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', false)
+    expect(set).not.toHaveBeenCalled()
+    expect(mutate).not.toHaveBeenCalled()
+    expect(scope.getSnapshot().value).toEqual(DEFAULT_OPENAI_CODEX_SETTINGS)
+    await act(async () => { await scope.set('searchModel', 'external-model') })
+    expect(address).toHaveProperty('value', candidate)
+    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
+    expect(mutate).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(OPENAI_CODEX_MODEL_CATALOG_PATH, expect.anything())
+  })
+
+  it('preserves a manual candidate when an unrelated setting is successfully saved', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json([])))
+    const { scope, mutate } = settingsScopeFixture()
+    const view = render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    const candidate = 'http://127.0.0.1:8111'
+    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: candidate } })
+    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
+    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
+    await screen.findByText(en.settingsSaved)
+    expect(mutate).toHaveBeenCalledExactlyOnceWith([{ op: 'set', path: ['enableSearch'], value: true }], 0)
+    expect(scope.getSnapshot().value?.proxyUrl).toBe(DEFAULT_OPENAI_CODEX_SETTINGS.proxyUrl)
+    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', candidate)
+    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
+  })
+
+  it('keeps untouched input following the Host even while an unrelated setting is staged', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => json([])))
+    const { scope, mutate } = settingsScopeFixture()
+    const view = render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
+    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
+    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    const accepted = 'http://127.0.0.1:8112'
+    await act(async () => { await scope.set('proxyUrl', accepted) })
+    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', accepted)
+    fireEvent.click(screen.getByRole('button', { name: en.discard }))
+    const newest = 'http://127.0.0.1:8113'
+    await act(async () => { await scope.set('proxyUrl', newest) })
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', newest)
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it('discards a manual-only draft to the newest accepted value and cancels its obsolete probe', async () => {
+    const accepted = 'http://127.0.0.1:8112'
+    const candidate = 'http://127.0.0.1:8111'
+    let signal: AbortSignal | null | undefined
+    let complete!: (response: Response) => void
+    vi.stubGlobal('fetch', vi.fn((path: string, init: RequestInit) => {
+      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json([]))
+      signal = init.signal
+      return new Promise<Response>(done => { complete = done })
+    }))
+    const { scope, mutate } = settingsScopeFixture()
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: candidate } })
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    await act(async () => { await scope.set('proxyUrl', accepted) })
+    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', candidate)
+    fireEvent.click(screen.getByRole('button', { name: en.discard }))
+    expect(signal?.aborted).toBe(true)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', accepted)
+    await act(async () => { complete(json({ proxyUrl: candidate, reachable: true, classification: 'reachable' })) })
+    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
+    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it('resets the old candidate on scope replacement and rejects the old pending probe', async () => {
+    const oldCandidate = 'http://127.0.0.1:8111'
+    const accepted = 'http://127.0.0.1:8112'
+    let signal: AbortSignal | null | undefined
+    let complete!: (response: Response) => void
+    vi.stubGlobal('fetch', vi.fn((path: string, init: RequestInit) => {
+      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json([]))
+      signal = init.signal
+      return new Promise<Response>(done => { complete = done })
+    }))
+    const first = settingsScopeFixture()
+    const second = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, proxyUrl: accepted })
+    const view = render(<OpenAICodexConfiguration scope={first.scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: oldCandidate } })
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    view.rerender(<OpenAICodexConfiguration scope={second.scope} t={t} activeModule="network" />)
+    expect(signal?.aborted).toBe(true)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', accepted)
+    await act(async () => { complete(json({ proxyUrl: oldCandidate, reachable: true, classification: 'reachable' })) })
+    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
+    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
+    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
+    expect(first.mutate).not.toHaveBeenCalled()
+    expect(second.mutate).not.toHaveBeenCalled()
+  })
+
+  it.each(['changed', 'restored', 'discarded'] as const)('does not let a stale pending probe authorize %s input', async change => {
+    const candidate = 'http://127.0.0.1:8111'
+    let signal: AbortSignal | null | undefined
+    let complete!: (response: Response) => void
+    vi.stubGlobal('fetch', vi.fn((path: string, init: RequestInit) => {
+      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json([]))
+      signal = init.signal
+      return new Promise<Response>(done => { complete = done })
+    }))
+    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, proxyUrl: candidate })
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    const address = screen.getByRole('textbox', { name: en.proxyAddress })
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    fireEvent.change(address, { target: { value: 'http://127.0.0.1:8112' } })
+    if (change === 'restored') fireEvent.change(address, { target: { value: candidate } })
+    if (change === 'discarded') {
+      fireEvent.click(screen.getByRole('button', { name: en.discard }))
+      fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    }
+    expect(signal?.aborted).toBe(true)
+    await act(async () => { complete(json({ proxyUrl: candidate, reachable: true, classification: 'reachable' })) })
+    expect(address).toHaveProperty('value', change === 'changed' ? 'http://127.0.0.1:8112' : candidate)
+    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
+    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
+    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
+    expect(mutate).not.toHaveBeenCalled()
+  })
+
+  it('requires a successful result for the current normalized address before explicit Use and Save', async () => {
+    const candidate = 'http://127.0.0.1:8111'
+    let reachable = false
+    const fetchMock = vi.fn(async (path: string) => {
+      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return json([])
+      expect(new URL(path, 'http://localhost').searchParams.get('proxyUrl')).toBe(candidate)
+      return json({ proxyUrl: candidate, reachable, classification: reachable ? 'reachable' : 'connect-failure' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const { scope, mutate } = settingsScopeFixture()
+    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
+    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
+    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: ` ${candidate}/ ` } })
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    await screen.findByText(t('proxyTestFailed', { reason: 'connect-failure' }))
+    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
+    reachable = true
+    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
+    await waitFor(() => { expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', false) })
+    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
+    expect(mutate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: en.useThisProxy }))
+    expect(screen.getByText(t('pendingProxy', { proxyUrl: candidate }))).toBeTruthy()
+    expect(mutate).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: en.save }))
+    await screen.findByText(en.settingsSaved)
+    expect(mutate).toHaveBeenCalledExactlyOnceWith([
+      { op: 'set', path: ['enableProxy'], value: true },
+      { op: 'set', path: ['proxyUrl'], value: candidate },
+    ], 0)
+  })
+})
+
+
 describe('bounded configuration recovery', () => {
   it.each(['replace', 'disable'] as const)('aborts and resets saved checks on external Host %s without disturbing manual probes/edits', async change => {
     const a = 'http://127.0.0.1:8110'
