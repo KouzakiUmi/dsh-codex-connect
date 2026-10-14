@@ -482,3 +482,19 @@ Real OS durability and true cross-process writer/account races remain unverified
 continued same-user changes after a final observation cannot be excluded by
 unbounded rechecks. The explicit one-read retry does not guarantee availability
 under persistent replacements.
+
+## 2026-10-14 — upstream synchronization
+
+Integrated upstream main [30a223f](https://github.com/franksong2702/dsh-codex-connect/commit/30a223fe36eecb2f681d18d25b6add8349bab081) into the existing repair head [d85e7b2](https://github.com/KouzakiUmi/dsh-codex-connect/commit/d85e7b20188b05c663e1a015bd4c5c4ef2cf6cd5). The upstream additions are dependency security floors [#333](https://github.com/franksong2702/dsh-codex-connect/pull/333) and manual proxy draft preservation [#335](https://github.com/franksong2702/dsh-codex-connect/pull/335). The merge required no textual conflict resolution; generated output was rebuilt. These upstream fixes are baseline, not additional contributions claimed by this PR. Personal model-context, composer control and SDK changes are not included.
+
+Validation on Windows, Node v24.13.0, pnpm 10.33.0, locked DSH SDK 0.1.7-rc.1 and pi-ai 0.85.1:
+
+- `pnpm run check`: exit 0; 143 Vitest files, 1,980 passed / 5 Windows-gated skipped, plus 129 standalone login/binding cases.
+- `node scripts/check-adaptive-task-ui.mjs`: exit 0, authenticated real product endpoint/control with synthetic provider; zero real provider requests.
+- `pnpm run test:browser`: exit 0; 12 Chromium files / 69 passed.
+- Build, import, CLI, request metrics, compatibility and pack checks passed; 157 packed files and 26 inventory fixture cases.
+- `git diff --check`: exit 0.
+
+Independent read-only GPT-6 Astra high integration review confirmed that the upstream source/lock/test changes match the upstream baseline, original repair implementations and their consumer chains remain intact, and personal features are absent. No blocking new issue was found in this bounded review. The reviewer checked source, selected regression assertions and generated retry/flush code, but did not rerun tests or certify real OS races. Mixed initial 404/409 response sequences remain an additional, non-blocking test opportunity.
+
+This is integration and synthetic regression evidence, not daily Profile/live-account acceptance, real cross-process durability certification or new supported-host certification. Exact-head remote CI remains a separate gate.

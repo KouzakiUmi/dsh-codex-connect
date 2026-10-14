@@ -208,6 +208,8 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   const [proxyDetection, setProxyDetection] = useState<ProxyDetectionState>({ status: 'idle' })
   const [proxyMode, setProxyMode] = useState<'auto' | 'manual'>('auto')
   const [manualProxyUrl, setManualProxyUrl] = useState(snapshot.value?.proxyUrl ?? '')
+  // A candidate is local input, not a staged Host settings mutation.
+  const [manualProxyEdited, setManualProxyEdited] = useState(false)
   const [manualProbe, setManualProbe] = useState<OpenAICodexProxyProbeResult | undefined>()
   const [manualProbeBusy, setManualProbeBusy] = useState(false)
   const [currentProxyCheck, setCurrentProxyCheck] = useState<CurrentProxyCheckState>({ status: 'idle' })
@@ -221,6 +223,14 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   const proxyDetectionRequest = useRef(0)
   const manualProbeRequest = useRef(0)
   const currentProxyCheckRequest = useRef(0)
+
+  const replaceManualProxyInput = useCallback((value: string): void => {
+    manualProbeController.current?.abort()
+    manualProbeRequest.current += 1
+    setManualProbeBusy(false)
+    setManualProbe(undefined)
+    setManualProxyUrl(value)
+  }, [])
 
   useEffect(() => {
     if (scope === undefined) return
@@ -249,9 +259,15 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     if (!dirty && !busy) {
       baseline.current = snapshot.value
       setDraft(snapshot.value)
-      setManualProxyUrl(snapshot.value?.proxyUrl ?? '')
     }
   }, [busy, dirty, snapshot.revision, snapshot.value])
+
+  useEffect(() => {
+    const accepted = snapshot.value?.proxyUrl ?? ''
+    // Exact accepted text no longer needs local ownership; different candidates survive saves.
+    if (manualProxyEdited && manualProxyUrl === accepted) setManualProxyEdited(false)
+    if (!manualProxyEdited && manualProxyUrl !== accepted) replaceManualProxyInput(accepted)
+  }, [manualProxyEdited, manualProxyUrl, snapshot.value?.proxyUrl, replaceManualProxyInput])
 
   useEffect(() => {
     if (feedback !== 'saved') return
@@ -260,9 +276,10 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
   }, [feedback])
 
   useEffect(() => {
+    setProxyMode('auto')
+    setManualProxyEdited(false)
+    replaceManualProxyInput(scope?.getSnapshot().value?.proxyUrl ?? '')
     setProxyDetection({ status: 'idle' })
-    setManualProbe(undefined)
-    setManualProbeBusy(false)
     setCurrentProxyCheck({ status: 'idle' })
     return () => {
       proxyDetectionController.current?.abort()
@@ -272,7 +289,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
       manualProbeRequest.current += 1
       currentProxyCheckRequest.current += 1
     }
-  }, [scope])
+  }, [scope, replaceManualProxyInput])
 
   const clearCurrentProxyCheck = (): void => {
     currentProxyCheckController.current?.abort()
@@ -297,11 +314,8 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     proxyDetectionRequest.current += 1
     setProxyDetection({ status: 'idle' })
     setProxyMode('auto')
-    setManualProxyUrl(scope?.getSnapshot().value?.proxyUrl ?? '')
-    manualProbeController.current?.abort()
-    manualProbeRequest.current += 1
-    setManualProbe(undefined)
-    setManualProbeBusy(false)
+    setManualProxyEdited(false)
+    replaceManualProxyInput(scope?.getSnapshot().value?.proxyUrl ?? '')
     clearCurrentProxyCheck()
     setAutoReviewConfirmOpen(false)
   }
@@ -352,7 +366,8 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
     const tested = manualProbe?.reachable === true && manualProbe.proxyUrl === normalized ? manualProbe : detected
     if (tested === undefined) return
     setDraft({ ...draft, proxyUrl: normalized, enableProxy: true })
-    setManualProxyUrl(normalized)
+    replaceManualProxyInput(normalized)
+    setManualProxyEdited(true)
     setDirty(true)
     setFeedback('idle')
     setManualProbe(tested)
@@ -725,11 +740,8 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
                   value={manualProxyUrl}
                   aria-invalid={manualProxyEntered && normalizedManualProxy === undefined}
                   onChange={event => {
-                    manualProbeController.current?.abort()
-                    manualProbeRequest.current += 1
-                    setManualProbeBusy(false)
-                    setManualProbe(undefined)
-                    setManualProxyUrl(event.currentTarget.value)
+                    setManualProxyEdited(true)
+                    replaceManualProxyInput(event.currentTarget.value)
                     setFeedback('idle')
                   }}
                 />
@@ -965,7 +977,7 @@ export function OpenAICodexConfiguration({ scope, t, activeModule, panelIdPrefix
           {feedback === 'error' ? <span style={errorStyle}>{t('settingsSaveFailed')}</span> : null}
         </span>
         <span style={buttonsStyle}>
-          <button type="button" style={{ ...buttonStyle, minHeight: 44 }} disabled={!dirty || busy} onClick={discard}>{t('discard')}</button>
+          <button type="button" style={{ ...buttonStyle, minHeight: 44 }} disabled={(!dirty && !manualProxyEdited) || busy} onClick={discard}>{t('discard')}</button>
           <button
             type="button"
             style={{ ...primaryButtonStyle, minHeight: 44 }}
