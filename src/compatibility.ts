@@ -1,4 +1,6 @@
 import { readFile, realpath } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { resolveHostPiAiPackage } from './host-pi-ai-resolution.ts'
 import { basename, dirname, join, parse as parsePath } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -189,6 +191,13 @@ export const assessCompatibility = evaluateCompatibility
  * @returns its version, or undefined when metadata cannot be read.
  */
 export async function readInstalledPackageVersion(name: string, installAnchor?: string): Promise<string | undefined> {
+  if (name === PI_AI_PACKAGE && installAnchor === undefined) {
+    try {
+      return resolveHostPiAiPackage(import.meta.resolve('@deepseek-ai/dsh-llm-pi-ai')).version
+    } catch {
+      return undefined
+    }
+  }
   if (installAnchor !== undefined) {
     let anchor: string
     try {
@@ -204,6 +213,10 @@ export async function readInstalledPackageVersion(name: string, installAnchor?: 
     if (basename(packageDirectory) !== 'dsh' || basename(scopeDirectory) !== '@deepseek-ai'
       || basename(modulesDirectory) !== 'node_modules') return undefined
     try {
+      if (name === PI_AI_PACKAGE) {
+        const adapterEntry = createRequire(anchor).resolve('@deepseek-ai/dsh-llm-pi-ai')
+        return resolveHostPiAiPackage(adapterEntry).version
+      }
       const parsed = JSON.parse(await readFile(join(modulesDirectory, name, 'package.json'), 'utf8')) as PackageJson
       return parsed.name === name && typeof parsed.version === 'string' ? parsed.version : undefined
     } catch {
@@ -238,10 +251,9 @@ export async function readInstalledPackageVersion(name: string, installAnchor?: 
 
 /** Read installed package metadata and return only versions and statuses. */
 export async function detectCompatibility(options: CompatibilityDetectionOptions = {}): Promise<CompatibilityReport> {
-  // pi-ai is host-provided: resolve it through this installation's module resolution,
-  // which the host routes to its own pi-ai; the anchor selects only DSH peer metadata.
-  const readVersion = options.readPackageVersion ?? ((name: CompatibilityPackageName) => readInstalledPackageVersion(name,
-    name === PI_AI_PACKAGE ? undefined : options.installAnchor))
+  // Both the host bridge and diagnostics use the actual adapter's dependency graph.
+  // In particular a standalone CLI must not report its own bundled/profile pi-ai.
+  const readVersion = options.readPackageVersion ?? ((name: CompatibilityPackageName) => readInstalledPackageVersion(name, options.installAnchor))
   const packageVersions = options.packageVersions ?? options.packages ?? options.installed?.packages
   const resolvedPackages = packageVersions === undefined
     ? Object.fromEntries(await Promise.all(COMPATIBILITY_PACKAGES.map(async name => [name, await readVersion(name)] as const)))

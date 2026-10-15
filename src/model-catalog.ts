@@ -1,7 +1,7 @@
 /** Codex model catalog shared by the runtime adapter and standalone diagnostics. */
 
 import type { Model, Provider } from '@earendil-works/pi-ai'
-import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
+import { openaiCodexProvider } from './pi-ai.ts'
 import type { OpenAICodexModelCatalogEntry } from './model-contract.ts'
 import { OFFICIAL_CODEX_REMOVED_MODEL_IDS } from './official-models.ts'
 import { openAICodexContextLimit, openAICodexDefaultContextWindow, openAICodexStandardContextWindow } from './model-contract.ts'

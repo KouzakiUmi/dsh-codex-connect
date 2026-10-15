@@ -156,17 +156,29 @@ describe('compatibility contract', () => {
       for (const [name, version] of Object.entries(compatiblePackages)) {
         const manifest = join(host, 'node_modules', name, 'package.json')
         await mkdir(dirname(manifest), { recursive: true })
-        await writeFile(manifest, JSON.stringify({ name, version, exports: { import: './index.js' } }))
+        await writeFile(manifest, JSON.stringify({ name, version, exports: { '.': { import: './index.js', default: './index.js' } } }))
+        await writeFile(join(dirname(manifest), 'index.js'), 'export {}')
       }
       const report = await detectCompatibility({ nodeVersion: 'v22.19.0', installAnchor: anchor })
       expect(report.status).toBe('compatible')
       expect(JSON.stringify(report)).not.toContain(root)
 
       const hostPi = join(host, 'node_modules', '@earendil-works', 'pi-ai', 'package.json')
-      await writeFile(hostPi, JSON.stringify({ name: '@earendil-works/pi-ai', version: '0.87.1' }))
-      const ownedReport = await detectCompatibility({ nodeVersion: 'v22.19.0', installAnchor: anchor })
-      expect(ownedReport.status).toBe('compatible')
-      expect(ownedReport.packages['@earendil-works/pi-ai'].installed).toBe('1.2.0')
+      await writeFile(hostPi, JSON.stringify({ name: '@earendil-works/pi-ai', version: '0.87.1', exports: { '.': { import: './index.js' } } }))
+      const hostReport = await detectCompatibility({ nodeVersion: 'v22.19.0', installAnchor: anchor })
+      expect(hostReport.status).toBe('unverified')
+      expect(hostReport.packages['@earendil-works/pi-ai'].installed).toBe('0.87.1')
+
+      // A nested adapter dependency takes precedence over the hoisted host/profile copy.
+      const nestedPi = join(host, 'node_modules', '@deepseek-ai', 'dsh-llm-pi-ai', 'node_modules', '@earendil-works', 'pi-ai')
+      await mkdir(nestedPi, { recursive: true })
+      await writeFile(join(nestedPi, 'package.json'), JSON.stringify({ name: '@earendil-works/pi-ai', version: '1.2.0', exports: { '.': { import: './index.js' } } }))
+      await writeFile(join(nestedPi, 'index.js'), 'export {}')
+      expect((await detectCompatibility({ nodeVersion: 'v22.19.0', installAnchor: anchor })).status).toBe('compatible')
+      await rm(join(nestedPi, 'package.json'))
+      await rm(hostPi)
+      expect((await detectCompatibility({ nodeVersion: 'v22.19.0', installAnchor: anchor })).status).toBe('unknown')
+      await writeFile(join(nestedPi, 'package.json'), JSON.stringify({ name: '@earendil-works/pi-ai', version: '1.2.0', exports: { '.': { import: './index.js' } } }))
 
       const llmManifest = join(host, 'node_modules', '@deepseek-ai', 'dsh-llm', 'package.json')
       await writeFile(llmManifest,

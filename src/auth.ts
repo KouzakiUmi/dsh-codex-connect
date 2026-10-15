@@ -3,9 +3,9 @@
  * @module dsh-codex-connect/auth
  */
 
-import { createModels, ModelsError } from '@earendil-works/pi-ai'
+import { createModels, ModelsError } from './pi-ai.ts'
 import type { AuthInteraction, CredentialStore } from '@earendil-works/pi-ai'
-import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
+import { openaiCodexProvider } from './pi-ai.ts'
 import { openaiCodexOAuth, OpenAICodexRefreshRejectedError } from '../vendor/pi-ai-oauth/auth/oauth/openai-codex.js'
 import { OpenAICodexCredentialStore, OPENAI_CODEX_PROVIDER } from './store.ts'
 import { OpenAICodexRequestAuthError } from './auth-error.ts'

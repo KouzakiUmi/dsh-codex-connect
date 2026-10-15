@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { cp, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -8,7 +8,7 @@ import { runBoundedCommand } from './bounded-command.mjs'
 import { scrubCanaryEnvironment } from './canary-environment.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const missingHostPeers = new Set(['@deepseek-ai/schemastery'])
+const missingHostPeers = new Set(['@deepseek-ai/schemastery', '@earendil-works/pi-ai'])
 const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const fixture = await mkdtemp(join(tmpdir(), 'codex-connect-isolated-import-'))
 
@@ -26,8 +26,8 @@ try {
   await cp(join(root, 'package.json'), join(pluginRoot, 'package.json'))
   await cp(join(root, 'lib'), join(pluginRoot, 'lib'), { recursive: true })
 
-  // The host exposes its declared API peers, including the host-provided pi-ai,
-  // but not the plugin-owned libraries.
+  // DSH peers are host-owned. pi-ai is resolved through the adapter's graph,
+  // not through a peer installed/hoisted into the profile.
   for (const name of Object.keys(packageJson.peerDependencies ?? {})) {
     if (!missingHostPeers.has(name)) await linkPackage(profileNodeModules, name)
   }
@@ -36,6 +36,14 @@ try {
   for (const name of Object.keys(packageJson.dependencies ?? {})) {
     await linkPackage(pluginNodeModules, name)
   }
+
+  // Simulate a stale tarball/profile dependency, even with the SAME version number.
+  // Importing it must fail: a green result proves the bridge bypasses this copy.
+  const stalePi = join(pluginNodeModules, '@earendil-works', 'pi-ai')
+  await mkdir(stalePi, { recursive: true })
+  await writeFile(join(stalePi, 'package.json'), JSON.stringify({ name: '@earendil-works/pi-ai', version: '1.2.0', type: 'module',
+    exports: { '.': './index.js', './*': './index.js' } }))
+  await writeFile(join(stalePi, 'index.js'), "throw new Error('Plugin-owned pi-ai must never load')")
 
   const env = scrubCanaryEnvironment(process.env)
   delete env.NODE_OPTIONS
@@ -48,7 +56,7 @@ try {
     const outdated = result.stderr.includes('volatile is not a function')
     throw new Error(`isolated plugin import failed (exit=${result.status ?? 'unknown'}, missing=${missing ?? 'none'}, outdatedSchema=${outdated})`)
   }
-  process.stdout.write('isolated plugin import passed with host-provided pi-ai and without a host schemastery peer\n')
+  process.stdout.write('isolated plugin import passed using adapter-owned pi-ai despite a poisoned plugin copy and no profile pi-ai peer\n')
 } finally {
   await rm(fixture, { recursive: true, force: true })
 }

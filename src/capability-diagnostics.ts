@@ -123,12 +123,14 @@ export class CodexCapabilityDiagnostics {
     const dshVersion = versions['@deepseek-ai/dsh-llm']
     const mismatch = DSH_PLUGIN_API_PACKAGES.some(name => versions[name] !== null
       && (!isSupportedDshPluginApiVersion(versions[name]!) || versions[name] !== dshVersion))
-      || compatibility.status === 'incompatible' || compatibility.status === 'unverified'
+      || compatibility.status === 'incompatible'
     const runtime = mismatch
-      ? result('rejected', 'declared-version-mismatch', 'Use one declared DSH plugin API version (0.1.7-rc.1, 0.1.7-rc.2, 0.2.0-rc.1, 0.2.0-rc.2, 0.2.1-alpha.1, 0.2.1-alpha.2 or 0.2.1-alpha.3) with pi-ai 1.2.0, keeping every declared DSH API package at the same exact version. Older, newer and mixed combinations are not verified by this candidate.')
+      ? result('rejected', 'declared-version-mismatch', 'Use one declared DSH plugin API version (0.1.7-rc.1, 0.1.7-rc.2, 0.2.0-rc.1, 0.2.0-rc.2, 0.2.1-alpha.1, 0.2.1-alpha.2 or 0.2.1-alpha.3) keeping every declared DSH API package at the same exact version. Host pi-ai upgrades are allowed when the required public APIs remain available; unverified does not mean rejected.')
       : missing || compatibility.status === 'unknown'
         ? result('unknown', 'version-metadata-unavailable', 'Run this command from the plugin installation in the intended profile.')
-        : result('supported', 'declared-host-versions-match', 'Host package versions satisfy the declared requirements; this is not a live profile or browser compatibility test.')
+        : compatibility.status === 'unverified'
+          ? result('supported', 'host-pi-ai-unverified-allowed', 'Host pi-ai differs from the verified baseline. Loading and explicit probes are allowed; this version has not been acceptance-tested. Required public APIs must remain available.')
+          : result('supported', 'declared-host-versions-match', 'Host package versions satisfy the declared requirements; this is not a live profile or browser compatibility test.')
     const model = this.deps.catalog().find(item => item.id === request.model)?.id ?? null
     const unknownNetwork = result('unknown', 'not-probed', 'Run capabilities --model <catalog-id> --probe explicitly; this sends a fixed short request and may consume quota.')
     const checks: CapabilityReport['checks'] = {

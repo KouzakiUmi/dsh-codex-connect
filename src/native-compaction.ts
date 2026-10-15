@@ -4,7 +4,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { randomUUID } from 'node:crypto'
 import {
   createAssistantMessageEventStream,
-} from '@earendil-works/pi-ai'
+} from './pi-ai.ts'
 import type {
   AssistantMessage,
   AssistantMessageEventStream,
@@ -18,12 +18,12 @@ import type {
 import {
   convertResponsesMessages,
   convertResponsesTools,
-} from '@earendil-works/pi-ai/api/openai-responses-shared'
+} from './pi-ai.ts'
 import {
   getCurrentSystemPrompt,
   getCurrentTools,
   normalizeContext,
-} from '@earendil-works/pi-ai/utils/transcript'
+} from './pi-ai.ts'
 import type { GenerateOptions, Message, RequestMessage, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { isCompactCheckpointSource as hasCompactCheckpointSource } from '@deepseek-ai/dsh-compaction'
 import { prepareOpenAICodexBackendHeaders } from './backend-request-policy.ts'

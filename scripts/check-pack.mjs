@@ -39,6 +39,14 @@ if (names.some(name => /^lib\/(?:anthropic-messages|openai-completions)[^/]*\.js
 
 validateLibArtifactInventory(names)
 
+const hostEntry = await readFile(new URL('../lib/index.js', import.meta.url), 'utf8')
+if (/(?:from\s*|import\s*\(\s*)["']@earendil-works\/pi-ai(?:\/[^"']*)?["']/u.test(hostEntry)) {
+  throw new Error('host entry bypasses the adapter-owned pi-ai bridge with a bare import')
+}
+if (!hostEntry.includes('findPackageJSON') || !hostEntry.includes('Host pi-ai')) {
+  throw new Error('host entry lost the adapter-owned pi-ai resolution bridge')
+}
+
 const declaration = await readFile(new URL('../lib/index.d.ts', import.meta.url), 'utf8')
 if (!/declare module ['"]@deepseek-ai\/cordis['"]/u.test(declaration)) {
   throw new Error('lib/index.d.ts lost the Cordis Context augmentation')

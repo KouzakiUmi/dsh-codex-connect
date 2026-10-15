@@ -25,6 +25,8 @@ export function OpenAICodexContextIndicator({ directory, configScope, t }: OpenA
   const root = useRef<HTMLSpanElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const writes = useRef(0)
+  // The Host queue survives model changes even though this editor's busy generation does not.
+  const inFlightWrites = useRef(0)
   const selection = useRef(0)
   const [pendingTier, setPendingTier] = useState<OpenAICodexContextTier>()
   const generation = useRef(0)
@@ -38,7 +40,8 @@ export function OpenAICodexContextIndicator({ directory, configScope, t }: OpenA
   }
   useEffect(() => {
     const current = ++generation.current
-    setOpen(false); setHovered(false); setError(false); setPendingTier(undefined)
+    writes.current = 0
+    setOpen(false); setHovered(false); setError(false); setPendingTier(undefined); setBusy(false)
     return () => { if (generation.current === current) generation.current++ }
   }, [model, provider, configScope])
   useEffect(() => {
@@ -64,8 +67,8 @@ export function OpenAICodexContextIndicator({ directory, configScope, t }: OpenA
     if (latest.status !== 'ready' || !latest.writable || latest.mode === 'memory' || latest.value === undefined || latest.revision === undefined) return
     const current = generation.current
     const selected = ++selection.current
-    const revision = writes.current === 0 ? latest.revision : undefined
-    writes.current++; setPendingTier(next); setBusy(true); setError(false)
+    const revision = inFlightWrites.current === 0 ? latest.revision : undefined
+    inFlightWrites.current++; writes.current++; setPendingTier(next); setBusy(true); setError(false)
     try {
       // Host's ordered queue supplies the accepted revision for subsequent gestures.
       const saved = await configScope.mutate([{ op: 'set', path: ['modelContextTiers', model], value: next }], revision)
@@ -77,8 +80,11 @@ export function OpenAICodexContextIndicator({ directory, configScope, t }: OpenA
         setError(true); setPendingTier(undefined)
       }
     } finally {
-      writes.current--
-      if (generation.current === current) setBusy(writes.current > 0)
+      inFlightWrites.current--
+      if (generation.current === current) {
+        writes.current--
+        setBusy(writes.current > 0)
+      }
     }
   }
   const floating = { position: 'absolute' as const, bottom: 'calc(100% + 8px)', left, zIndex: 1000,

@@ -131,6 +131,27 @@ describe('shared context quick editor', () => {
     fireEvent.click(button)
     expect(screen.queryByRole('dialog')).toBeNull()
   })
+  it.each([true, false])('clears busy on a model change with overlapping saves (old finishes first: %s)', async oldFirst => {
+    const configScope = scope('extended')
+    const finishes: Array<(value: boolean) => void> = []
+    configScope.mutate.mockImplementation(() => new Promise<boolean>(resolve => { finishes.push(resolve) }))
+    const view = render(<OpenAICodexContextIndicator directory={directory()} configScope={configScope} t={translator(en)} />)
+    fireEvent.click(screen.getByRole('button'))
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'End' })
+    expect(screen.getByRole('button').getAttribute('aria-busy')).toBe('true')
+    view.rerender(<OpenAICodexContextIndicator directory={directory('gpt-6-astra')} configScope={configScope} t={translator(en)} />)
+    expect(screen.getByRole('button').getAttribute('aria-busy')).toBe('false')
+    fireEvent.click(screen.getByRole('button'))
+    fireEvent.keyDown(screen.getByRole('slider'), { key: 'End' })
+    expect(screen.getByRole('button').getAttribute('aria-busy')).toBe('true')
+    await act(async () => { finishes[oldFirst ? 0 : 1]?.(true) })
+    expect(screen.getByRole('button').getAttribute('aria-busy')).toBe(oldFirst ? 'true' : 'false')
+    await act(async () => { finishes[oldFirst ? 1 : 0]?.(true) })
+    expect(screen.getByRole('button').getAttribute('aria-busy')).toBe('false')
+    // An old-generation write may already advance the queued Host revision.
+    // Do not fence the new-generation write with its earlier snapshot.
+    expect(configScope.mutate.mock.calls[1]?.[1]).toBeUndefined()
+  })
   it('disables writes to read-only settings and does not invent unknown-model capacity', () => {
     const configScope = scope('extended', false)
     const view = render(<OpenAICodexContextIndicator directory={directory()} configScope={configScope} t={translator(en)} />)

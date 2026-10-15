@@ -34,6 +34,16 @@ function fixture() {
 }
 
 describe('capability evidence', () => {
+  it.each(['1.2.1', '1.3.0', '2.0.0', '2.1.0-beta.1'])('allows explicit probing with unverified host pi-ai %s', async version => {
+    const f = fixture()
+    const packages = Object.fromEntries(Object.entries(f.local.compatibility.packages).map(([name, entry]) => [name, entry.installed]))
+    f.local.compatibility = evaluateCompatibility({ nodeVersion: f.local.node, packageVersions: { ...packages, '@earendil-works/pi-ai': version } })
+    expect(f.local.compatibility.status).toBe('unverified')
+    const report = await f.diagnostics.inspect(f.request)
+    expect(report.checks.runtime).toMatchObject({ status: 'supported', reason: 'host-pi-ai-unverified-allowed' })
+    expect(report.checks.runtime.action).toContain('not been acceptance-tested')
+    expect(f.probe).toHaveBeenCalledOnce()
+  })
   it('allows the latest complete host set but blocks mixed host versions before credential reads', async () => {
     const f = fixture()
     f.local.compatibility = evaluateCompatibility({ nodeVersion: f.local.node, packageVersions: {

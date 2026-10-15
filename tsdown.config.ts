@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import type { UserConfig } from 'tsdown'
 
 const PLUGIN_ID = 'dsh-codex-connect'
@@ -34,6 +35,7 @@ export default [
     fixedExtension: false,
     dts: true,
     clean: true,
+    alias: { './pi-ai.ts': fileURLToPath(new URL('./src/host-pi-ai.ts', import.meta.url)) },
     // Keep dispatcher preservation ahead of external providers' initialization.
     outputOptions: {
       codeSplitting: {
@@ -44,10 +46,8 @@ export default [
       __CODEX_CONNECT_VERSION__: JSON.stringify(PACKAGE_VERSION),
     },
     deps: {
-      // pi-ai is host-provided: the plugin declares it as a peer and the DSH host resolves the
-      // import to its own pi-ai (currently 1.2.0), so the plugin and the host adapter share one
-      // pi-ai instance. Bundling a second copy reintroduces the cross-version object mismatch
-      // that broke transcript handling; never bundle it here.
+      // The host-only bridge resolves pi-ai from the actual adapter's physical graph,
+      // including ordinary tarball installs. Never regain a plugin-owned runtime copy.
       neverBundle: [
         /^@earendil-works\/pi-ai(\/|$)/u,
         '@deepseek-ai/schemastery',

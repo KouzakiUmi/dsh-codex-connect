@@ -1,9 +1,9 @@
 /** OpenAI Codex adapter assembled from public dsh-llm-pi-ai extension points. */
 
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { defaultProviderAuthContext, InMemoryCredentialStore } from '@earendil-works/pi-ai'
+import { defaultProviderAuthContext, InMemoryCredentialStore } from './pi-ai.ts'
 import type { Provider, SimpleStreamOptions, TranscriptContext } from '@earendil-works/pi-ai'
-import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
+import { openaiCodexProvider } from './pi-ai.ts'
 import { resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, GenerateOptions, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
