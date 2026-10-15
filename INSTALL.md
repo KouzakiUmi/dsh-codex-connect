@@ -1,5 +1,7 @@
 # Installation Runbook for CLI Agents
 
+Unreleased `0.2.0-alpha.4` (main) changes pi-ai ownership: `@earendil-works/pi-ai` is no longer bundled or declared as a plugin dependency. It is a peer dependency (`^1.2.0`) resolved from the DSH host, so the plugin and the host adapter share one pi-ai instance; the standalone CLI still bundles pi-ai at build time. Consequence for installation layout: install with a `link:`/directory spec so the host's module interception routes the plugin's pi-ai imports to the host copy. A tarball/`file:` install resolves pi-ai from the profile's hoisted `node_modules` instead, which can silently pair the plugin with a different pi-ai version than the host adapter uses and is not verified. The published-version guidance below still describes released artifacts, including their plugin-owned pi-ai.
+
 Published `0.2.0-alpha.3` is installation/runtime-regression verified with exact DSH `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2` or `0.2.1-alpha.1`, using a consistent host package set and plugin-owned pi-ai `0.85.1`. It adds official Desktop sign-in compatibility without changing the declared host set. Earlier DSH pairings retain their separately published plugin versions below.
 
 The exact DSH `0.2.1-alpha.1` adaptation is published in `0.2.0-alpha.2`. The earlier `0.2.0-alpha.1` artifact remains unchanged and rejects this host. See the [release notes](docs/release-notes/0.2.0-alpha.2.md) for scope and verification limits; keyless compatibility does not establish live-account acceptance.

@@ -16,7 +16,7 @@ const compatiblePackages = {
   '@deepseek-ai/dsh-llm': SUPPORTED_DSH_PLUGIN_API_VERSION,
   '@deepseek-ai/dsh-llm-pi-ai': SUPPORTED_DSH_PLUGIN_API_VERSION,
   '@deepseek-ai/dsh-compaction': SUPPORTED_DSH_PLUGIN_API_VERSION,
-  '@earendil-works/pi-ai': '1.1.0',
+  '@earendil-works/pi-ai': '1.2.0',
 } as const
 
 describe('compatibility contract', () => {
@@ -30,7 +30,7 @@ describe('compatibility contract', () => {
         '@deepseek-ai/dsh-llm': { supported: SUPPORTED_DSH_PLUGIN_API_RANGE, installed: SUPPORTED_DSH_PLUGIN_API_VERSION, status: 'compatible' },
         '@deepseek-ai/dsh-llm-pi-ai': { supported: SUPPORTED_DSH_PLUGIN_API_RANGE, installed: SUPPORTED_DSH_PLUGIN_API_VERSION, status: 'compatible' },
         '@deepseek-ai/dsh-compaction': { supported: SUPPORTED_DSH_PLUGIN_API_RANGE, installed: SUPPORTED_DSH_PLUGIN_API_VERSION, status: 'compatible' },
-        '@earendil-works/pi-ai': { supported: SUPPORTED_PI_AI_RANGE, installed: '1.1.0', status: 'compatible' },
+        '@earendil-works/pi-ai': { supported: SUPPORTED_PI_AI_RANGE, installed: '1.2.0', status: 'compatible' },
       },
     })
   })
@@ -71,7 +71,7 @@ describe('compatibility contract', () => {
     ]) expect(evaluateCompatibility({ nodeVersion: 'v24.15.0', packageVersions: packages }).status).toBe('unverified')
   })
 
-  it.each(['0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1'])('accepts exact consistent %s and pi-ai 0.85.1', version => {
+  it.each(['0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1', '0.2.1-alpha.3'])('accepts exact consistent %s and pi-ai 1.2.0', version => {
     const packages = { ...compatiblePackages, '@deepseek-ai/dsh-llm': version,
       '@deepseek-ai/dsh-llm-pi-ai': version, '@deepseek-ai/dsh-compaction': version }
     expect(evaluateCompatibility({ nodeVersion: 'v24.15.0', packageVersions: packages }).status).toBe('compatible')
@@ -166,7 +166,7 @@ describe('compatibility contract', () => {
       await writeFile(hostPi, JSON.stringify({ name: '@earendil-works/pi-ai', version: '0.87.1' }))
       const ownedReport = await detectCompatibility({ nodeVersion: 'v22.19.0', installAnchor: anchor })
       expect(ownedReport.status).toBe('compatible')
-      expect(ownedReport.packages['@earendil-works/pi-ai'].installed).toBe('1.1.0')
+      expect(ownedReport.packages['@earendil-works/pi-ai'].installed).toBe('1.2.0')
 
       const llmManifest = join(host, 'node_modules', '@deepseek-ai', 'dsh-llm', 'package.json')
       await writeFile(llmManifest,

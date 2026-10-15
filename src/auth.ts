@@ -32,7 +32,7 @@ export async function loginOpenAICodex(
   let login: ReturnType<typeof openaiCodexOAuth.login> | undefined
   models.setProvider({ ...provider, auth: { ...provider.auth, oauth: {
     ...openaiCodexOAuth,
-    login: callbacks => { login = openaiCodexOAuth.login(callbacks); return login },
+    login: (callbacks, options) => { login = openaiCodexOAuth.login(callbacks, options); return login },
   } } })
   try {
     await models.login(OPENAI_CODEX_PROVIDER, 'oauth', interaction)

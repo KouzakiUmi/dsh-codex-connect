@@ -485,7 +485,7 @@ async function requestNativeCompaction(
   if (access === undefined || access.length === 0) throw new Error('OpenAI Codex native compaction request has no OAuth token')
   if (context.messages.length === 0) throw new Error('OpenAI Codex native compaction request has no summarization instruction to remove')
   const messages = context.messages.slice(0, -1)
-  // pi-ai 1.1.0 carries the prompt and tools in transcript system messages; the
+  // pi-ai carries the prompt and tools in transcript system messages; the
   // compaction body pins them separately as `instructions` and `tools`.
   const systemPrompt = getCurrentSystemPrompt(messages)
   const currentTools = getCurrentTools(messages)

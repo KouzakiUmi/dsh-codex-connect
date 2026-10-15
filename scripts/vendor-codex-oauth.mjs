@@ -6,25 +6,18 @@ import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const source = resolve(dirname(fileURLToPath(import.meta.resolve('pi-ai-oauth-source'))), '..')
 const metadata = JSON.parse(await readFile(resolve(source, 'package.json'), 'utf8'))
-if (metadata.version !== '0.84.4') throw new Error('Review the upstream OAuth diff before changing the vendor pin')
-const files = ['auth/oauth/openai-codex.js', 'auth/oauth/device-code.js', 'auth/oauth/oauth-page.js', 'auth/oauth/pkce.js', 'utils/provider-env.js']
+if (metadata.version !== '1.2.0') throw new Error('Review the upstream OAuth diff before changing the vendor pin')
+const files = ['auth/oauth/openai-codex.js', 'auth/oauth/callback-server.js', 'auth/oauth/device-code.js', 'auth/oauth/pkce.js', 'utils/oauth-page.js', 'utils/provider-env.js']
 for (const file of files) {
   let body = await readFile(resolve(source, 'dist', file), 'utf8')
   body = body.replace(/^\/\/# sourceMappingURL=.*\n?/gm, '')
-  if (file === files[0]) {
+  if (file === 'auth/oauth/openai-codex.js') {
     const jwtDecode = '        const decoded = atob(payload);'
     if (body.split(jwtDecode).length !== 2) throw new Error('Unexpected upstream JWT decoder')
     body = body.replace(jwtDecode, `        if (!/^[A-Za-z0-9_-]+={0,2}$/.test(payload)) return null;
         const binary = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
         const bytes = Uint8Array.from(binary, character => character.charCodeAt(0));
         const decoded = new TextDecoder("utf-8", { fatal: true }).decode(bytes);`)
-    const original = 'close: () => server.close(),'
-    if (body.split(original).length !== 2) throw new Error('Unexpected upstream server close implementation')
-    body = body.replace(original, `close: () => new Promise((resolve) => {
-                    server.close(() => resolve());
-                    server.closeAllConnections();
-                }),`)
-    body = body.replace('        server.close();\n    }\n}', '        await server.close();\n    }\n}')
     const tokenReader = 'async function readTokenResponse(response, operation) {'
     if (body.split(tokenReader).length !== 2) throw new Error('Unexpected upstream token response reader')
     body = body.replace(tokenReader, `/** A structured refresh rejection, without response text or credential data. */
@@ -49,6 +42,23 @@ ${tokenReader}`)
                 throw new OpenAICodexRefreshRejectedError();
             }
         }`)
+    const callbackClose = '        callback?.close();'
+    if (body.split(callbackClose).length !== 2) throw new Error('Unexpected upstream callback close call')
+    body = body.replace(callbackClose, '        await callback?.close();')
+  }
+  if (file === 'auth/oauth/callback-server.js') {
+    const original = `        close: () => {
+            finish({ error: new Error("OAuth callback server closed") });
+            server.close();
+        },`
+    if (body.split(original).length !== 2) throw new Error('Unexpected upstream server close implementation')
+    body = body.replace(original, `        close: () => {
+            finish({ error: new Error("OAuth callback server closed") });
+            return new Promise((resolve) => {
+                server.close(() => resolve());
+                server.closeAllConnections();
+            });
+        },`)
   }
   const target = resolve(root, 'vendor/pi-ai-oauth', file)
   if (!process.argv.includes('--write')) {

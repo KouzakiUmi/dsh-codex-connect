@@ -14,6 +14,7 @@ it('settles cancellation and expiry through the installed pi-ai browser OAuth im
   // Keep the real OAuth state machine, but never bind its fixed callback port or contact OpenAI.
   class CallbackServer extends EventEmitter {
     listen(_port: number, _host: string, ready: () => void) { queueMicrotask(ready); return this }
+    address() { return { port: 1455 } }
     close(callback?: () => void) { closed++; callback?.(); return this }
     closeAllConnections() { return this }
   }

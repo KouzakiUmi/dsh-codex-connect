@@ -1,4 +1,6 @@
-// Publication contract: six stable entries and five chunks from the bundled pi-ai 1.1.0 graph.
+// Publication contract: six stable entries and three chunks from the standalone CLI's
+// bundled pi-ai 1.2.0 graph. The host plugin entry externalizes pi-ai, so it emits no
+// pi-ai chunks; only the standalone bin build bundles pi-ai (one chunk per family).
 // Keep this explicit when tsdown.config.ts or its dependency graph changes: a new
 // legitimate chunk requires a reviewed contract/fixture update, not a broad glob.
 const stableEntries = [
@@ -11,9 +13,7 @@ const stableEntries = [
 ]
 const chunkFamilies = [
   { name: 'models', count: 1, pattern: /^lib\/models-[A-Za-z0-9_-]+\.js$/u },
-  // Host and standalone CLI are separate builds; each emits its own provider chunk.
-  { name: 'openai-codex-responses', count: 2, pattern: /^lib\/openai-codex-responses-[A-Za-z0-9_-]+\.js$/u },
-  { name: 'openai-responses-shared', count: 1, pattern: /^lib\/openai-responses-shared-[A-Za-z0-9_-]+\.js$/u },
+  { name: 'openai-codex-responses', count: 1, pattern: /^lib\/openai-codex-responses-[A-Za-z0-9_-]+\.js$/u },
   { name: 'undici-runtime', count: 1, pattern: /^lib\/undici-runtime-[A-Za-z0-9_-]+\.js$/u },
 ]
 

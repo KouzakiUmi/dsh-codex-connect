@@ -44,11 +44,12 @@ export default [
       __CODEX_CONNECT_VERSION__: JSON.stringify(PACKAGE_VERSION),
     },
     deps: {
-      // The plugin always ships its own pi-ai 1.1.0 inside the bundle, so the result never depends on
-      // whichever pi-ai a DSH host or profile happens to resolve (hosts may provide 1.0.2).
-      // `partial-json` is pi-ai's own transitive dependency; it must travel with the bundle too.
-      alwaysBundle: [/^@earendil-works\/pi-ai(\/|$)/u, 'partial-json'],
+      // pi-ai is host-provided: the plugin declares it as a peer and the DSH host resolves the
+      // import to its own pi-ai (currently 1.2.0), so the plugin and the host adapter share one
+      // pi-ai instance. Bundling a second copy reintroduces the cross-version object mismatch
+      // that broke transcript handling; never bundle it here.
       neverBundle: [
+        /^@earendil-works\/pi-ai(\/|$)/u,
         '@deepseek-ai/schemastery',
         '@deepseek-ai/cordis',
         '@deepseek-ai/dsh-agent',
@@ -76,6 +77,8 @@ export default [
     clean: false,
     // pnpm's platform-specific store paths must not leak into generated source labels.
     inputOptions: { experimental: { attachDebugInfo: 'none' } },
+    // The standalone CLI keeps bundling everything (pi-ai 1.2.0 comes from devDependencies at
+    // build time): it runs outside any DSH host, so it cannot resolve the host-provided peer.
     deps: { alwaysBundle: [/.*/u] },
     define: {
       __CODEX_CONNECT_VERSION__: JSON.stringify(PACKAGE_VERSION),

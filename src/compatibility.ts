@@ -5,9 +5,9 @@ import { fileURLToPath } from 'node:url'
 export const COMPATIBILITY_SCHEMA_VERSION = 1 as const
 export const SUPPORTED_NODE_RANGE = '^22.19.0 || >=24.0.0'
 export const SUPPORTED_DSH_PLUGIN_API_VERSION = '0.1.7-rc.1'
-export const SUPPORTED_DSH_PLUGIN_API_VERSIONS = [SUPPORTED_DSH_PLUGIN_API_VERSION, '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1', '0.2.1-alpha.2'] as const
+export const SUPPORTED_DSH_PLUGIN_API_VERSIONS = [SUPPORTED_DSH_PLUGIN_API_VERSION, '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1', '0.2.1-alpha.2', '0.2.1-alpha.3'] as const
 export const SUPPORTED_DSH_PLUGIN_API_RANGE = SUPPORTED_DSH_PLUGIN_API_VERSIONS.join(' || ')
-export const SUPPORTED_PI_AI_RANGE = '1.1.0'
+export const SUPPORTED_PI_AI_RANGE = '1.2.0'
 export const PI_AI_PACKAGE = '@earendil-works/pi-ai'
 
 export const DSH_PLUGIN_API_PACKAGES = [
@@ -238,7 +238,8 @@ export async function readInstalledPackageVersion(name: string, installAnchor?: 
 
 /** Read installed package metadata and return only versions and statuses. */
 export async function detectCompatibility(options: CompatibilityDetectionOptions = {}): Promise<CompatibilityReport> {
-  // pi-ai is plugin-owned; the host anchor selects only the DSH peer installation.
+  // pi-ai is host-provided: resolve it through this installation's module resolution,
+  // which the host routes to its own pi-ai; the anchor selects only DSH peer metadata.
   const readVersion = options.readPackageVersion ?? ((name: CompatibilityPackageName) => readInstalledPackageVersion(name,
     name === PI_AI_PACKAGE ? undefined : options.installAnchor))
   const packageVersions = options.packageVersions ?? options.packages ?? options.installed?.packages

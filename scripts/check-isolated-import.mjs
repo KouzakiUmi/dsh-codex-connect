@@ -8,7 +8,7 @@ import { runBoundedCommand } from './bounded-command.mjs'
 import { scrubCanaryEnvironment } from './canary-environment.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const missingHostPeers = new Set(['@deepseek-ai/schemastery', '@earendil-works/pi-ai'])
+const missingHostPeers = new Set(['@deepseek-ai/schemastery'])
 const packageJson = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
 const fixture = await mkdtemp(join(tmpdir(), 'codex-connect-isolated-import-'))
 
@@ -26,7 +26,8 @@ try {
   await cp(join(root, 'package.json'), join(pluginRoot, 'package.json'))
   await cp(join(root, 'lib'), join(pluginRoot, 'lib'), { recursive: true })
 
-  // The host exposes its declared API peers, but not these two libraries.
+  // The host exposes its declared API peers, including the host-provided pi-ai,
+  // but not the plugin-owned libraries.
   for (const name of Object.keys(packageJson.peerDependencies ?? {})) {
     if (!missingHostPeers.has(name)) await linkPackage(profileNodeModules, name)
   }
@@ -47,7 +48,7 @@ try {
     const outdated = result.stderr.includes('volatile is not a function')
     throw new Error(`isolated plugin import failed (exit=${result.status ?? 'unknown'}, missing=${missing ?? 'none'}, outdatedSchema=${outdated})`)
   }
-  process.stdout.write('isolated plugin import passed without host schemastery or pi-ai peers\n')
+  process.stdout.write('isolated plugin import passed with host-provided pi-ai and without a host schemastery peer\n')
 } finally {
   await rm(fixture, { recursive: true, force: true })
 }

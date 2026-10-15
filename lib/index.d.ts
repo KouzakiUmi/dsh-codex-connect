@@ -1,4 +1,5 @@
 import z from "@deepseek-ai/schemastery";
+import { AuthInteraction, Credential, CredentialInfo, CredentialStore, OAuthCredential } from "@earendil-works/pi-ai";
 import { GenerateOptions, StreamChunk } from "@deepseek-ai/dsh-llm";
 import { PiAiAdapter } from "@deepseek-ai/dsh-llm-pi-ai";
 import { Context, Service, Volatile } from "@deepseek-ai/cordis";
@@ -18,144 +19,6 @@ declare module '@deepseek-ai/dsh-llm' {
 //#region src/model-contract.d.ts
 type OpenAICodexContextTier = 'standard' | 'extended' | 'maximum';
 type OpenAICodexContextTiers = Readonly<Record<string, OpenAICodexContextTier | null>>;
-//#endregion
-//#region node_modules/.pnpm/@earendil-works+pi-ai@1.1.0_ebe77346f275513ef308ff2607b62b41/node_modules/@earendil-works/pi-ai/dist/types.d.ts
-/** Provider-scoped environment overrides. Values take precedence over process.env. */
-type ProviderEnv = Record<string, string>;
-//#endregion
-//#region node_modules/.pnpm/@earendil-works+pi-ai@1.1.0_ebe77346f275513ef308ff2607b62b41/node_modules/@earendil-works/pi-ai/dist/auth/types.d.ts
-/**
- * Stored api-key credential. `env` holds provider-scoped environment/config
- * values such as Cloudflare account/gateway ids.
- */
-interface ApiKeyCredential {
-  type: "api_key";
-  key?: string;
-  env?: ProviderEnv;
-}
-/** OAuth token data returned by extension compatibility flows. */
-interface OAuthCredentials {
-  refresh: string;
-  access: string;
-  expires: number;
-  [key: string]: unknown;
-}
-/** Stored canonical OAuth credential. */
-interface OAuthCredential extends OAuthCredentials {
-  type: "oauth";
-}
-/** One type-tagged credential per provider — the shape of today's auth.json. */
-type Credential = ApiKeyCredential | OAuthCredential;
-/** Non-secret credential metadata for account/status enumeration. */
-interface CredentialInfo {
-  providerId: string;
-  type: Credential["type"];
-}
-/** Optional cancellation for public auth and credential operations. */
-interface AuthOperationOptions {
-  signal?: AbortSignal;
-}
-/**
- * App-owned credential storage, keyed by `Provider.id`, one credential per
- * provider. `modify` is the only write path, so every mutation is a
- * serialized read-modify-write; `Models.getAuth()` runs OAuth refresh inside
- * `modify` so concurrent requests cannot double-refresh a rotated token. The
- * app persists a credential after login via
- * `modify(provider.id, async () => credential)`. Login/logout orchestration
- * is app-owned.
- *
- * Error semantics: `read` resolves `undefined` for missing entries. Methods
- * reject only on storage failure; `Models` wraps such rejections in
- * `ModelsError` with code "auth". Best-effort stores that serve an in-memory
- * view and record persistence errors internally (like coding-agent's
- * AuthStorage) are valid implementations.
- */
-interface CredentialStore {
-  /**
-   * Read the stored credential, possibly expired. Display/status use;
-   * resolved request auth comes from `Models.getAuth()`.
-   */
-  read(providerId: string, options?: AuthOperationOptions): Promise<Credential | undefined>;
-  /**
-   * List stored credential metadata without resolving or exposing secrets.
-   * Implementations must not execute configured API-key commands while listing.
-   */
-  list(options?: AuthOperationOptions): Promise<readonly CredentialInfo[]>;
-  /**
-   * Serialized write — the only write path. `fn` sees the current credential
-   * because correct writes (refresh, login-during-refresh) depend on it;
-   * return the new credential, or undefined to leave the entry unchanged.
-   * Mutual exclusion per provider id, cross-process too where the backing
-   * store supports it (e.g. a file lock). Resolves with the post-write
-   * credential. Rejections from `fn` propagate.
-   */
-  modify(providerId: string, fn: (current: Credential | undefined) => Promise<Credential | undefined>, options?: AuthOperationOptions): Promise<Credential | undefined>;
-  /** Remove a credential (logout). Implementations serialize this against `modify`. */
-  delete(providerId: string, options?: AuthOperationOptions): Promise<void>;
-}
-/**
- * Prompt shown to the user during login. `signal` lets the flow cancel a
- * pending prompt when an out-of-band event resolves the step, e.g. a
- * `manual_code` prompt raced against a callback server, aborted when the
- * callback wins.
- */
-type AuthPrompt = {
-  signal?: AbortSignal;
-} & ({
-  type: "text";
-  message: string;
-  placeholder?: string;
-} | {
-  type: "secret";
-  message: string;
-  placeholder?: string;
-} | {
-  type: "select";
-  message: string;
-  options: readonly {
-    id: string;
-    label: string;
-    description?: string;
-  }[];
-} | {
-  type: "manual_code";
-  message: string;
-  placeholder?: string;
-});
-interface AuthInfoLink {
-  url: string;
-  label?: string;
-}
-type AuthEvent = {
-  type: "info";
-  message: string;
-  links?: readonly AuthInfoLink[];
-} | {
-  type: "auth_url";
-  url: string;
-  instructions?: string;
-} | {
-  type: "device_code";
-  userCode: string;
-  verificationUri: string;
-  intervalSeconds?: number;
-  expiresInSeconds?: number;
-} | {
-  type: "progress";
-  message: string;
-};
-/**
- * Login interaction callbacks serving both api-key and OAuth flows.
- *
- * `prompt()` returns the entered/selected string (`select` returns the option
- * id). Rejects on cancel/abort. `signal` aborts the whole login flow;
- * per-prompt cancellation uses `AuthPrompt.signal`.
- */
-interface AuthInteraction {
-  signal?: AbortSignal;
-  prompt(prompt: AuthPrompt): Promise<string>;
-  notify(event: AuthEvent): void;
-}
 //#endregion
 //#region src/account-profile.d.ts
 type OpenAICodexAccountProfileSource = 'oauth' | 'generated';
@@ -526,9 +389,9 @@ export declare const IMAGE_GENERATE_TOOL_NAME = "codex_connect_image_generate";
 export declare const COMPATIBILITY_SCHEMA_VERSION: 1;
 export declare const SUPPORTED_NODE_RANGE = "^22.19.0 || >=24.0.0";
 export declare const SUPPORTED_DSH_PLUGIN_API_VERSION = "0.1.7-rc.1";
-export declare const SUPPORTED_DSH_PLUGIN_API_VERSIONS: readonly ["0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.1", "0.2.1-alpha.2"];
+export declare const SUPPORTED_DSH_PLUGIN_API_VERSIONS: readonly ["0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.1", "0.2.1-alpha.2", "0.2.1-alpha.3"];
 export declare const SUPPORTED_DSH_PLUGIN_API_RANGE: string;
-export declare const SUPPORTED_PI_AI_RANGE = "1.1.0";
+export declare const SUPPORTED_PI_AI_RANGE = "1.2.0";
 export declare const PI_AI_PACKAGE = "@earendil-works/pi-ai";
 export declare const DSH_PLUGIN_API_PACKAGES: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-primitives", "@deepseek-ai/dsh-client-ui-tool", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
 export declare const COMPATIBILITY_PACKAGES: readonly ["@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-compaction", "@earendil-works/pi-ai"];
@@ -575,12 +438,12 @@ export declare const COMPATIBILITY_CONTRACT: {
   };
   readonly dshPluginApi: {
     readonly version: "0.1.7-rc.1";
-    readonly versions: readonly ["0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.1", "0.2.1-alpha.2"];
+    readonly versions: readonly ["0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.1", "0.2.1-alpha.2", "0.2.1-alpha.3"];
     readonly packages: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-primitives", "@deepseek-ai/dsh-client-ui-tool", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
   };
   readonly piAi: {
     readonly package: "@earendil-works/pi-ai";
-    readonly version: "1.1.0";
+    readonly version: "1.2.0";
   };
 };
 /** Evaluate a captured set of versions without touching the filesystem. */

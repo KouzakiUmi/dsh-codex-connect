@@ -11,7 +11,8 @@
       "0.2.0-rc.1",
       "0.2.0-rc.2",
       "0.2.1-alpha.1",
-      "0.2.1-alpha.2"
+      "0.2.1-alpha.2",
+      "0.2.1-alpha.3"
     ],
     "packages": [
       "@deepseek-ai/dsh-agent",
@@ -36,6 +37,6 @@
   },
   "piAi": {
     "package": "@earendil-works/pi-ai",
-    "version": "1.1.0"
+    "version": "1.2.0"
   }
 }

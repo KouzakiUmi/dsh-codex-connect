@@ -11,7 +11,7 @@ const matrix = (): any => ({ schemaVersion: 1, kind: 'adaptive-task-delegation-h
   syntheticOnly: true, realProviderDispatches: 0, externalNetworkAttempts: 0, reports: versions.map((version, index) => ({
     version, bundleDigest: digest, node: 'v24.13.0', syntheticOnly: true, realProviderDispatches: 0, externalNetworkAttempts: 0,
     cases: PHASE2_REQUIRED_CASES, tests: PHASE2_REQUIRED_CASES.length, pid: index + 1,
-    runtimePackages: { ...Object.fromEntries(PHASE2_RUNTIME_PACKAGES.map((name: string) => [name, version])), '@earendil-works/pi-ai': '0.84.4' },
+    runtimePackages: { ...Object.fromEntries(PHASE2_RUNTIME_PACKAGES.map((name: string) => [name, version])), '@earendil-works/pi-ai': '1.2.0' },
     crashes: { passed: true, node: 'v24.13.0', cases: 18, freshProcesses: 36, bundleSha256: digest,
       reports: Array.from({ length: 18 }, () => ({ passed: true, recoveryFetches: 0, recoveryChildCreates: 0, oldEpochRejected: true, cleanup: 'verified' })) },
   })) })

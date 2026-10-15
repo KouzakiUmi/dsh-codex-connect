@@ -30,6 +30,7 @@ async function fixture(portUnavailable = false) {
       queueMicrotask(() => portUnavailable ? this.emit('error', new Error('fixture port unavailable')) : ready())
       return this
     }
+    address() { return { port: 1455 } }
     close(done?: () => void) { closed++; done?.(); return this }
     closeAllConnections() { return this }
   }
@@ -57,9 +58,11 @@ async function fixture(portUnavailable = false) {
   const url = new URL(challenge.searchParams.get('redirect_uri')!)
   url.searchParams.set('state', challenge.searchParams.get('state')!)
   url.searchParams.set('code', 'fixture-authorization-code')
-  return { auth, store, challenge, url, tokenRequests, fetchMock, closed: () => closed, automatic: () => {
-    const res = { statusCode: 0, setHeader: vi.fn(), end: vi.fn() }
-    callback({ url: `${url.pathname}${url.search}` } as IncomingMessage, res as unknown as ServerResponse)
+  return { auth, store, challenge, url, tokenRequests, fetchMock, closed: () => closed, automatic: async () => {
+    const res = { statusCode: 0, writeHead: vi.fn((status: number) => { res.statusCode = status }), setHeader: vi.fn(), end: vi.fn() }
+    callback({ method: 'GET', url: `${url.pathname}${url.search}` } as IncomingMessage, res as unknown as ServerResponse)
+    // The callback handler responds after an async completion hop.
+    await new Promise(resolve => setImmediate(resolve))
     expect(res.statusCode).toBe(200)
   } }
 }
@@ -75,7 +78,8 @@ it.each([false, true])('completes the real provider manual flow with PKCE (port 
   expect(auth.submitCallback(url.href)).toBe(200)
   expect(auth.submitCallback(url.href)).toBe(409)
   await vi.waitFor(async () => expect(await store.read(OPENAI_CODEX_PROVIDER)).toMatchObject({ accountId: 'fixture-manual-account' }))
-  await vi.waitFor(() => expect(closed()).toBe(1))
+  // An unavailable port rejects the callback-server startup before any server exists to close.
+  await vi.waitFor(() => expect(closed()).toBe(portUnavailable ? 0 : 1))
   expect(tokenRequests).toHaveLength(1)
   const body = tokenRequests[0]!
   expect(body.get('code')).toBe('fixture-authorization-code')
@@ -89,7 +93,7 @@ it.each([false, true])('completes the real provider manual flow with PKCE (port 
 
 it('keeps automatic callback login working and closes the unused manual prompt', async () => {
   const { auth, store, url, automatic, tokenRequests, closed } = await fixture()
-  automatic()
+  await automatic()
   await vi.waitFor(async () => expect(await store.read(OPENAI_CODEX_PROVIDER)).toMatchObject({ accountId: 'fixture-manual-account' }))
   await vi.waitFor(() => expect(closed()).toBe(1))
   expect(auth.submitCallback(url.href)).toBe(409)

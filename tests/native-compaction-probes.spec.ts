@@ -31,7 +31,7 @@ it('rehearses real DSH JSONL write and fresh-process restore with synthetic resp
     '@deepseek-ai/dsh-llm': '0.2.1-alpha.2',
     '@deepseek-ai/dsh-agent-loop': '0.2.1-alpha.2',
     '@deepseek-ai/dsh-session-persistence-jsonl': '0.2.1-alpha.2',
-    '@earendil-works/pi-ai': '1.1.0',
+    '@earendil-works/pi-ai': '1.2.0',
   })
   expect(new Set(report.phases.map((phase: { pid: number }) => phase.pid)).size).toBe(2)
   expect(report.phases[0]).toMatchObject({ native_checkpoint_committed: true, jsonl_checkpoint_verified: true })

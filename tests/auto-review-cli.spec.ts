@@ -14,7 +14,7 @@ function fixture(): AutoReviewProbeDependencies {
       providerConflict: false, hints: [],
       compatibility: evaluateCompatibility({ nodeVersion: 'v22.19.0', packageVersions: {
         '@deepseek-ai/dsh-llm': '0.1.7-rc.1', '@deepseek-ai/dsh-llm-pi-ai': '0.1.7-rc.1',
-        '@deepseek-ai/dsh-compaction': '0.1.7-rc.1', '@earendil-works/pi-ai': '1.1.0',
+        '@deepseek-ai/dsh-compaction': '0.1.7-rc.1', '@earendil-works/pi-ai': '1.2.0',
       } }),
     }),
     credentials: { read: async () => ({ type: 'oauth', access: secret, refresh: 'private-refresh', accountId: 'private-account', expires: 10_000 }) },
