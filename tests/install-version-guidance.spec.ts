@@ -9,6 +9,18 @@ const shellBlocks = [...install.matchAll(/```sh\s*\n([\s\S]*?)```/gu)]
   .flatMap(match => (match[1] ?? '').split('\n').map(line => line.trim()))
 
 describe('installation version guidance', () => {
+  it('keeps the alpha.4 host source candidate separate from published plugin pairings', async () => {
+    const [english, chinese] = await Promise.all([
+      readFile(new URL('../README.md', import.meta.url), 'utf8'),
+      readFile(new URL('../docs/README.zh.md', import.meta.url), 'utf8'),
+    ])
+    expect(english).toContain('**Unreleased source candidate:**')
+    expect(chinese).toContain('**尚未发布的源码候选：**')
+    expect(install).toContain('unreleased source candidate for DSH `0.2.1-alpha.4`')
+    expect(compatibility.pluginVersions.every((entry: { verifiedDshVersions: string[] }) =>
+      !entry.verifiedDshVersions.includes('0.2.1-alpha.4'))).toBe(true)
+  })
+
   it.each([
     ['0.1.0-rc.7', '0.1.0-alpha.4.14'],
     ['0.1.1-rc.2', '0.1.0-alpha.4.21'],

@@ -23,6 +23,8 @@ This guide recommends Codex Connect `0.2.0-alpha.4` / DSH `0.2.1-alpha.3`; the o
 
 `0.2.0-alpha.4` extends exact host support to DSH `0.2.1-alpha.2` and `0.2.1-alpha.3`, retaining the previous five hosts. Existing supported hosts do not require an upgrade; Task remains paused and defaults are unchanged.
 
+**Unreleased source candidate:** this checkout also declares exact DSH `0.2.1-alpha.4` and preserves the previous seven hosts. Its diagnostic list and client configuration-state handling are updated together; see the [local compatibility note](docs/agent-notes/dsh-021-alpha4-compatibility.md). This is not a new npm release or full user acceptance. The published pairing table and installation commands below still describe the immutable `0.2.0-alpha.4` package, not this modified source.
+
 Historical release [`0.2.0-alpha.3`](docs/release-notes/0.2.0-alpha.3.md) adds official Desktop sign-in compatibility and Desktop-specific account diagnostics while preserving the Web flow. Desktop uses its own profile and bundled CLI; follow the [Desktop installation instructions](INSTALL.md#official-desktop). The declared host versions, defaults and account storage are unchanged.
 
 Historical release [`0.2.0-alpha.2`](docs/release-notes/0.2.0-alpha.2.md) publishes exact DSH `0.2.1-alpha.1` compatibility and the cross-route image selection handle repair. The earlier `0.2.0-alpha.1` artifact remains unchanged and rejects that host. Existing supported hosts do not require an upgrade.

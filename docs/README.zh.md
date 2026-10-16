@@ -25,6 +25,8 @@ Codex Connect 为标准 Harness agent loop 添加 `openai-codex` 模型提供方
 
 `0.2.0-alpha.4` 将精确宿主支持扩展到 DSH `0.2.1-alpha.2` 和 `0.2.1-alpha.3`，保留原有五个宿主。原有受支持宿主无需升级；Task 仍暂停，默认设置不变。
 
+**尚未发布的源码候选：** 本 checkout 另声明精确 DSH `0.2.1-alpha.4`，保留原有七个宿主，并同步诊断列表及客户端配置状态处理，详见[本地兼容性记录](agent-notes/dsh-021-alpha4-compatibility.md)。这不是新的 npm 发布或完整用户验收。下方已发布组合表和安装命令仍对应不可变的 `0.2.0-alpha.4` 安装包，不代表本次修改后的源码。
+
 历史发布 [`0.2.0-alpha.3`](release-notes/0.2.0-alpha.3.md) 增加官方 Desktop 登录适配和桌面版专用账户诊断，保留 Web 登录行为。Desktop 使用独立的 profile 和自带 CLI，请遵循[Desktop 安装说明](../INSTALL.md#official-desktop)。声明的宿主版本、默认设置和账户存储不变。
 
 历史发布 [`0.2.0-alpha.2`](release-notes/0.2.0-alpha.2.md) 已发布精确 DSH `0.2.1-alpha.1` 的兼容适配，以及跨模型路由的图片选择句柄修复。较早的 `0.2.0-alpha.1` 安装包保持不变，仍拒绝该宿主。原有受支持宿主无需升级。

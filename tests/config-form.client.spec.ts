@@ -43,6 +43,17 @@ function fixture(mode: 'host' | 'memory' | 'absent' = 'host') {
       mirrorSnapshot = { status: 'unavailable', view: undefined, error: 'unavailable' }
       for (const listener of mirrorListeners) listener()
     },
+    setMirrorStatus(status: SettingsMirrorSnapshot['status']) {
+      mirrorSnapshot = { status, view: undefined, error: null }
+      for (const listener of mirrorListeners) listener()
+    },
+    publishWithoutNamespace() {
+      mirrorSnapshot = {
+        status: 'ready', error: null,
+        view: { writable: true, hasDocument: true, namespaces: [] } as unknown as NonNullable<SettingsMirrorSnapshot['view']>,
+      }
+      for (const listener of mirrorListeners) listener()
+    },
     acceptNative() {
       formSnapshot = { ...formSnapshot, status: 'ready', value: DEFAULT_OPENAI_CODEX_SETTINGS, revision: 8, writable: true }
       for (const listener of formListeners) listener()
@@ -94,6 +105,18 @@ describe('Codex Connect Host configuration form', () => {
   it('ends loading with unavailable when the Host read fails', () => {
     const { scope, rejectRead } = fixture()
     rejectRead()
+    expect(scope.getSnapshot().status).toBe('unavailable')
+  })
+
+  it.each(['idle', 'loading', 'ready'] as const)('keeps loading when the mirror has no view (%s)', status => {
+    const { scope, setMirrorStatus } = fixture()
+    setMirrorStatus(status)
+    expect(scope.getSnapshot().status).toBe('loading')
+  })
+
+  it('ends loading with unavailable when the ready mirror has no Codex Connect namespace', () => {
+    const { scope, publishWithoutNamespace } = fixture()
+    publishWithoutNamespace()
     expect(scope.getSnapshot().status).toBe('unavailable')
   })
 
