@@ -33,6 +33,14 @@ export function validateDshMatrix(reports, versions, pluginVersion) {
       || report.runtime.images.unrelatedSessionDenied !== true
       || report.runtime.images.realProviderRequests !== 0
       || report.runtime?.nativeCompactionLifecycle?.syntheticOnly !== true
+      || report.runtime?.preflightActivity?.syntheticOnly !== true
+      || report.runtime.preflightActivity.cases !== 6
+      || report.runtime.preflightActivity.publicProviderCallback !== true
+      || report.runtime.preflightActivity.lateHeadersFullBudget !== true
+      || report.runtime.preflightActivity.finiteTotalDeadline !== true
+      || report.runtime.preflightActivity.ordinaryIdlePreserved !== true
+      || report.runtime.preflightActivity.callerCancellationUnchanged !== true
+      || report.runtime.preflightActivity.realProviderRequests !== 0
       || report.runtime?.nativeCompactionLifecycle?.freshProcesses !== 10
       || JSON.stringify(report.runtime?.nativeCompactionLifecycle?.encodings) !== '["none","zstd"]'
       || JSON.stringify(report.runtime?.nativeCompactionLifecycle?.phases) !== '["write","resume-fork","verify-child","failure-paths","automatic"]'

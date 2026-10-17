@@ -33,6 +33,7 @@
       "@deepseek-ai/dsh-fs",
       "@deepseek-ai/dsh-session",
       "@deepseek-ai/dsh-settings",
+      "@deepseek-ai/dsh-timeout",
       "@deepseek-ai/dsh-tools",
       "@deepseek-ai/dsh-util-values",
       "@deepseek-ai/dsh-web"

@@ -149,6 +149,7 @@ A missing entry in [verified-compatibility.json](verified-compatibility.json) me
 - [Installation and upgrades](INSTALL.md)
 - [Configuration, diagnostics, and recovery](docs/reference.md)
 - [Local request metrics: enable, report, and disable](docs/request-metrics.md)
+- [Explicit, bounded bili preflight activity (source change; default off)](docs/preflight-activity.md)
 - [Migration from `dsh-codex`](MIGRATION.md)
 - [Architecture and security details](docs/design.md)
 - [Auto-review behavior](docs/auto-review.md)

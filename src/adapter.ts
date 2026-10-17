@@ -24,6 +24,8 @@ import { OPENAI_CODEX_RESERVE_MODEL, OPENAI_CODEX_RESERVE_NORMAL_MODEL } from '.
 import { streamWithNativeCompactionScope, withOpenAICodexNativeCompaction } from './native-compaction.ts'
 import { streamWithCodexRequestDiagnostics, withCodexDiagnosticFetch } from './request-diagnostics.ts'
 import { imageSelectionHandleText } from './image-input-contract.ts'
+import { OpenAICodexPreflightActivity, OPENAI_CODEX_STREAM_IDLE_TIMEOUT_MS } from './preflight-activity.ts'
+import type { OpenAICodexPreflightConfig } from './preflight-activity.ts'
 
 export { OPENAI_CODEX_ASTRA_MODEL_ID, OPENAI_CODEX_TRANSPORT, openAICodexModelCatalog, withOpenAICodexAstra, withOpenAICodexModels } from './model-catalog.ts'
 
@@ -34,8 +36,7 @@ export interface OpenAICodexTaskDispatch {
   stream(options: GenerateOptions, delegate: (next: GenerateOptions) => AsyncIterable<StreamChunk>): AsyncIterable<StreamChunk>
 }
 
-/** Provider idle ceiling used by the composite route. */
-export const OPENAI_CODEX_STREAM_IDLE_TIMEOUT_MS = 300_000
+export { OPENAI_CODEX_STREAM_IDLE_TIMEOUT_MS } from './preflight-activity.ts'
 
 /** rc.2 default maximum base64 image payload retained in one request. */
 export const OPENAI_CODEX_MAX_REQUEST_IMAGE_BYTES = 20 * 1024 * 1024
@@ -109,6 +110,7 @@ function requestProvider(
   resolveProxyUrl?: () => string | undefined,
   backendRequests?: OpenAICodexBackendRequests,
   wrapProvider?: (provider: Provider) => Provider,
+  preflight?: OpenAICodexPreflightActivity,
 ): Provider {
   const ordinary = withOpenAICodexFastMode(withOpenAICodexNativeCompaction(provider), fastMode)
   const configured = wrapProvider === undefined ? ordinary : wrapProvider(ordinary)
@@ -116,16 +118,22 @@ function requestProvider(
   return {
     ...configured,
     streamSimple(model, context: PiContext, options?: SimpleStreamOptions) {
+      const operation = (actualProxyOrigin: string | undefined) => {
+        const diagnosticOptions = withCodexDiagnosticFetch(options, backendRequests)
+        const requestOptions = preflight === undefined ? diagnosticOptions : preflight.wrap(diagnosticOptions, actualProxyOrigin)
+        return streamSimple.call(configured, model, codexProviderContext(context), requestOptions)
+      }
+      if (backendRequests !== undefined) return backendRequests.runStream(operation)
       const proxyUrl = resolveProxyUrl?.()
-      const operation = () => streamSimple.call(configured, model, codexProviderContext(context), withCodexDiagnosticFetch(options, backendRequests))
-      return backendRequests?.runStream(operation) ?? proxyManager?.runStream(proxyUrl, operation) ?? operation()
+      return proxyManager?.runStream(proxyUrl, () => operation(proxyUrl)) ?? operation(undefined)
     },
     auth: {
       ...provider.auth,
       apiKey: {
         name: 'OpenAI Codex OAuth bearer token',
-        async resolve({ credential }) {
+        async resolve({ credential, signal }) {
           const apiKey = credential?.key
+          if (apiKey !== undefined && apiKey.length > 0) preflight?.activate(signal)
           return apiKey === undefined || apiKey.length === 0
             ? undefined
             : { auth: { apiKey }, source: 'OAuth' }
@@ -144,6 +152,7 @@ export function createOpenAICodexProfile(
   contextWindowOverrides?: Readonly<Record<string, number>> | undefined,
   backendRequests?: OpenAICodexBackendRequests,
   wrapProvider?: (provider: Provider) => Provider,
+  preflight?: OpenAICodexPreflightActivity,
 ): ResolvedPiAiProviderProfile & { piProvider: Provider } {
   const effectiveProvider = contextWindowOverrides === undefined
     ? provider
@@ -152,14 +161,14 @@ export function createOpenAICodexProfile(
     provider: OPENAI_CODEX_PROVIDER,
     displayName: 'OpenAI Codex',
     transport: OPENAI_CODEX_TRANSPORT,
-    streamIdleTimeoutMs: OPENAI_CODEX_STREAM_IDLE_TIMEOUT_MS,
+    streamIdleTimeoutMs: preflight?.hostIdleTimeoutMs ?? OPENAI_CODEX_STREAM_IDLE_TIMEOUT_MS,
     maxRequestImageBytes: OPENAI_CODEX_MAX_REQUEST_IMAGE_BYTES,
     requestImagePixelBudget: OPENAI_CODEX_REQUEST_IMAGE_PIXEL_BUDGET,
     requestImageMaxBytes: OPENAI_CODEX_REQUEST_IMAGE_MAX_BYTES,
     retryPolicy: resolveRetryPolicy(undefined, 'dsh-codex-connect retryPolicy'),
     configuredMaxTokens: new Map(),
     modelErrors: new Map<string, string>(),
-    piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider),
+    piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider, preflight),
   }
   return profile
 }
@@ -239,7 +248,9 @@ export function createOpenAICodexAdapter(
   backendRequests?: OpenAICodexBackendRequests,
   taskDispatch?: OpenAICodexTaskDispatch,
   imageEditingEnabled?: () => boolean,
+  preflightActivity?: OpenAICodexPreflightConfig,
 ): PiAiAdapter {
+  const preflight = preflightActivity === undefined ? undefined : new OpenAICodexPreflightActivity(preflightActivity)
   const baseline = withOpenAICodexModels(openaiCodexProvider())
   const provider = reservePermits === undefined ? baseline : withOpenAICodexReserve(baseline, reservePermits)
   let profiles: Map<string, ResolvedPiAiProviderProfile> | undefined
@@ -247,7 +258,7 @@ export function createOpenAICodexAdapter(
   const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => {
     const overrides = contextWindowOverrides?.()
     if (profiles === undefined || !deepEqualJson(previousOverrides, overrides)) {
-      const profile = createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, overrides, backendRequests, taskDispatch?.wrapProvider)
+      const profile = createOpenAICodexProfile(provider, fastMode, proxyManager, resolveProxyUrl, overrides, backendRequests, taskDispatch?.wrapProvider, preflight)
       previousOverrides = overrides === undefined ? undefined : { ...overrides }
       // PiAiAdapter keys snapshots by map identity; captured calls keep the old map.
       profiles = new Map([[OPENAI_CODEX_PROVIDER, profile]])
@@ -261,9 +272,10 @@ export function createOpenAICodexAdapter(
     ): AsyncIterable<StreamChunk> {
       const dispatch = (request: GenerateOptions) => {
         const projected = imageEditingEnabled?.() === true ? withOpenAICodexImageSelectionHandles(request) : request
-        const observed = (nextOptions: GenerateOptions) => streamWithCodexRequestDiagnostics(
-          next => streamWithNativeCompactionScope(stream, next, nativeCompactionEnabled?.() === true), nextOptions,
-        )
+        const observed = (nextOptions: GenerateOptions) => streamWithCodexRequestDiagnostics(next => {
+          const native = (request: GenerateOptions) => streamWithNativeCompactionScope(stream, request, nativeCompactionEnabled?.() === true)
+          return preflight === undefined ? native(next) : preflight.stream(native, next)
+        }, nextOptions)
         return backendRequests?.metrics?.stream(observed, projected) ?? observed(projected)
       }
       return taskDispatch?.stream(options, dispatch) ?? dispatch(options)

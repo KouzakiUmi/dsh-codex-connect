@@ -21,6 +21,8 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-user-approval'
 import { assertOpenAICodexContextWindowOverrides, createOpenAICodexAdapter, openAICodexModelCatalog } from './adapter.ts'
+import { resolveOpenAICodexPreflightConfig } from './preflight-activity.ts'
+import type { OpenAICodexPreflightConfig } from './preflight-activity.ts'
 import { OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS, registerOpenAICodexAuthRoutes } from './auth-routes.ts'
 import { registerOpenAICodexProxyRoutes } from './proxy-routes.ts'
 import { OPENAI_CODEX_TRUSTED_ORIGINS_FILENAME, OpenAICodexTrustedOriginsStore } from './trusted-origins.ts'
@@ -260,6 +262,8 @@ export interface Config {
   enableProxy?: boolean
   /** Credential-free HTTP(S) proxy origin. */
   proxyUrl?: string
+  /** Explicit startup-only authorization for bounded bili preflight heartbeats; omitted by default. */
+  preflightActivity?: OpenAICodexPreflightConfig | undefined
   /**
    * Per-model context-window overrides keyed by catalog model id. Each value
    * replaces the advertised `contextWindow` for that model inside the adapter
@@ -322,6 +326,9 @@ const configSchema = z.object({
   models: z.union([z.const(undefined), z.array(z.string())]).volatile(),
   enableProxy: z.boolean().default(false).volatile(),
   proxyUrl: z.string().default(DEFAULT_OPENAI_CODEX_PROXY_URL).volatile(),
+  preflightActivity: z.transform(z.union([z.const(undefined), z.object({
+    protocol: z.const('bili-v1'), trustedProxyOrigin: z.string(), maxDurationMs: z.number(),
+  })]), value => value === undefined ? undefined : resolveOpenAICodexPreflightConfig(value)),
   contextWindowOverrides: z.transform(
     z.union([z.const(undefined), z.const(null), z.dict(z.union([z.const(null), z.number()]))]),
     parseSettingsContextWindowOverrides,
@@ -351,6 +358,7 @@ export interface VolatileConfig {
   models: Volatile<string[] | undefined>
   enableProxy: Volatile<boolean>
   proxyUrl: Volatile<string>
+  preflightActivity?: OpenAICodexPreflightConfig | undefined
   contextWindowOverrides: Volatile<Record<string, number | null> | null | undefined>
   enableSearch: Volatile<boolean>
   enableReserveFallback: Volatile<boolean>
@@ -470,6 +478,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       backendRequests,
       taskRuntime,
       () => resolveOpenAICodexSettings(current()).enableImageGeneration,
+      config.preflightActivity,
     ),
   )
   registerImageHandleBridge(ctx, {

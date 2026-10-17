@@ -318,8 +318,10 @@ export class OpenAICodexBackendRequests {
   }
 
   /** Keep the existing proxy lease for the complete provider stream. */
-  runStream<T extends { result(): Promise<unknown> }>(operation: () => T): T {
-    return this.proxyManager?.runStream(this.resolveProxyUrl(), operation) ?? operation()
+  runStream<T extends { result(): Promise<unknown> }>(operation: (proxyOrigin: string | undefined) => T): T {
+    if (this.proxyManager === undefined) return operation(undefined)
+    const origin = this.resolveProxyUrl()
+    return this.proxyManager.runStream(origin, () => operation(origin))
   }
 
   /** Abort queued/in-flight managed requests and prevent new admission. */

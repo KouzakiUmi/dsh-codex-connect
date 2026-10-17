@@ -149,6 +149,7 @@ OAuth 凭据保存在运行 DSH 的主机上，由该主机用于向 OpenAI 认�
 - [安装与升级](../INSTALL.md)
 - [配置、诊断与恢复](reference.zh.md)
 - [本地请求计量：启用、报告与停用](request-metrics.zh.md)
+- [明确授权、有界的 bili 预处理活动（源码改动；默认关闭）](preflight-activity.zh.md)
 - [从 `dsh-codex` 迁移](../MIGRATION.md)
 - [架构与安全细节](design.zh.md)
 - [自动审查行为](auto-review.zh.md)
