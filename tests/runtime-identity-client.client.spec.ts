@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { comparePluginVersions, readRuntimeIdentity, runtimeIdentityReceipt } from '../src/client/runtime-identity-client.ts'
 import { OPENAI_CODEX_RUNTIME_PATH } from '../src/update-paths.ts'
+import { CODEX_CONNECT_VERSION } from '../src/version.ts'
 import { inconsistentRuntimeReports, runtimeReport } from './runtime-identity-fixtures.ts'
 
 const clientVersion = '0.2.0-alpha.4'
@@ -8,6 +9,21 @@ const json = (value: unknown, status = 200) => new Response(JSON.stringify(value
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('fresh runtime identity evidence', () => {
+  it.each(['0.2.1-alpha.5', '0.2.1-rc.1'])('accepts coherent %s Host receipts and rejects mixed metadata', async version => {
+    const report = runtimeReport(CODEX_CONNECT_VERSION)
+    report.currentDshVersion = version
+    for (const name of ['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-compaction'] as const) {
+      report.compatibility.packages[name].installed = version
+    }
+    vi.stubGlobal('fetch', vi.fn(async () => json(report)))
+    const snapshot = await readRuntimeIdentity(CODEX_CONNECT_VERSION, new AbortController().signal)
+    expect(snapshot).toMatchObject({ status: 'available', pluginVersionState: 'match', report: { currentDshVersion: version, compatibility: { status: 'compatible' } } })
+    report.compatibility.packages['@deepseek-ai/dsh-compaction'].installed = '0.2.1-alpha.4'
+    expect(await readRuntimeIdentity(CODEX_CONNECT_VERSION, new AbortController().signal)).toEqual({
+      status: 'unavailable', clientVersion: CODEX_CONNECT_VERSION, pluginVersionState: 'unknown',
+    })
+  })
+
   it.each([
     ['0.2.0-alpha.4', '0.2.0-alpha.4', 'match'],
     ['0.2.0-alpha.3', '0.2.0-alpha.3', 'mismatch'],

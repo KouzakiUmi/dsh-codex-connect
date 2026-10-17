@@ -3,22 +3,31 @@ import { describe, expect, it } from 'vitest'
 
 const install = await readFile(new URL('../INSTALL.md', import.meta.url), 'utf8')
 const compatibility = JSON.parse(await readFile(new URL('../verified-compatibility.json', import.meta.url), 'utf8'))
+const candidate = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version
 const firstInstall = install.indexOf('dsh plugin --profile web add ')
 const preflight = install.slice(0, firstInstall)
 const shellBlocks = [...install.matchAll(/```sh\s*\n([\s\S]*?)```/gu)]
   .flatMap(match => (match[1] ?? '').split('\n').map(line => line.trim()))
 
 describe('installation version guidance', () => {
-  it('keeps the alpha.4 host source candidate separate from published plugin pairings', async () => {
+  it.each(['0.2.1-alpha.4', '0.2.1-alpha.5', '0.2.1-rc.1'])('keeps host %s source support separate from published plugin pairings', async version => {
     const [english, chinese] = await Promise.all([
       readFile(new URL('../README.md', import.meta.url), 'utf8'),
       readFile(new URL('../docs/README.zh.md', import.meta.url), 'utf8'),
     ])
     expect(english).toContain('**Unreleased source candidate:**')
     expect(chinese).toContain('**尚未发布的源码候选：**')
-    expect(install).toContain('unreleased source candidate for DSH `0.2.1-alpha.4`')
-    expect(compatibility.pluginVersions.every((entry: { verifiedDshVersions: string[] }) =>
-      !entry.verifiedDshVersions.includes('0.2.1-alpha.4'))).toBe(true)
+    expect(install).toContain('unreleased source candidates')
+    for (const guide of [english, chinese, install]) expect(guide).toContain(`\`${version}\``)
+    expect(compatibility.pluginVersions.filter((entry: { version: string }) => entry.version !== candidate)
+      .every((entry: { verifiedDshVersions: string[] }) =>
+      !entry.verifiedDshVersions.includes(version))).toBe(true)
+  })
+
+  it('records the checked candidate hosts without changing historical published pairings', async () => {
+    const declared = JSON.parse(await readFile(new URL('../compatibility.json', import.meta.url), 'utf8'))
+    expect(compatibility.pluginVersions.find((entry: { version: string }) => entry.version === candidate)?.verifiedDshVersions)
+      .toEqual(declared.dshPluginApi.versions)
   })
 
   it.each([
