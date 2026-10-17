@@ -12,6 +12,7 @@ import type { OpenAICodexSettingsKey } from './locales.ts'
 import { OpenAICodexConfiguration } from './OpenAICodexConfiguration.tsx'
 import type { OpenAICodexSettingsModule } from './OpenAICodexConfiguration.tsx'
 import { OpenAICodexUpdateSettings } from './OpenAICodexUpdateNotice.tsx'
+import { OpenAICodexRuntimeIdentity } from './OpenAICodexRuntimeIdentity.tsx'
 import type { OpenAICodexUpdateStore } from './update-store.ts'
 
 /** Dependencies injected by the browser plugin entry. */
@@ -470,6 +471,7 @@ export function OpenAICodexSettings({ t, configScope, updater, account, embedded
       )}
       <div style={embedded ? embeddedCardStyle : cardStyle}>
         {accountOnly || updater === undefined ? null : <OpenAICodexUpdateSettings t={t} updater={updater} />}
+        {accountOnly ? null : <OpenAICodexRuntimeIdentity t={t} />}
         {accountOnly ? null : (
           <div style={moduleTabsStyle} role="tablist" aria-label={t('settingsModules')}>
             {SETTINGS_MODULES.map((module, index) => (

@@ -1,6 +1,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { describe, expect, it, vi } from 'vitest'
-import { httpRouteTestContext } from './http-route-test-context.ts'
+import { httpRouteTestContext, rejectedHttpAdmissions } from './http-route-test-context.ts'
+import { evaluateCompatibility } from '../src/compatibility.ts'
+import { CODEX_CONNECT_VERSION } from '../src/version.ts'
+import type { OpenAICodexRuntimeReport } from '../src/runtime-identity.ts'
 import type { CapturedHttpRoute, TestHttpAdmission } from './http-route-test-context.ts'
 import {
   OPENAI_CODEX_UPDATE_PATH,
@@ -17,14 +20,32 @@ import {
 
 const trustedOrigins = { has: async () => false } as unknown as OpenAICodexTrustedOriginsStore
 
+function runtimeReport(): OpenAICodexRuntimeReport {
+  return {
+    schemaVersion: 1,
+    identity: {
+      scope: 'host',
+      loadedPluginVersion: CODEX_CONNECT_VERSION,
+      installedPluginVersion: CODEX_CONNECT_VERSION,
+      pluginVersionState: 'match',
+      dshMetadataSource: 'host-install-anchor',
+    },
+    currentDshVersion: '0.2.0-rc.2',
+    compatibility: evaluateCompatibility({ nodeVersion: 'v24.21.0', packageVersions: {
+      '@deepseek-ai/dsh-llm': '0.2.0-rc.2', '@deepseek-ai/dsh-llm-pi-ai': '0.2.0-rc.2',
+      '@deepseek-ai/dsh-compaction': '0.2.0-rc.2', '@earendil-works/pi-ai': '0.85.1',
+    } }),
+  }
+}
+
 function capture(
   fetchImpl: (input: string, init?: RequestInit) => Promise<Response>,
-  resolveCurrentDshVersion: () => Promise<string | undefined> = async () => '0.1.1-rc.2',
+  resolveRuntimeReport: () => Promise<OpenAICodexRuntimeReport> = async () => runtimeReport(),
   path = OPENAI_CODEX_UPDATE_PATH,
   admission: TestHttpAdmission = 'allow',
 ): CapturedHttpRoute {
   const { ctx, routes } = httpRouteTestContext({ admission })
-  registerOpenAICodexUpdateRoutes(ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveCurrentDshVersion }, trustedOrigins)
+  registerOpenAICodexUpdateRoutes(ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveRuntimeReport }, trustedOrigins)
   const route = [...routes.values()].find(candidate => candidate.path === path)
   if (route === undefined) throw new Error('update route was not registered')
   return route
@@ -58,17 +79,28 @@ function json(value: unknown, status = 200): Response {
 }
 
 describe('Codex Connect update route', () => {
-  it.each(['missing', 'unauthenticated', 'forbidden', 'throws'] as const)('keeps public update/runtime routes Origin-only when Connection is %s', async admission => {
+  it.each(rejectedHttpAdmissions)('authenticates Host runtime before metadata reads when Connection is $admission', async ({ admission, status, error }) => {
     const fixture = httpRouteTestContext({ admission })
     const fetchImpl = vi.fn(async () => json({}, 503))
-    const resolveCurrentDshVersion = vi.fn(async () => '0.1.1-rc.2')
-    registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveCurrentDshVersion }, trustedOrigins)
-    for (const path of [OPENAI_CODEX_RUNTIME_PATH, OPENAI_CODEX_UPDATE_PATH]) {
-      const res = response()
-      await fixture.routes.get(`exact:${path}`)!.handler(request(), res)
-      expect(res.observed.status).toBe(200)
-    }
-    expect(resolveCurrentDshVersion).toHaveBeenCalledOnce()
+    const resolveRuntimeReport = vi.fn(async () => runtimeReport())
+    registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveRuntimeReport }, trustedOrigins)
+    const res = response()
+    await fixture.routes.get(`exact:${OPENAI_CODEX_RUNTIME_PATH}`)!.handler(request(), res)
+    expect(res.observed.status).toBe(status)
+    expect(JSON.parse(res.observed.body ?? 'null')).toEqual({ error })
+    expect(resolveRuntimeReport).not.toHaveBeenCalled()
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it.each(rejectedHttpAdmissions)('leaves the public update route Origin-only when Connection is $admission', async ({ admission }) => {
+    const fixture = httpRouteTestContext({ admission })
+    const fetchImpl = vi.fn(async () => json({}, 503))
+    const resolveRuntimeReport = vi.fn(async () => runtimeReport())
+    registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveRuntimeReport }, trustedOrigins)
+    const res = response()
+    await fixture.routes.get(`exact:${OPENAI_CODEX_UPDATE_PATH}`)!.handler(request(), res)
+    expect(res.observed.status).toBe(200)
+    expect(resolveRuntimeReport).not.toHaveBeenCalled()
     expect(fetchImpl).toHaveBeenCalled()
     expect(fixture.requestRejection).not.toHaveBeenCalled()
   })
@@ -78,15 +110,15 @@ describe('Codex Connect update route', () => {
     const unrelated: CapturedHttpRoute = { kind: 'exact', path: '/unrelated', handler: () => undefined }
     fixture.webServer.register(unrelated)
     const fetchImpl = vi.fn()
-    const resolveCurrentDshVersion = vi.fn()
-    expect(() => registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveCurrentDshVersion }, trustedOrigins))
+    const resolveRuntimeReport = vi.fn()
+    expect(() => registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: '0.1.0-alpha.4.14', fetchImpl, resolveRuntimeReport }, trustedOrigins))
       .toThrow('synthetic HTTP route registration failure')
     expect([...fixture.routes.values()]).toEqual([unrelated])
     await fixture.ctx.fiber.dispose()
     expect([...fixture.routes.values()]).toEqual([unrelated])
     expect(fixture.disposedPaths).toEqual([OPENAI_CODEX_RUNTIME_PATH, OPENAI_CODEX_UPDATE_PATH].slice(0, nth - 1).reverse())
     expect(fetchImpl).not.toHaveBeenCalled()
-    expect(resolveCurrentDshVersion).not.toHaveBeenCalled()
+    expect(resolveRuntimeReport).not.toHaveBeenCalled()
   })
 
   it('rolls back runtime registration without removing an unrelated update route owner', async () => {
@@ -122,8 +154,8 @@ describe('Codex Connect update route', () => {
       })
       return json({ body: 'Global update reminder', name: 'Alpha 4.15', published_at: '2026-08-21T12:00:00Z' })
     })
-    const resolveCurrentDshVersion = vi.fn(async () => '0.1.1-rc.2')
-    const route = capture(fetchMock, resolveCurrentDshVersion)
+    const resolveRuntimeReport = vi.fn(async () => runtimeReport())
+    const route = capture(fetchMock, resolveRuntimeReport)
     const res = response()
     await route.handler(request(), res)
 
@@ -140,16 +172,38 @@ describe('Codex Connect update route', () => {
     })
     expect(JSON.parse(res.observed.body ?? 'null')).not.toHaveProperty('credential')
     expect(fetchMock).toHaveBeenCalledWith(OPENAI_CODEX_RELEASE_API_BASE + '0.1.0-alpha.4.15', expect.anything())
-    expect(resolveCurrentDshVersion).not.toHaveBeenCalled()
+    expect(resolveRuntimeReport).not.toHaveBeenCalled()
   })
 
-  it('reports the running DSH version without public network access', async () => {
+  it.each(['throw', 'reject'] as const)('fails closed before metadata/network when a remote Origin store lookup will %s', async mode => {
+    const fixture = httpRouteTestContext()
+    const resolveRuntimeReport = vi.fn(async () => runtimeReport())
+    const fetchImpl = vi.fn()
+    const has = vi.fn(mode === 'throw'
+      ? () => { throw new Error('/private/origin-store') }
+      : async () => { throw new Error('/private/origin-store') })
+    registerOpenAICodexUpdateRoutes(fixture.ctx, { currentVersion: CODEX_CONNECT_VERSION, fetchImpl, resolveRuntimeReport }, { has } as unknown as OpenAICodexTrustedOriginsStore)
+    const req = request('GET', '192.168.1.9')
+    req.headers.host = '192.168.1.8:3081'
+    req.headers.origin = 'http://192.168.1.8:3081'
+    const res = response()
+    await fixture.routes.get(`exact:${OPENAI_CODEX_RUNTIME_PATH}`)!.handler(req, res)
+    expect(has).toHaveBeenCalledWith('http://192.168.1.8:3081')
+    expect(res.observed.status).toBe(403)
+    expect(JSON.parse(res.observed.body ?? 'null')).toEqual({ error: 'forbidden' })
+    expect(resolveRuntimeReport).not.toHaveBeenCalled()
+    expect(fetchImpl).not.toHaveBeenCalled()
+    expect(res.observed.body).not.toContain('/private')
+  })
+
+  it('reports allowlisted Host identity and coherent installation metadata without network access', async () => {
     const fetchMock = vi.fn(async (): Promise<Response> => json({ error: 'unexpected' }, 500))
-    const route = capture(fetchMock, async () => '0.1.1-rc.2', OPENAI_CODEX_RUNTIME_PATH)
+    const route = capture(fetchMock, async () => ({ ...runtimeReport(), credentialPath: '/private/must-not-leak' }), OPENAI_CODEX_RUNTIME_PATH)
     const res = response()
     await route.handler(request(), res)
 
-    expect(JSON.parse(res.observed.body ?? 'null')).toEqual({ currentDshVersion: '0.1.1-rc.2' })
+    expect(JSON.parse(res.observed.body ?? 'null')).toEqual(runtimeReport())
+    expect(res.observed.body).not.toContain('must-not-leak')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -162,17 +216,25 @@ describe('Codex Connect update route', () => {
           latestDshVersion: '0.1.1-rc.2',
           pluginVersions: [{ version: '0.1.0-alpha.4.14', verifiedDshVersions: ['0.1.1-rc.2'] }],
         }))
-    const route = capture(fetchMock, async () => { throw new Error('package metadata unavailable') })
+    const route = capture(fetchMock, async () => { throw new Error('/private/package metadata unavailable') }, OPENAI_CODEX_RUNTIME_PATH)
     const res = response()
     await route.handler(request(), res)
 
     expect(JSON.parse(res.observed.body ?? 'null')).not.toHaveProperty('currentDshVersion')
+    expect(JSON.parse(res.observed.body ?? 'null')).toMatchObject({
+      schemaVersion: 1,
+      identity: { scope: 'host', loadedPluginVersion: CODEX_CONNECT_VERSION, installedPluginVersion: null, pluginVersionState: 'unknown', dshMetadataSource: 'unknown' },
+      compatibility: { schemaVersion: 1, status: 'unknown' },
+    })
+    expect(res.observed.body).not.toContain('/private')
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(res.observed.status).toBe(200)
   })
 
-  it('rejects wrong methods and non-loopback peers before public network access', async () => {
+  it.each([OPENAI_CODEX_UPDATE_PATH, OPENAI_CODEX_RUNTIME_PATH])('rejects wrong methods and non-loopback peers before metadata/network access at %s', async path => {
     const fetchMock = vi.fn(async (): Promise<Response> => json({ alpha: '0.1.0-alpha.4.15' }))
-    const route = capture(fetchMock)
+    const resolveRuntimeReport = vi.fn(async () => runtimeReport())
+    const route = capture(fetchMock, resolveRuntimeReport, path)
     const wrongMethod = response()
     await route.handler(request('POST'), wrongMethod)
     expect(wrongMethod.observed.status).toBe(405)
@@ -183,5 +245,6 @@ describe('Codex Connect update route', () => {
     expect(remote.observed.status).toBe(403)
     expect(JSON.parse(remote.observed.body ?? 'null')).toEqual({ error: 'remote-web-origin-not-trusted' })
     expect(fetchMock).not.toHaveBeenCalled()
+    expect(resolveRuntimeReport).not.toHaveBeenCalled()
   })
 })

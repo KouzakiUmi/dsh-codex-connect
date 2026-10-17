@@ -163,6 +163,27 @@ describe('compatibility contract', () => {
     expect(JSON.stringify(report)).not.toMatch(/node_modules|Users|token|credential/iu)
   })
 
+  it('does not certify a coherent peer triple against a different selected DSH root', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'codex-connect-root-mismatch-'))
+    const modules = join(root, 'host', 'node_modules')
+    const anchor = join(modules, '@deepseek-ai/dsh', 'package.json')
+    try {
+      for (const name of ['@deepseek-ai/dsh', '@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-llm-pi-ai', '@deepseek-ai/dsh-compaction']) {
+        const manifest = join(modules, name, 'package.json')
+        await mkdir(dirname(manifest), { recursive: true })
+        await writeFile(manifest, JSON.stringify({ name, version: name === '@deepseek-ai/dsh' ? '0.2.0-rc.2' : SUPPORTED_DSH_PLUGIN_API_VERSION }))
+      }
+      expect((await detectCompatibility({ nodeVersion: 'v24.21.0', installAnchor: anchor })).status).toBe('unverified')
+      expect((await detectCompatibility({ nodeVersion: 'v20.0.0', installAnchor: anchor })).status).toBe('incompatible')
+      expect((await detectCompatibility({ nodeVersion: 'not-a-node-version', installAnchor: anchor })).status).toBe('unknown')
+      expect(evaluateCompatibility({ nodeVersion: 'v24.21.0', packageVersions: compatiblePackages }).status).toBe('compatible')
+      await rm(join(modules, '@deepseek-ai/dsh-compaction', 'package.json'))
+      expect((await detectCompatibility({ nodeVersion: 'v24.21.0', installAnchor: anchor })).status).toBe('unknown')
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
   it('reads exact host package versions from an explicit DSH installation without loading peers', async () => {
     const root = await mkdtemp(join(tmpdir(), 'codex-connect-host-anchor-'))
     const host = join(root, 'host')

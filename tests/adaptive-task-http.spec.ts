@@ -228,7 +228,11 @@ it('removes and remounts exactly one product Task route when Connection is repla
     expect((await f.read()).status).toBe(404)
     expect((await f.post(f.body('manual'))).status).toBe(404)
     expect((await accounts()).status).toBe(404)
-    expect((await publicMetadata()).map(response => response.status)).toEqual([200, 200, 200])
+    // Catalog/update stay public; identity remains registered but fails closed
+    // while its current Connection authority is unavailable.
+    const metadata = await publicMetadata()
+    expect(metadata.map(response => response.status)).toEqual([200, 503, 200])
+    expect(JSON.parse(metadata[1]!.text)).toEqual({ error: 'DSH_CONNECTION_UNAVAILABLE' })
     expect(f.taskRoutes.every(entry => entry.disposed === 1)).toBe(true)
     await f.reloadConnection()
     expect(f.host.webServer.port).toBe(port)
@@ -237,6 +241,10 @@ it('removes and remounts exactly one product Task route when Connection is repla
     expect(f.taskRoutes.filter(entry => entry.disposed === 0)).toHaveLength(1)
     expect(f.taskRoutes.at(-1)!.route.handler).not.toBe(originalHandler)
     expect((await accounts()).status).toBe(200)
+    expect((await http(f.origin + OPENAI_CODEX_RUNTIME_PATH)).status).toBe(401)
+    const runtime = await http(f.origin + OPENAI_CODEX_RUNTIME_PATH, { headers: f.headers })
+    expect(runtime.status).toBe(200)
+    expect(JSON.parse(runtime.text)).toMatchObject({ schemaVersion: 1, identity: { scope: 'host' } })
     const verifier = vi.spyOn(f.host.connection, 'requestRejection')
     const read = await f.read()
     expect(read.status).toBe(200)

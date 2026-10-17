@@ -6,6 +6,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runBoundedCommand } from './bounded-command.mjs'
 import { scrubCanaryEnvironment } from './canary-environment.mjs'
+import { checkReadonlyDoctor } from './check-doctor-readonly.mjs'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const missingHostPeers = new Set(['@deepseek-ai/schemastery', '@earendil-works/pi-ai'])
@@ -48,6 +49,7 @@ try {
     throw new Error(`isolated plugin import failed (exit=${result.status ?? 'unknown'}, missing=${missing ?? 'none'}, outdatedSchema=${outdated})`)
   }
   process.stdout.write('isolated plugin import passed without host schemastery or pi-ai peers\n')
+  await checkReadonlyDoctor(fixture, pluginRoot, env)
 } finally {
   await rm(fixture, { recursive: true, force: true })
 }

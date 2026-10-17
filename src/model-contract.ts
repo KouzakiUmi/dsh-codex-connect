@@ -6,8 +6,8 @@ export const OPENAI_CODEX_MODEL_CATALOG_PATH = '/plugins/dsh-codex-connect/model
 /** Versioned official-client override policy, not a measured endpoint capacity. */
 export const OPENAI_CODEX_CONTEXT_LIMIT_SOURCE = 'https://github.com/openai/codex/blob/39598ed17885970828acd42a6370131ed0190a98/codex-rs/models-manager/models.json'
 
-/** New-model policy comes from its own pinned official catalog revision. */
-export const OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE = 'https://github.com/openai/codex/blob/a5cce8895a1400f94eb0a71771275284027fff17/codex-rs/models-manager/models.json'
+/** Sol61 provenance refresh; the immutable catalog's default/override limits are unchanged. */
+export const OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE = 'https://github.com/openai/codex/blob/d63a9b8344cfe58bc78bbe319b560378fc8756ef/codex-rs/models-manager/models.json'
 
 /** Preserve historical provenance for existing models. */
 export function openAICodexContextLimitSource(id: string): string {

@@ -58,12 +58,14 @@ dsh web
 
 ### 3. 检查安装
 
+若要求诊断不经过包管理器，请直接运行已经安装的 bin（替换为已经独立识别的实际路径）：
+
 ```sh
-dsh plugin --profile web exec dsh-codex-connect status --json
-dsh plugin --profile web exec dsh-codex-connect doctor --json
+node /absolute/profile/node_modules/dsh-codex-connect/lib/bin.js doctor --json \
+  --install-anchor /absolute/dsh/node_modules/@deepseek-ai/dsh/package.json
 ```
 
-`status --json` 在已登录时返回 `0`，未登录时返回 `1`，不会启动 OAuth。`doctor --json` 输出本地安装诊断，不发送网络请求，也不包含原始凭据。诊断通过不代表账户具有模型权限；实际可用性仍需通过真实请求验证。
+`doctor --json` 只读本地安装元数据，不请求网络或输出原始凭据；指定安装锚点不证明该安装正在运行。`dsh plugin exec` 等包装命令自身可能核对或安装依赖。详见[运行身份与直接诊断](runtime-identity.md)，包括 Desktop/ASAR 限制。包含本改动的开发构建还会在设置中区分页面、Host 已加载和磁盘安装版本。诊断通过不代表模型权限，实际请求须另获授权。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/franksong2702/dsh-codex-connect/main/docs/assets/zh/hero.jpg" alt="Codex Connect — 为 DeepSeek Harness 接入 ChatGPT OAuth" width="100%">
@@ -166,3 +168,5 @@ pnpm run check:dsh-install
 Codex Connect 的修改与新增工作 Copyright 2026 Frank Song。本项目包含派生自 [Yan-Zero/dsh-codex](https://github.com/Yan-Zero/dsh-codex) 的软件；上游内容继续保留 Copyright 2026 Yan-Zero。两部分均按 Apache-2.0 发布，详情见 [NOTICE](../NOTICE)。
 
 已发布的 `0.2.0-alpha.1` 将 `gpt-6.1-sol` 加入手动模型目录与配置选择器，支持 Low、Medium、High、Xhigh、Max；Default 不显式发送推理强度，不支持 Ultra 编排。Codex 目录默认上下文保持 272,000，允许的本地配置上限为 872,000；这不是 API 产品窗口，也不能证明账户访问权限。详见[元数据与验证](agent-notes/gpt61-sol-support.md)。不会扩大 Adaptive Task 授权。
+
+开发中校准（**尚未发布**）：[来源对照](agent-notes/gpt61-capability-calibration.md) 区分锁定目录的 272k 回退值／872k 本地上限、搜索结果收录的官方 Work/Codex 产品文字所宣称的 500k，以及另一 API 产品的限制。本轮仅更新 Sol61 的策略来源锁定；默认值、原生提供方元数据优先级和 Fast／effort 行为不变。没有验证账户或端点的实际容量。

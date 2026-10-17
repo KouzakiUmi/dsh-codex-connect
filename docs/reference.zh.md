@@ -158,7 +158,7 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 
 已发布的 Alpha 4.33 在 DSH `0.1.5-rc.1` 上列出或准备 Codex 模型时，可能报 `Cannot read properties of undefined (reading 'get')`。新宿主要求按模型记录错误的索引，旧插件 profile 没有提供。包含 [Issue #178 修复](https://github.com/franksong2702/dsh-codex-connect/issues/178)的构建会初始化该索引；重新授权不能补齐这个字段。请选择与宿主版本完成验证的精确插件版本，不能仅凭属于同一 Alpha 系列判断。
 
-运行 `dsh plugin --profile web exec dsh-codex-connect doctor --json` 可检查本地安装元数据，不会联网。兼容性状态含义：`compatible` 表示符合声明的版本要求，不是行为测试通过；`unverified` 表示包版本超出声明的支持集合；`unknown` 表示缺少必要版本元数据或无法读取；`incompatible` 表示 Node 版本不满足声明的 engine 要求。汇总状态依次优先采用 `incompatible`、`unknown`、`unverified`。任何非 compatible 结果或不安全的凭据文件元数据都会让 doctor 返回 `1`，但这并不授权或建议更改 DSH。
+若要求诊断不经过包管理器，请按[直接运行已安装 bin](runtime-identity.md#direct-standalone-doctor)的方法执行 `doctor --json`；`dsh plugin exec` 包装器自身可能核对或安装依赖。doctor 只读本地元数据且不联网，不证明另一进程的实际运行身份。兼容性状态含义：`compatible` 表示符合声明的版本要求，不是行为测试通过；`unverified` 包括未声明/混装版本，以及 peer 与明确选定 DSH 主清单不一致；`unknown` 表示缺少必要元数据或无法读取；`incompatible` 表示 Node 不满足 engine 要求。汇总依次优先采用 `incompatible`、`unknown`、`unverified`。非 compatible、不安全的凭据文件元数据或未知/不一致的插件身份会让 doctor 返回 `1`，凭据缺失本身不算错误；这不授权或建议更改 DSH。
 
 DSH `0.1.7-rc.1` 的 `plugin exec` 会启动独立进程，普通模块解析无法看见宿主的 peer 包。Alpha 4.43 的 CLI 自带所需代码，因此所有命令都能在该进程中启动。若要让 `doctor` 核对确切宿主包版本，给 `--install-anchor` 传入该 DSH 安装中 `@deepseek-ai/dsh/package.json` 的绝对路径；该选项只读包元数据，也不会输出路径。未提供 anchor 且无法解析版本时，`doctor` 报 `unknown`，不能据此认定运行时不兼容。安装运行时检查另行启动 DSH 自身的 profile 解析器后再导入插件，保持宿主包身份一致。
 

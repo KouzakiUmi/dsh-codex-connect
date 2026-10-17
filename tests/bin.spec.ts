@@ -118,6 +118,26 @@ describe('dsh-codex-connect CLI', () => {
     expect(error).not.toContain('relative/secret')
   })
 
+  it.each([['match', 0], ['mismatch', 1], ['unknown', 1]] as const)('does not call unknown/mismatched plugin identity a successful receipt (%s)', async (state, code) => {
+    mocked.diagnose.mockResolvedValue({
+      package: 'dsh-codex-connect', version: '0.2.0-alpha.4', node: 'v24.21.0',
+      credentialFile: { state: 'missing' }, compatibility: { status: 'compatible' },
+      capabilities: { search: false, imageTool: false, imageGeneration: false }, hints: [],
+      identity: {
+        scope: 'standalone', loadedPluginVersion: '0.2.0-alpha.4',
+        installedPluginVersion: state === 'unknown' ? null : state === 'match' ? '0.2.0-alpha.4' : '0.2.0-alpha.5',
+        pluginVersionState: state, dshMetadataSource: 'plugin-installation',
+      },
+    })
+    let output = ''
+    vi.spyOn(process.stdout, 'write').mockImplementation(chunk => { output += String(chunk); return true })
+    await expect(run(['doctor', '--json'])).resolves.toBe(code)
+    expect(JSON.parse(output)).toMatchObject({ schemaVersion: 1, identity: { scope: 'standalone', pluginVersionState: state } })
+    expect(output.trim().split('\n')).toHaveLength(1)
+    expect(mocked.login).not.toHaveBeenCalled()
+    expect(mocked.authStatus).not.toHaveBeenCalled()
+  })
+
   it('runs history migration with dry-run defaults and explicit apply confirmation', async () => {
     mocked.migrateHistory.mockResolvedValue({
       mode: 'apply',

@@ -56,12 +56,14 @@ Never paste an authorization URL, code, token, or account identifier into an iss
 
 ### 3. Check the installation
 
+For a package-manager-free diagnostic, run the already installed bin directly (replace these independently identified paths):
+
 ```sh
-dsh plugin --profile web exec dsh-codex-connect status --json
-dsh plugin --profile web exec dsh-codex-connect doctor --json
+node /absolute/profile/node_modules/dsh-codex-connect/lib/bin.js doctor --json \
+  --install-anchor /absolute/dsh/node_modules/@deepseek-ai/dsh/package.json
 ```
 
-`status --json` exits `0` when signed in and `1` when signed out, without starting OAuth. `doctor --json` reports local installation diagnostics without a network request or raw credentials. A passing diagnostic is not proof of model access; verify that with an actual request.
+`doctor --json` reports local installation metadata without a network request or raw credentials; an anchor does not prove that installation is running. Wrappers such as `dsh plugin exec` may reconcile dependencies. See [runtime identity and direct diagnostics](docs/runtime-identity.md), including Desktop/ASAR limitations. Development builds containing that change also distinguish page, Host-loaded and installed plugin versions in settings. A passing diagnostic is not proof of model access; an actual request requires separate authorization.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/franksong2702/dsh-codex-connect/main/docs/assets/en/hero.jpg" alt="Codex Connect — ChatGPT OAuth for DeepSeek Harness" width="100%">
@@ -166,3 +168,5 @@ pnpm run check:dsh-install
 Copyright 2026 Frank Song for Codex Connect modifications and additional work. This project contains software derived from [Yan-Zero/dsh-codex](https://github.com/Yan-Zero/dsh-codex); Copyright 2026 Yan-Zero is retained for upstream material. Both are distributed under Apache-2.0; see [NOTICE](NOTICE).
 
 Published `0.2.0-alpha.1` adds `gpt-6.1-sol` to the manual model catalog and configuration selector. It exposes Low, Medium, High, Xhigh and Max; Default omits effort, and Ultra orchestration is unsupported. Codex catalog defaults remain 272,000 tokens with an optional 872,000 local ceiling, not the API product window or proof of account access. See [metadata and validation](docs/agent-notes/gpt61-sol-support.md). No Adaptive Task grants are expanded.
+
+Development calibration (**unreleased**): the [source comparison](docs/agent-notes/gpt61-capability-calibration.md) distinguishes the pinned 272k fallback/872k local ceiling, official Work/Codex product text advertising 500k surfaced in search results, and separate API limits. Only Sol61's policy-source pin is refreshed; defaults, native-provider metadata precedence and Fast/effort behavior remain unchanged. No account/endpoint capacity was verified.

@@ -5,6 +5,7 @@ import { OpenAICodexAccountStore } from '../src/client/account-store.ts'
 import { OpenAICodexModelsCard } from '../src/client/OpenAICodexModelsCard.tsx'
 import { OpenAICodexSettings } from '../src/client/OpenAICodexSettings.tsx'
 import { en, zh } from '../src/client/locales.ts'
+import { OPENAI_CODEX_RUNTIME_PATH } from '../src/update-paths.ts'
 import { OPENAI_CODEX_AUTH_ACCOUNTS_PATH, OPENAI_CODEX_AUTH_CANCEL_PATH, OPENAI_CODEX_AUTH_LOGIN_PATH, OPENAI_CODEX_AUTH_LOGOUT_PATH, OPENAI_CODEX_AUTH_STATUS_PATH } from '../src/auth-paths.ts'
 
 const t = (key: keyof typeof en, params: Record<string, unknown> = {}) => Object.entries(params).reduce(
@@ -217,8 +218,12 @@ describe('shared Models and Plugin account state', () => {
   })
 
   it('shares one status read, synchronizes logout, and keeps advanced options off Models', async () => {
-    const fetchMock = vi.fn(async (path: string) => path === OPENAI_CODEX_AUTH_LOGOUT_PATH
-      ? json({ ok: true }) : json({ status: 'signed-in', usage: { rateLimits: [] } }))
+    const fetchMock = vi.fn(async (path: string) => {
+      if (path === OPENAI_CODEX_RUNTIME_PATH) return Response.json({}, { status: 404 })
+      if (path === OPENAI_CODEX_AUTH_LOGOUT_PATH) return json({ ok: true })
+      expect(path).toBe(OPENAI_CODEX_AUTH_STATUS_PATH)
+      return json({ status: 'signed-in', usage: { rateLimits: [] } })
+    })
     vi.stubGlobal('fetch', fetchMock)
     const account = new OpenAICodexAccountStore()
     const view = render(<>
@@ -226,7 +231,8 @@ describe('shared Models and Plugin account state', () => {
       <div data-testid="plugins"><OpenAICodexSettings t={t} account={account} embedded /></div>
     </>)
     await waitFor(() => { expect(screen.getAllByText(en.signedIn)).toHaveLength(2) })
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls.filter(([path]) => path !== OPENAI_CODEX_RUNTIME_PATH).map(([path]) => path)).toEqual([OPENAI_CODEX_AUTH_STATUS_PATH])
+    expect(fetchMock.mock.calls.filter(([path]) => path === OPENAI_CODEX_RUNTIME_PATH)).toHaveLength(1)
     const models = within(screen.getByTestId('models'))
     fireEvent.click(models.getByRole('button', { name: en.viewQuota }))
     expect(models.queryByText(en.accountHeading)).toBeNull()
@@ -238,16 +244,20 @@ describe('shared Models and Plugin account state', () => {
     fireEvent.click(models.getByRole('button', { name: en.manageAccounts }))
     fireEvent.click(models.getByRole('button', { name: en.signOutAll }))
     await waitFor(() => { expect(screen.getAllByText(en.signedOut)).toHaveLength(2) })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls.filter(([path]) => path !== OPENAI_CODEX_RUNTIME_PATH).map(([path]) => path)).toEqual([OPENAI_CODEX_AUTH_STATUS_PATH, OPENAI_CODEX_AUTH_LOGOUT_PATH])
+    expect(fetchMock.mock.calls.filter(([path]) => path === OPENAI_CODEX_RUNTIME_PATH)).toHaveLength(1)
     view.unmount()
     account.dispose()
   })
 
   it('keeps a single pending login across page switches, including blocked-popup fallback', async () => {
     let resolveLogin!: (value: Response) => void
-    const fetchMock = vi.fn((path: string) => path === OPENAI_CODEX_AUTH_LOGIN_PATH
-      ? new Promise<Response>(resolve => { resolveLogin = resolve })
-      : Promise.resolve(json({ status: 'signed-out' })))
+    const fetchMock = vi.fn((path: string) => {
+      if (path === OPENAI_CODEX_RUNTIME_PATH) return Promise.resolve(Response.json({}, { status: 404 }))
+      if (path === OPENAI_CODEX_AUTH_LOGIN_PATH) return new Promise<Response>(resolve => { resolveLogin = resolve })
+      expect(path).toBe(OPENAI_CODEX_AUTH_STATUS_PATH)
+      return Promise.resolve(json({ status: 'signed-out' }))
+    })
     vi.stubGlobal('fetch', fetchMock)
     vi.spyOn(window, 'open').mockReturnValue(null)
     const account = new OpenAICodexAccountStore()
@@ -256,7 +266,8 @@ describe('shared Models and Plugin account state', () => {
     view.rerender(<OpenAICodexSettings t={t} account={account} embedded />)
     expect((screen.getByRole('button', { name: en.working }) as HTMLButtonElement).disabled).toBe(true)
     await act(async () => { await account.signIn() })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls.filter(([path]) => path !== OPENAI_CODEX_RUNTIME_PATH).map(([path]) => path)).toEqual([OPENAI_CODEX_AUTH_STATUS_PATH, OPENAI_CODEX_AUTH_LOGIN_PATH])
+    expect(fetchMock.mock.calls.filter(([path]) => path === OPENAI_CODEX_RUNTIME_PATH)).toHaveLength(1)
     await act(async () => { resolveLogin(json({ url: 'https://auth.openai.com/authorize' })) })
     expect(await screen.findByRole('link', { name: en.openLoginInBrowser })).toBeTruthy()
     view.unmount()

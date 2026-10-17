@@ -18,6 +18,7 @@ import {
   OPENAI_CODEX_AUTH_STATUS_PATH,
 } from '../src/auth-paths.ts'
 import { OPENAI_CODEX_MODEL_CATALOG_PATH } from '../src/model-contract.ts'
+import { OPENAI_CODEX_RUNTIME_PATH } from '../src/update-paths.ts'
 import { modelCatalogFixture } from './model-catalog-fixture.ts'
 import {
   OPENAI_CODEX_PROXY_DETECT_PATH,
@@ -156,7 +157,7 @@ describe('OpenAI Codex Plugin configuration card', () => {
 
   it('shows a dedicated remote-origin trust state without auth mutations and copies only the suggested command', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
-      expect(requestPath(input)).toBe(OPENAI_CODEX_AUTH_STATUS_PATH)
+      expect([OPENAI_CODEX_AUTH_STATUS_PATH, OPENAI_CODEX_RUNTIME_PATH]).toContain(requestPath(input))
       return json({ error: 'remote-web-origin-not-trusted' }, 403)
     })
     const writeText = vi.fn(async (_value: string): Promise<void> => undefined)
@@ -173,12 +174,15 @@ describe('OpenAI Codex Plugin configuration card', () => {
     fireEvent.click(screen.getByRole('button', { name: en.remoteOriginCopy }))
     await waitFor(() => { expect(writeText).toHaveBeenCalledWith(command) })
     expect(popup).not.toHaveBeenCalled()
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const paths = fetchMock.mock.calls.map(([input]) => requestPath(input))
+    expect(paths.filter(path => path !== OPENAI_CODEX_RUNTIME_PATH)).toEqual([OPENAI_CODEX_AUTH_STATUS_PATH])
+    expect(paths.filter(path => path === OPENAI_CODEX_RUNTIME_PATH)).toHaveLength(1)
   })
 
   it('offers a user-clicked browser link when the popup is blocked', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
       const path = requestPath(input)
+      if (path === OPENAI_CODEX_RUNTIME_PATH) return json({}, 404)
       if (path === OPENAI_CODEX_AUTH_STATUS_PATH) return json({ status: 'signed-out' })
       expect(path).toBe(OPENAI_CODEX_AUTH_LOGIN_PATH)
       return json({ url: 'https://auth.openai.com/authorize' })
@@ -198,12 +202,15 @@ describe('OpenAI Codex Plugin configuration card', () => {
     expect(link.target).toBe('_blank')
     expect(link.rel).toContain('noopener')
     expect(link.rel).toContain('noreferrer')
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const paths = fetchMock.mock.calls.map(([input]) => requestPath(input))
+    expect(paths.filter(path => path !== OPENAI_CODEX_RUNTIME_PATH)).toEqual([OPENAI_CODEX_AUTH_STATUS_PATH, OPENAI_CODEX_AUTH_LOGIN_PATH])
+    expect(paths.filter(path => path === OPENAI_CODEX_RUNTIME_PATH)).toHaveLength(1)
   })
 
   it('closes the popup and surfaces a failed login request', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
       const path = requestPath(input)
+      if (path === OPENAI_CODEX_RUNTIME_PATH) return json({}, 404)
       if (path === OPENAI_CODEX_AUTH_STATUS_PATH) return json({ status: 'signed-out' })
       expect(path).toBe(OPENAI_CODEX_AUTH_LOGIN_PATH)
       return json({ error: 'OAuth is unavailable' }, 503)
@@ -223,6 +230,7 @@ describe('OpenAI Codex Plugin configuration card', () => {
     const reauthMessage = 'OpenAI Codex authorization must be renewed'
     const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
       const path = requestPath(input)
+      if (path === OPENAI_CODEX_RUNTIME_PATH) return json({}, 404)
       if (path === OPENAI_CODEX_AUTH_STATUS_PATH) {
         return json({ status: 'reauth-required', message: reauthMessage })
       }
@@ -235,7 +243,7 @@ describe('OpenAI Codex Plugin configuration card', () => {
 
     render(<OpenAICodexSettings t={t} embedded />)
     expect(await screen.findByText(reauthMessage)).toBeTruthy()
-    expect(screen.getByRole('status').textContent).toContain(en.reauthRequired)
+    expect(within(screen.getByRole('tabpanel', { name: en.accountModule })).getByRole('status').textContent).toContain(en.reauthRequired)
     expect(screen.getByRole('button', { name: en.reauthorize })).toBeTruthy()
     expect(screen.queryByRole('button', { name: en.logout })).toBeNull()
     expect(zh.reauthRequired).toBe('需要重新登录')

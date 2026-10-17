@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { openaiCodexProvider } from '@earendil-works/pi-ai/providers/openai-codex'
-import { assertOpenAICodexContextWindowOverrides, openAICodexModelCatalog, withOpenAICodexContextWindowOverrides } from '../src/adapter.ts'
+import { assertOpenAICodexContextWindowOverrides, openAICodexModelCatalog, withOpenAICodexContextWindowOverrides, withOpenAICodexModels } from '../src/adapter.ts'
 import { decodeOpenAICodexModelCatalog, isValidOpenAICodexContextBudget, openAICodexContextLimit, openAICodexContextLimitSource, OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE, OPENAI_CODEX_CONTEXT_LIMIT_SOURCE } from '../src/model-contract.ts'
 
 describe('model-specific configuration ceilings', () => {
   it('keeps model-specific policy links pinned without changing old provenance', () => {
+    expect(OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE).toBe('https://github.com/openai/codex/blob/d63a9b8344cfe58bc78bbe319b560378fc8756ef/codex-rs/models-manager/models.json')
+    expect(OPENAI_CODEX_CONTEXT_LIMIT_SOURCE).toBe('https://github.com/openai/codex/blob/39598ed17885970828acd42a6370131ed0190a98/codex-rs/models-manager/models.json')
     expect(openAICodexContextLimitSource('gpt-6.1-sol')).toBe(OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE)
-    expect(openAICodexContextLimitSource('gpt-6-sol')).toBe(OPENAI_CODEX_CONTEXT_LIMIT_SOURCE)
+    for (const id of ['gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-sol', 'gpt-5.6-luna']) {
+      expect(openAICodexContextLimitSource(id)).toBe(OPENAI_CODEX_CONTEXT_LIMIT_SOURCE)
+    }
   })
   it.each([
     ['gpt-6-astra', 272_000, 872_000],
@@ -33,6 +37,25 @@ describe('model-specific configuration ceilings', () => {
       expect(() => assertOpenAICodexContextWindowOverrides({ [id]: budget }, catalog)).toThrow('integer from 1 to')
     }
     expect(() => assertOpenAICodexContextWindowOverrides({ [id]: null }, catalog)).not.toThrow()
+  })
+
+  it('keeps a 500k explicit or native budget separate from the globally shipped fallback', () => {
+    const id = 'gpt-6.1-sol'
+    const provider = openaiCodexProvider()
+    const fallback = withOpenAICodexModels({ ...provider, getModels: () => provider.getModels().filter(model => model.id !== id) })
+    const original = fallback.getModels().find(model => model.id === id)!
+    expect(original).toMatchObject({ contextWindow: 272_000, maxTokens: 128_000 })
+    const overridden = withOpenAICodexContextWindowOverrides(fallback, { [id]: 500_000 })
+    expect(overridden.getModels().find(model => model.id === id)).toMatchObject({ contextWindow: 500_000, maxTokens: 128_000 })
+    expect(withOpenAICodexContextWindowOverrides(fallback, {}).getModels().find(model => model.id === id)).toBe(original)
+    expect(original.contextWindow).toBe(272_000)
+    for (const model of fallback.getModels().filter(model => model.id !== id)) {
+      expect(overridden.getModels().find(entry => entry.id === model.id)).toBe(model)
+    }
+    const native = { ...original, name: 'Native provider metadata', contextWindow: 500_000, maxTokens: 96_000 }
+    const calibrated = withOpenAICodexModels({ ...provider, getModels: () => [native] })
+    expect(calibrated.getModels().find(model => model.id === id)).toMatchObject(native)
+    expect(native.contextWindow).toBe(500_000)
   })
 
   it('uses only installed defaults for unlisted models and newer defaults beyond the pinned ceiling', () => {

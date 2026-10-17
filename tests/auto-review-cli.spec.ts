@@ -9,6 +9,7 @@ function fixture(): AutoReviewProbeDependencies {
   return {
     diagnose: async () => ({
       package: 'dsh-codex-connect', version: '0.1.0-alpha.4.27', node: 'v22.19.0',
+      identity: { scope: 'standalone', loadedPluginVersion: '0.1.0-alpha.4.27', installedPluginVersion: '0.1.0-alpha.4.27', pluginVersionState: 'match', dshMetadataSource: 'plugin-installation' },
       credentialFile: { path: '/private/credential.json', state: 'owner-only', mode: '600' },
       capabilities: { modelProvider: true, search: false, imageTool: false, imageGeneration: false, changesHarnessDefaultModel: false, changesHarnessSearchRoute: false },
       providerConflict: false, hints: [],

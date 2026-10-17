@@ -20,7 +20,7 @@ Channel snapshot on 2026-10-14: npm `alpha` points to `0.2.0-alpha.4`; `latest` 
 
 ### Select an exact version before installation
 
-Check `dsh --version` before changing the requested profile. Use `dsh --help` to locate the CLI if needed; from a Harness checkout use `pnpm dsh --version`. The CLI string alone does not identify every installed model-runtime package: a CLI reporting `0.1.5-rc.1` can resolve `0.1.5-rc.2` packages. When the plugin is already installed, also run `dsh plugin --profile web exec dsh-codex-connect doctor --json` and inspect the installed `@deepseek-ai/dsh-llm`, `@deepseek-ai/dsh-llm-pi-ai`, and pi-ai versions. Substitute the requested profile. Select an exact pair from [verified-compatibility.json](verified-compatibility.json):
+Check `dsh --version` before changing the requested profile. Use `dsh --help` to locate the CLI if needed; from a Harness checkout use `pnpm dsh --version`. The CLI string alone does not identify every installed model-runtime package: a CLI reporting `0.1.5-rc.1` can resolve `0.1.5-rc.2` packages. When the plugin is already installed, use the [direct-bin diagnostic recipe](docs/runtime-identity.md#direct-standalone-doctor) with an explicitly identified installation anchor and inspect the selected `@deepseek-ai/dsh-llm`, `@deepseek-ai/dsh-llm-pi-ai`, and plugin-owned pi-ai versions. A `dsh plugin exec` wrapper may reconcile dependencies, so it is not a no-write diagnostic guarantee. An anchor selects metadata, not a running Host. Use the intended profile/home, not an unrelated Web installation. Select an exact pair from [verified-compatibility.json](verified-compatibility.json):
 
 | Installed DSH version | Codex Connect version to pin |
 | --- | --- |
@@ -170,11 +170,14 @@ Alpha 4.33 omits the `modelErrors` profile field required by RC model packages, 
 3. Run `dsh web --help` once to compose the installed profile without starting the server. DSH `0.1.2-rc.1` prepares profile plugin dependency fallback during this step.
 4. Run `dsh --profile web --dump-config` and require exactly one `llm-openai-codex` row loading `dsh-codex-connect`.
 5. Confirm the effective `agent-default-model` and `web.searchProvider` values are unchanged from before installation.
-6. Run secret-free diagnostics:
+6. Run the already installed bin directly for package-manager-free diagnostics, with independently identified paths and the correct `DSH_HOME`:
 
    ```sh
-   dsh plugin --profile web exec dsh-codex-connect doctor
+   node /absolute/profile/node_modules/dsh-codex-connect/lib/bin.js doctor --json \
+     --install-anchor /absolute/dsh/node_modules/@deepseek-ai/dsh/package.json
    ```
+
+   See [runtime identity](docs/runtime-identity.md) for packaged Desktop/ASAR, selected-vs-running evidence and the development settings receipt. `dsh plugin exec` can perform dependency reconciliation; do not use it as a no-write diagnostic guarantee.
 
 7. If the user explicitly requests login, open **Settings → Plugins → Plugin configuration → Codex Connect**, or check `status` and then use `login` or `login --device-code`. OAuth approval belongs to the user.
 
