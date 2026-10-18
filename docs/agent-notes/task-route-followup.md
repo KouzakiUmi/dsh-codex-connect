@@ -1,0 +1,7 @@
+# Task route follow-up to #315
+
+Main already contains #331's owned route registrations, live Connection re-resolution and stronger reload/authentication regression tests. The old #315 runtime diff must not be applied over that repair. This follow-up retains its remaining independent evidence: the packed-plugin route reload check, a failed legacy-state browser read followed by recovery, bilingual ordinary-subagent effort documentation, and a Fast Mode regression proving that priority selection preserves both the requested and wire reasoning effort.
+
+The installed check uses the selected Host's actual WebServer and Connection, synthetic signed browser cookies, two product unload/reload cycles, and no provider dispatch. It verifies missing/forged/cross-site credential rejection, structured missing-root replies, and route removal after disposal. Existing owner-bound recovery and authorized Stop/manual exits remain covered by the main HTTP suite. Task activation remains paused.
+
+Local validation used Node 24.19.0 and pnpm 10.30.3. The complete check passed 151 test files / 2,027 tests, lint, types, build, isolated imports, CLI, compatibility and package checks. The new installed checker also passed directly against the built package and the development Host. This is synthetic evidence, not real account, Desktop, image-model or physical-device acceptance. The first run on Node 26 failed historical child-process probes that use removed Node flags; the CI-aligned Node 24 run passed without source changes for that failure.

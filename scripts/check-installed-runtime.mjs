@@ -9,6 +9,7 @@ import { checkInstalledNativeCompaction } from './check-installed-native-compact
 import { checkInstalledImages } from './check-installed-images.mjs'
 import { createInstalledHostContext } from './installed-host-context.mjs'
 import { checkInstalledMetrics } from './check-installed-metrics.mjs'
+import { checkInstalledTaskHttp } from './check-installed-task-http.mjs'
 import { checkInstalledPreflight } from './check-installed-preflight.mjs'
 
 const JSON_SCHEMA_VERSION = 1
@@ -95,6 +96,7 @@ export async function checkInstalledRuntime(profilePackagePath, hostPackagePath 
     }
 
     const requestMetrics = await checkInstalledMetrics(importHost, OpenAICodex, packagePath)
+    const taskHttpLifecycle = await checkInstalledTaskHttp(importHost, OpenAICodex)
     const preflightActivity = await checkInstalledPreflight(importHost, OpenAICodex)
     const reserveTransitionsVerified = await checkInstalledReserve(importHost, OpenAICodex)
     const nativeCompactionLifecycle = await checkInstalledNativeCompaction(packagePath, hostPath)
@@ -112,6 +114,7 @@ export async function checkInstalledRuntime(profilePackagePath, hostPackagePath 
       images,
       requestMetrics,
       preflightActivity,
+      taskHttpLifecycle,
     }
   } finally {
     await ctx.fiber.dispose()
