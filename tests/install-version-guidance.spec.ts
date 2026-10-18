@@ -24,10 +24,15 @@ describe('installation version guidance', () => {
       !entry.verifiedDshVersions.includes(version))).toBe(true)
   })
 
-  it('records the checked candidate hosts without changing historical published pairings', async () => {
+  it('keeps published Alpha 5 pairings distinct from the unreleased rc.2 source candidate', async () => {
     const declared = JSON.parse(await readFile(new URL('../compatibility.json', import.meta.url), 'utf8'))
-    expect(compatibility.pluginVersions.find((entry: { version: string }) => entry.version === candidate)?.verifiedDshVersions)
-      .toEqual(declared.dshPluginApi.versions)
+    const published = ['0.1.7-rc.1', '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2',
+      '0.2.1-alpha.1', '0.2.1-alpha.2', '0.2.1-alpha.3', '0.2.1-alpha.4', '0.2.1-alpha.5', '0.2.1-rc.1']
+    expect(compatibility.pluginVersions.find((entry: { version: string }) => entry.version === '0.2.0-alpha.5')?.verifiedDshVersions)
+      .toEqual(published)
+    expect(declared.dshPluginApi.versions).toEqual([...published, '0.2.1-rc.2'])
+    expect(install).toContain('Unreleased source candidate')
+    expect(install).toContain('does not support DSH `0.2.1-rc.2`')
   })
 
   it.each([

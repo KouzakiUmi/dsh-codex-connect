@@ -88,7 +88,7 @@ Automated coverage uses synthetic tokens and quota responses. It verifies local 
 
 ### Search and image tools
 
-- `enableSearch: true` registers Codex as an available search provider and selects it for profile-wide searches. Disabling it unregisters the provider and restores the route that was active before Codex Search was enabled.
+- `enableSearch: true` registers Codex as an available search provider and selects it for profile-wide searches. Disabling it unregisters the provider and restores the underlying Host route. A newer Host route selection is preserved; on the rc.2 source candidate, live Host selections take precedence without restarting the service.
 - Search has a 30-second total deadline covering authentication, response headers and body reading. Responses larger than 1 MiB are rejected, and unfinished response bodies are cancelled on failure. Caller cancellation can end a search sooner.
 - `enableImageTool: true` registers `view_image` on vision-capable models. Remote reads accept credential-free public HTTP(S) only and revalidate DNS and redirects.
 - `enableImageGeneration: true` registers GPT Image generation and, in Alpha 4.48 builds, editing of explicitly selected session images. Prompt-only generation remains supported. Availability, dimensions, and quota remain account- and service-controlled.

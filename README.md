@@ -10,6 +10,8 @@ Community Alpha — not affiliated with or endorsed by OpenAI, ChatGPT, Codex, D
 
 Codex Connect adds the `openai-codex` model provider to the normal Harness agent loop. Harness continues to manage tools, permissions, approvals, attachments, session persistence, compaction, and recovery. Installing the plugin does not change your default model or search route, and it does not turn a ChatGPT subscription into an OpenAI Platform API key.
 
+> **Unreleased source compatibility:** the DSH `0.2.1-rc.2` candidate includes a Search-route adaptation and exact-version checks. The published Alpha 5 archive and supported-host table below do not include rc.2. See [the investigation](docs/agent-notes/dsh-021-rc2-compatibility.md); this is not a release or Desktop acceptance.
+
 ## Quick start
 
 This guide recommends Codex Connect `0.2.0-alpha.5` / DSH `0.2.1-rc.1`; the other exact supported hosts are listed below. Check `dsh --version` first and use `doctor --json` for local diagnostics; the CLI version alone does not prove which model-runtime packages are installed, and missing metadata is reported as unknown. For other versions, use [Installation and upgrades](INSTALL.md). A moving npm tag such as `alpha` is not a compatibility guarantee.

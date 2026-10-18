@@ -9,6 +9,7 @@ import { checkInstalledNativeCompaction } from './check-installed-native-compact
 import { checkInstalledImages } from './check-installed-images.mjs'
 import { createInstalledHostContext } from './installed-host-context.mjs'
 import { checkInstalledMetrics } from './check-installed-metrics.mjs'
+import { checkInstalledSearchRoute } from './check-installed-search-route.mjs'
 import { checkInstalledTaskHttp } from './check-installed-task-http.mjs'
 import { checkInstalledPreflight } from './check-installed-preflight.mjs'
 
@@ -95,6 +96,7 @@ export async function checkInstalledRuntime(profilePackagePath, hostPackagePath 
       throw new Error(`runtime retained the ${PROVIDER_ID} provider after plugin disposal`)
     }
 
+    const searchRouteLifecycle = await checkInstalledSearchRoute(importHost, OpenAICodex)
     const requestMetrics = await checkInstalledMetrics(importHost, OpenAICodex, packagePath)
     const taskHttpLifecycle = await checkInstalledTaskHttp(importHost, OpenAICodex)
     const preflightActivity = await checkInstalledPreflight(importHost, OpenAICodex)
@@ -113,6 +115,7 @@ export async function checkInstalledRuntime(profilePackagePath, hostPackagePath 
       nativeCompactionLifecycle,
       images,
       requestMetrics,
+      searchRouteLifecycle,
       preflightActivity,
       taskHttpLifecycle,
     }

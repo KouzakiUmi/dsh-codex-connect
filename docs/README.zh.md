@@ -12,6 +12,8 @@
 
 Codex Connect 为标准 Harness agent loop 添加 `openai-codex` 模型提供方。工具、权限、审批、附件、会话持久化、压缩与恢复继续由 Harness 管理。安装插件不会改变默认模型或搜索路由，也不会把 ChatGPT 订阅变成 OpenAI Platform API Key。
 
+> **未发布源码兼容候选：** DSH `0.2.1-rc.2` 候选包含 Search 路由适配及精确版本检查。下方已发布 Alpha 5 包及宿主表不包含 rc.2。详见[调查记录](agent-notes/dsh-021-rc2-compatibility.md)；这不是发布或 Desktop 实机验收。
+
 ## 快速开始
 
 本指南推荐 Codex Connect `0.2.0-alpha.5` / DSH `0.2.1-rc.1`；其他受支持的精确宿主版本见下表。请先运行 `dsh --version`，再用 `doctor --json` 做本地诊断；单凭 CLI 版本无法证明实际安装的模型运行库版本，缺少版本元数据时会报告未知。其他版本请查阅[安装与升级](../INSTALL.md)。`alpha` 等会移动的 npm tag 不代表兼容性保证。

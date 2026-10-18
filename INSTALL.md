@@ -1,5 +1,7 @@
 # Installation Runbook for CLI Agents
 
+> **Unreleased source candidate:** DSH `0.2.1-rc.2` needs the source Search-route adaptation described in [the rc.2 investigation](docs/agent-notes/dsh-021-rc2-compatibility.md). Published `dsh-codex-connect@0.2.0-alpha.5` does not support DSH `0.2.1-rc.2`. The published table and installation recommendations below remain unchanged. Source checks do not establish Desktop or real-account acceptance.
+
 The recommended pair is Codex Connect `0.2.0-alpha.5` / DSH `0.2.1-rc.1`. Installation/runtime regression is verified with exact DSH `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`, `0.2.0-rc.2`, `0.2.1-alpha.1`, `0.2.1-alpha.2`, `0.2.1-alpha.3`, `0.2.1-alpha.4`, `0.2.1-alpha.5` or `0.2.1-rc.1`, using a consistent host package set and plugin-owned pi-ai `0.85.1`. Alpha 5 delivers runtime-identity diagnostics and exact alpha.4/alpha.5/rc.1 support while retaining all earlier supported hosts. Task remains paused and defaults remain off; keyless checks do not establish new real-account, Desktop or authenticated new-host browser acceptance. Earlier DSH pairings retain their separately published plugin versions below.
 
 The exact DSH `0.2.1-alpha.1` adaptation is published in `0.2.0-alpha.2`. The earlier `0.2.0-alpha.1` artifact remains unchanged and rejects this host. See the [release notes](docs/release-notes/0.2.0-alpha.2.md) for scope and verification limits; keyless compatibility does not establish live-account acceptance.
