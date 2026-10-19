@@ -34,6 +34,16 @@ afterEach(async () => {
 })
 
 describe('context windows through the real Host settings and LLM registry', () => {
+  it('uses the calibrated Sol61 default and lets a user override or reset it independently', async () => {
+    const runtime = await boot()
+    const sol61 = 'gpt-6.1-sol'
+    expect((await runtime.llm.resolveModelInfo(provider, sol61)).context?.contextWindow).toBe(500_000)
+    await runtime.settings.update(ns, { contextWindowOverrides: { [sol61]: 450_000, [other]: 340_000 } })
+    expect((await runtime.llm.resolveModelInfo(provider, sol61)).context?.contextWindow).toBe(450_000)
+    await runtime.settings.update(ns, { contextWindowOverrides: { [sol61]: null } })
+    expect((await runtime.llm.resolveModelInfo(provider, sol61)).context?.contextWindow).toBe(500_000)
+    expect((await runtime.llm.resolveModelInfo(provider, other)).context?.contextWindow).toBe(340_000)
+  })
   it('rejects invalid profile budgets before adapter registration', async () => {
     await expect(boot({ contextWindowOverrides: { [model]: 872_001 } }))
       .rejects.toThrow('integer from 1 to 872000')

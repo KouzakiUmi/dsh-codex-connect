@@ -181,6 +181,8 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `requestMetricsDirectory` | 不设置／关闭 | 启动配置中的私有绝对路径，记录[本地请求计量](request-metrics.zh.md)，不上传遥测 |
 | `requestMetricsMaxBytes` | `16777216` | 每进程单日志上限，整数 `4096`–`67108864`；不配置目录则不采集 |
 
+Sol61（`gpt-6.1-sol`）的缺失条目或已知旧内置静态元数据使用 500,000 token 基础默认值。显式提供方元数据及用户覆盖值依次优先；重置恢复有效基础默认值。872,000 本地覆盖上限及输出上限不变。这遵循[官方 Work/Codex 产品默认策略](https://help.openai.com/en/articles/20001275-chatgpt-work-and-codex)，不是端点容量实测。详见[来源校准边界](agent-notes/sol61-context-default.md)。宿主压缩策略不变，但计算预算可能随更大的上下文输入而变化。
+
 `contextWindowOverrides` 修改的是客户端预算，不是 OpenAI 服务端容量。未知模型 ID 或超过插件文档配置上限的值会明确失败。将整个字段设为 `null` 可屏蔽继承的全部覆盖值；将单个模型设为 `null` 可恢复其目录默认值，同时保留其他条目。请为输出和协议开销预留空间，并把更大的数值视为特定部署的实验，不能当作账户权限证据。所有权与持久化规则见 [Alpha 设计](design.zh.md)。
 
 ## 诊断与恢复

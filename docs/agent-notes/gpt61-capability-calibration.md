@@ -1,5 +1,7 @@
 # GPT-6.1 Sol capability calibration — 2026-10-16
 
+Historical Alpha 5 checkpoint. The later [Sol61 default-alignment note](sol61-context-default.md) records the separately authorized 500k source change; the observations and then-current decision below remain dated evidence.
+
 Development follow-up, not a published version or live-account acceptance. This review changes only Sol61's pinned configuration-policy provenance, not model defaults, budgets, routing, credentials, entitlements, Task or compaction policy.
 
 ## Four different facts, not four interchangeable limits

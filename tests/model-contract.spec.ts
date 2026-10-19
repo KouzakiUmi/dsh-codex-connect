@@ -14,7 +14,7 @@ describe('model-specific configuration ceilings', () => {
   })
   it.each([
     ['gpt-6-astra', 272_000, 872_000],
-    ['gpt-6.1-sol', 272_000, 872_000],
+    ['gpt-6.1-sol', 500_000, 872_000],
     ['gpt-6-sol', 272_000, 872_000],
     ['gpt-6-luna', 272_000, 872_000],
     ['gpt-5.6-sol', 272_000, 872_000],
@@ -39,23 +39,23 @@ describe('model-specific configuration ceilings', () => {
     expect(() => assertOpenAICodexContextWindowOverrides({ [id]: null }, catalog)).not.toThrow()
   })
 
-  it('keeps a 500k explicit or native budget separate from the globally shipped fallback', () => {
+  it('keeps the calibrated fallback separate from explicit or native budgets', () => {
     const id = 'gpt-6.1-sol'
     const provider = openaiCodexProvider()
     const fallback = withOpenAICodexModels({ ...provider, getModels: () => provider.getModels().filter(model => model.id !== id) })
     const original = fallback.getModels().find(model => model.id === id)!
-    expect(original).toMatchObject({ contextWindow: 272_000, maxTokens: 128_000 })
-    const overridden = withOpenAICodexContextWindowOverrides(fallback, { [id]: 500_000 })
-    expect(overridden.getModels().find(model => model.id === id)).toMatchObject({ contextWindow: 500_000, maxTokens: 128_000 })
+    expect(original).toMatchObject({ contextWindow: 500_000, maxTokens: 128_000 })
+    const overridden = withOpenAICodexContextWindowOverrides(fallback, { [id]: 450_000 })
+    expect(overridden.getModels().find(model => model.id === id)).toMatchObject({ contextWindow: 450_000, maxTokens: 128_000 })
     expect(withOpenAICodexContextWindowOverrides(fallback, {}).getModels().find(model => model.id === id)).toBe(original)
-    expect(original.contextWindow).toBe(272_000)
+    expect(original.contextWindow).toBe(500_000)
     for (const model of fallback.getModels().filter(model => model.id !== id)) {
       expect(overridden.getModels().find(entry => entry.id === model.id)).toBe(model)
     }
-    const native = { ...original, name: 'Native provider metadata', contextWindow: 500_000, maxTokens: 96_000 }
+    const native = { ...original, name: 'Native provider metadata', contextWindow: 600_000, maxTokens: 96_000 }
     const calibrated = withOpenAICodexModels({ ...provider, getModels: () => [native] })
     expect(calibrated.getModels().find(model => model.id === id)).toMatchObject(native)
-    expect(native.contextWindow).toBe(500_000)
+    expect(native.contextWindow).toBe(600_000)
   })
 
   it('uses only installed defaults for unlisted models and newer defaults beyond the pinned ceiling', () => {

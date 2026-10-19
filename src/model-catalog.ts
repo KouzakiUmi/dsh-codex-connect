@@ -9,6 +9,10 @@ import { OPENAI_CODEX_PROVIDER } from './store.ts'
 /** Official Codex id supplied when the installed pi-ai catalog predates Astra. */
 export const OPENAI_CODEX_ASTRA_MODEL_ID = 'gpt-6-astra'
 
+// Work/Codex product default; the older embedded catalog remains the override-ceiling source.
+// https://help.openai.com/en/articles/20001275-chatgpt-work-and-codex
+const SOL61_CONTEXT_WINDOW = 500_000
+
 const OPENAI_CODEX_ASTRA_MODEL: Model<'openai-codex-responses'> = {
   id: OPENAI_CODEX_ASTRA_MODEL_ID,
   name: 'GPT-6-Astra',
@@ -42,9 +46,15 @@ export function withOpenAICodexAstra(
   return { ...provider, getModels: () => models }
 }
 
-/** Missing Codex catalog entries; never replace upstream capacity, pricing or capabilities. */
+/**
+ * Fill missing entries and calibrate only a known stale bundled Sol61 default.
+ * Unmarked/provider metadata wins, even when its value happens to be 272000.
+ * The bundled-static marker belongs only at the pinned pi-ai factory boundary;
+ * it is not appropriate for an authenticated remote catalog.
+ */
 export function withOpenAICodexModels(
   provider: Provider<'openai-codex-responses'>,
+  source: 'provider' | 'bundled-static' = 'provider',
 ): Provider<'openai-codex-responses'> {
   const baseline = withOpenAICodexAstra(provider)
   const models = [...baseline.getModels()]
@@ -52,15 +62,24 @@ export function withOpenAICodexModels(
     const index = models.findIndex(model => model.id === id)
     // Ultra is Codex client orchestration, not a pi-ai thinking level.
     const thinkingLevelMap = { off: null, minimal: null, xhigh: 'xhigh', max: 'max' } as const
-    if (index === -1) models.push({ ...OPENAI_CODEX_ASTRA_MODEL, id, name, thinkingLevelMap })
-    else models[index] = { ...models[index]!, thinkingLevelMap: { ...models[index]!.thinkingLevelMap, ...thinkingLevelMap } }
+    if (index === -1) models.push({ ...OPENAI_CODEX_ASTRA_MODEL, id, name, thinkingLevelMap,
+      ...(id === 'gpt-6.1-sol' ? { contextWindow: SOL61_CONTEXT_WINDOW } : {}),
+    })
+    else {
+      const model = models[index]!
+      models[index] = { ...model,
+        ...(source === 'bundled-static' && id === 'gpt-6.1-sol' && model.contextWindow === 272_000
+          ? { contextWindow: SOL61_CONTEXT_WINDOW } : {}),
+        thinkingLevelMap: { ...model.thinkingLevelMap, ...thinkingLevelMap },
+      }
+    }
   }
   return { ...baseline, getModels: () => models }
 }
 
 /** Return a detached copy of the effective Codex model catalog. */
 export function openAICodexModelCatalog(): readonly OpenAICodexModelCatalogEntry[] {
-  return withOpenAICodexModels(openaiCodexProvider()).getModels().map(model => ({
+  return withOpenAICodexModels(openaiCodexProvider(), 'bundled-static').getModels().map(model => ({
     id: model.id, name: model.name, contextWindow: model.contextWindow,
     ...openAICodexContextLimit(model.id, model.contextWindow),
   }))

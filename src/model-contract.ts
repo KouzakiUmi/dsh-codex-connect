@@ -47,7 +47,7 @@ export function isValidOpenAICodexContextBudget(value: number, maximum: number):
 export interface OpenAICodexModelCatalogEntry {
   id: string
   name: string
-  /** Unmodified provider-catalog default, even when an override is active. */
+  /** Effective base default before user overrides; a known bundled Sol61 snapshot is calibrated. */
   contextWindow: number
   /** Local configuration ceiling; account/route capacity can differ. */
   maxContextWindow: number

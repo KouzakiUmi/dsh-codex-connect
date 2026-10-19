@@ -49,6 +49,25 @@ afterEach(() => {
 })
 
 describe('context-window request snapshots', () => {
+  it('prepares Sol61 at 500k while a later explicit budget wins without changing output or transport', async () => {
+    vi.stubGlobal('fetch', () => { throw new Error('Network is forbidden in this test') })
+    const credentials = {
+      read: async () => ({ type: 'oauth', accountId: 'offline-account', access: 'offline-test-access', refresh: 'offline-test-refresh', expires: Date.now() + 3_600_000 }),
+    } as unknown as OpenAICodexCredentialStore
+    credentials.captureActiveAccount = async () => credentials
+    const overrides: Record<string, number> = {}
+    const adapter = createOpenAICodexAdapter(credentials, () => undefined, undefined, undefined, undefined, undefined, () => overrides)
+    const prepared = await adapter.prepareCall('openai-codex', 'gpt-6.1-sol')
+    overrides['gpt-6.1-sol'] = 450_000
+    const current = await adapter.prepareCall('openai-codex', 'gpt-6.1-sol')
+    const options = { provider: 'openai-codex', model: 'gpt-6.1-sol', messages: [], maxTokens: 1024 }
+    for await (const _event of prepared.stream(options)) { /* offline capture */ }
+    for await (const _event of current.stream(options)) { /* offline capture */ }
+    expect(observed.map(({ contextWindow, maxTokens, transport }) => ({ contextWindow, maxTokens, transport }))).toEqual([
+      { contextWindow: 500_000, maxTokens: 1024, transport: 'sse' },
+      { contextWindow: 450_000, maxTokens: 1024, transport: 'sse' },
+    ])
+  })
   it('streams a prepared call with its captured window while new calls use the updated window and unchanged output budget', async () => {
     vi.stubGlobal('fetch', () => { throw new Error('Network is forbidden in this test') })
     const credentials = {

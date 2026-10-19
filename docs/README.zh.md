@@ -170,6 +170,8 @@ pnpm run check:dsh-install
 
 Codex Connect 的修改与新增工作 Copyright 2026 Frank Song。本项目包含派生自 [Yan-Zero/dsh-codex](https://github.com/Yan-Zero/dsh-codex) 的软件；上游内容继续保留 Copyright 2026 Yan-Zero。两部分均按 Apache-2.0 发布，详情见 [NOTICE](../NOTICE)。
 
-已发布的 `0.2.0-alpha.1` 将 `gpt-6.1-sol` 加入手动模型目录与配置选择器，支持 Low、Medium、High、Xhigh、Max；Default 不显式发送推理强度，不支持 Ultra 编排。Codex 目录默认上下文保持 272,000，允许的本地配置上限为 872,000；这不是 API 产品窗口，也不能证明账户访问权限。详见[元数据与验证](agent-notes/gpt61-sol-support.md)。不会扩大 Adaptive Task 授权。
+已发布的 `0.2.0-alpha.1` 将 `gpt-6.1-sol` 加入手动模型目录与配置选择器，支持 Low、Medium、High、Xhigh、Max；Default 不显式发送推理强度，不支持 Ultra 编排。该版本当时的 Codex 回退值为 272,000，允许的本地配置上限为 872,000；这不是 API 产品窗口，也不能证明账户访问权限。详见[元数据与验证](agent-notes/gpt61-sol-support.md)。不会扩大 Adaptive Task 授权。
 
-Alpha 5 能力校准：[来源对照](agent-notes/gpt61-capability-calibration.md) 区分锁定目录的 272k 回退值／872k 本地上限、搜索结果收录的官方 Work/Codex 产品文字所宣称的 500k，以及另一 API 产品的限制。本轮仅更新 Sol61 的策略来源锁定；默认值、原生提供方元数据优先级和 Fast／effort 行为不变。没有验证账户或端点的实际容量。
+Alpha 5 能力校准：[来源对照](agent-notes/gpt61-capability-calibration.md) 区分锁定目录的 272k 回退值／872k 本地上限、搜索结果收录的官方 Work/Codex 产品文字所宣称的 500k，以及另一 API 产品的限制。该历史变更仅更新 Sol61 的策略来源锁定；当时的默认值、原生提供方元数据优先级和 Fast／effort 行为不变。没有验证账户或端点的实际容量。
+
+尚未发布的 #338 源码后续修复：按官方 Work/Codex 产品默认策略，将 Sol61 缺失条目和已知旧内置静态元数据的基础默认值校准为 **500,000 token**。显式提供方元数据与用户覆盖值仍优先；其他模型、输出上限和 872,000 本地配置上限不变。[范围与证据](agent-notes/sol61-context-default.md) 区分校准默认值与真实路由容量。

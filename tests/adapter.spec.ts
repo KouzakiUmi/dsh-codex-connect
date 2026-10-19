@@ -24,7 +24,7 @@ describe('OpenAI Codex rc.2 adapter profile', () => {
     const baseline = provider.getModels().filter(model => model.id !== id)
     const patched = withOpenAICodexModels({ ...provider, getModels: () => baseline })
     const fallback = patched.getModels().find(model => model.id === id)!
-    expect(fallback).toMatchObject({ id, contextWindow: 272_000, maxTokens: 128_000,
+    expect(fallback).toMatchObject({ id, contextWindow: id === 'gpt-6.1-sol' ? 500_000 : 272_000, maxTokens: 128_000,
       provider: OPENAI_CODEX_PROVIDER, api: 'openai-codex-responses', input: ['text', 'image'],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } })
     const native = { ...fallback, name: 'Native model', contextWindow: 300_000, maxTokens: 64_000,
