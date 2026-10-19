@@ -1,6 +1,6 @@
 import z from "@deepseek-ai/schemastery";
+import { GenerateOptions, RetryPolicyConfig, StreamChunk } from "@deepseek-ai/dsh-llm";
 import { AuthInteraction, Credential, CredentialInfo, CredentialStore, OAuthCredential } from "@earendil-works/pi-ai";
-import { GenerateOptions, StreamChunk } from "@deepseek-ai/dsh-llm";
 import "@deepseek-ai/dsh-timeout";
 import { Context, Service, Volatile } from "@deepseek-ai/cordis";
 import "@deepseek-ai/dsh-tools";
@@ -924,6 +924,8 @@ export declare const inject: string[];
 export declare const OPENAI_CODEX_SETTINGS_NS = "llm-openai-codex";
 /** Plain configuration accepted by direct Cordis composition and unit tests. */
 export interface Config {
+  /** Optional Host model-request retry policy; omission preserves defaults. Reload to change. */
+  retryPolicy?: RetryPolicyConfig | undefined;
   /** Opt-in absolute owner-only directory for local request evidence; never uploads telemetry. Restart to change. */
   requestMetricsDirectory?: string | undefined;
   /** Per-process journal limit; reaching it stops recording with a warning, not model execution. */
@@ -979,6 +981,7 @@ export interface Config {
 }
 /** Runtime configuration exposes each editable field through Cordis's public Volatile type. */
 export interface VolatileConfig {
+  retryPolicy?: RetryPolicyConfig | undefined;
   requestMetricsDirectory?: string | undefined;
   requestMetricsMaxBytes: number;
   oauthTimeoutMs: number;

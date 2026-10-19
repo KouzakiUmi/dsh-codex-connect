@@ -12,6 +12,7 @@ import { checkInstalledMetrics } from './check-installed-metrics.mjs'
 import { checkInstalledSearchRoute } from './check-installed-search-route.mjs'
 import { checkInstalledTaskHttp } from './check-installed-task-http.mjs'
 import { checkInstalledPreflight } from './check-installed-preflight.mjs'
+import { checkInstalledRetryPolicy } from './check-installed-retry-policy.mjs'
 
 const JSON_SCHEMA_VERSION = 1
 const PROVIDER_ID = 'openai-codex'
@@ -100,6 +101,7 @@ export async function checkInstalledRuntime(profilePackagePath, hostPackagePath 
     const requestMetrics = await checkInstalledMetrics(importHost, OpenAICodex, packagePath)
     const taskHttpLifecycle = await checkInstalledTaskHttp(importHost, OpenAICodex)
     const preflightActivity = await checkInstalledPreflight(importHost, OpenAICodex)
+    const retryPolicy = await checkInstalledRetryPolicy(importHost, OpenAICodex)
     const reserveTransitionsVerified = await checkInstalledReserve(importHost, OpenAICodex)
     const nativeCompactionLifecycle = await checkInstalledNativeCompaction(packagePath, hostPath)
     const toolsManifest = JSON.parse(await readFile(createRequire(hostPath).resolve('@deepseek-ai/dsh-tools/package.json'), 'utf8'))
@@ -117,6 +119,7 @@ export async function checkInstalledRuntime(profilePackagePath, hostPackagePath 
       requestMetrics,
       searchRouteLifecycle,
       preflightActivity,
+      retryPolicy,
       taskHttpLifecycle,
     }
   } finally {

@@ -11,6 +11,8 @@ import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { randomUUID } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import z from '@deepseek-ai/schemastery'
+import { RetryPolicySchema, resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
+import type { RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import type {} from '@deepseek-ai/dsh-attachment'
 import type {} from '@deepseek-ai/dsh-agent'
@@ -250,6 +252,8 @@ export const OPENAI_CODEX_SETTINGS_NS = OPENAI_CODEX_SETTINGS_NAMESPACE
 
 /** Plain configuration accepted by direct Cordis composition and unit tests. */
 export interface Config {
+  /** Optional Host model-request retry policy; omission preserves defaults. Reload to change. */
+  retryPolicy?: RetryPolicyConfig | undefined
   /** Opt-in absolute owner-only directory for local request evidence; never uploads telemetry. Restart to change. */
   requestMetricsDirectory?: string | undefined
   /** Per-process journal limit; reaching it stops recording with a warning, not model execution. */
@@ -320,6 +324,10 @@ function parseSettingsContextWindowOverrides(
 }
 
 const configSchema = z.object({
+  retryPolicy: z.transform(z.union([z.const(undefined), RetryPolicySchema]), value => {
+    resolveRetryPolicy(value, 'dsh-codex-connect retryPolicy')
+    return value
+  }).description('Optional Host model-request retry policy. Omit for existing defaults; reload the plugin after changes. More retries can consume more quota. The Host retry plugin executes this policy; cancellation and request accounting remain Host-owned.'),
   requestMetricsDirectory: z.union([z.const(undefined), z.string()]),
   requestMetricsMaxBytes: z.number().step(1).min(4096).max(64 * 1024 * 1024).default(16 * 1024 * 1024),
   oauthTimeoutMs: z.number().step(1).min(1_000).max(1_800_000).default(OPENAI_CODEX_AUTHORIZATION_TIMEOUT_MS),
@@ -352,6 +360,7 @@ const configSchema = z.object({
 
 /** Runtime configuration exposes each editable field through Cordis's public Volatile type. */
 export interface VolatileConfig {
+  retryPolicy?: RetryPolicyConfig | undefined
   requestMetricsDirectory?: string | undefined
   requestMetricsMaxBytes: number
   oauthTimeoutMs: number
@@ -479,6 +488,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       taskRuntime,
       () => resolveOpenAICodexSettings(current()).enableImageGeneration,
       config.preflightActivity,
+      config.retryPolicy,
     ),
   )
   registerImageHandleBridge(ctx, {

@@ -43,6 +43,27 @@ Use `list_subagent_models` to inspect the authorized routes and advertised effor
 
 Workflow `agent()` is a separate Host interface: these exact DSH versions accept only `label`, `phase`, `schema`, `provider`, and `model`. They do not accept `reasoningEffort` or `reasoning_effort`; the ordinary subagent setting does not add those Workflow options. Model metadata and local route validation do not prove account entitlement.
 
+## Request retry policy
+
+The source configuration accepts an optional startup-only `retryPolicy` in the Codex Connect plugin row. This is not a new control in **More settings**. Reload the plugin through the Host after editing its configuration. Omit the key to retain the Host's current normal policy: five retries after the initial attempt, retryable codes `EMPTY_RESPONSE`, `RATE_LIMIT`, `SERVER`, `TIMEOUT`, and `TRANSPORT`, and backoff of 500 ms initially, capped at 10,000 ms, with a 0.1 jitter ratio.
+
+```yaml
+retryPolicy:
+  mode: normal
+  maxRetries: 10
+  retryableCodes: [EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT]
+  backoff:
+    initialDelayMs: 1000
+    maxDelayMs: 20000
+    jitterRatio: 0.1
+```
+
+This uses the installed Host's `RetryPolicySchema` and resolver. In `normal` mode, `maxRetries` is a nonnegative safe integer; zero disables policy retries. Codes must be a nonempty list of distinct nonempty strings. Backoff delays must be positive finite numbers no greater than 2,147,483,647 ms, with `initialDelayMs <= maxDelayMs`, and jitter must be between 0 and 1. Unknown policy/backoff keys and invalid active values fail loading rather than being silently ignored. Remove the key to restore defaults; do not use `null` as a policy.
+
+The Host also supports explicit `mode: always` with `backoff`, which retries every model-request failure without a count limit until success, cancellation or disposal; it is never the default. In layered configurations, the Host ignores retained normal-only fields in `always` mode; they do not impose a retry limit. The Host retry plugin executes the registered policy. This setting neither installs/enables that plugin nor changes retries for OAuth, quota, Search, images or Auto-review. It does not bypass caller cancellation, request accounting, preflight deadlines or other Host limits. The policy is captured when the adapter is created; already prepared calls retain their captured policy.
+
+More retries can produce more billable attempts and consume additional quota. A backoff schedule is not a total request deadline or a guaranteed outage-recovery window: request durations, provider delays, jitter, cancellation and other limits still apply. This source change is not included retroactively in the immutable Alpha 7 npm package, and synthetic checks do not establish live proxy/account recovery.
+
 ## Optional capabilities
 
 Fresh installations register the model provider and leave every additional capability disabled:

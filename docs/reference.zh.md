@@ -43,6 +43,27 @@ DSH `0.2.0-rc.2` 和 `0.2.1-alpha.1` 的普通 Harness 子代理支持显式指�
 
 Workflow 的 `agent()` 是宿主的另一个接口：这两个精确 DSH 版本仅接受 `label`、`phase`、`schema`、`provider` 和 `model`，不接受 `reasoningEffort` 或 `reasoning_effort`；普通子代理设置不会为 Workflow 添加这些参数。模型元数据与本地路由校验不能证明账户具有调用权限。
 
+## 请求重试策略
+
+源码配置允许在 Codex Connect 插件行中添加仅加载时读取的可选 `retryPolicy`。这不是 **更多设置** 中的新控件；编辑配置后通过宿主重新加载插件。省略该键时保留宿主当前的普通策略：初次尝试后最多重试五次，可重试码为 `EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT` 和 `TRANSPORT`，初始退避 500 ms、上限 10,000 ms、抖动比例 0.1。
+
+```yaml
+retryPolicy:
+  mode: normal
+  maxRetries: 10
+  retryableCodes: [EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT]
+  backoff:
+    initialDelayMs: 1000
+    maxDelayMs: 20000
+    jitterRatio: 0.1
+```
+
+配置复用已安装宿主的 `RetryPolicySchema` 和解析器。`normal` 模式的 `maxRetries` 必须是非负安全整数；零表示不执行策略重试。错误码列表不能为空，条目须为不重复的非空字符串。退避延迟须为不超过 2,147,483,647 ms 的正有限数，且 `initialDelayMs <= maxDelayMs`；抖动比例须在 0 到 1 之间。策略及退避对象中的未知键、当前模式的非法有效值会使加载失败，不会被静默忽略。删除该键即可恢复默认值，不要用 `null` 作为策略。
+
+宿主还支持显式 `mode: always` 和 `backoff`：对所有模型请求失败持续重试，不限制次数，直到成功、取消或卸载；它从不默认启用。切换分层配置到 `always` 时，宿主会忽略保留的普通模式专用字段，它们不会限制重试次数。已注册策略由宿主重试插件执行，本配置不会安装或启用该插件，也不改变 OAuth、额度、Search、图片或 Auto-review 的重试。调用方取消、请求计量、preflight 截止时间和其他宿主限制均保留。适配器创建时捕获策略，已经准备的调用保留各自捕获的策略。
+
+更多重试可能增加计费尝试次数并消耗额外额度。退避计划不是总请求截止时间，也不保证某个故障恢复窗口；请求耗时、服务端延迟、抖动、取消和其他限制仍会影响结果。这项源码变更不会追溯进入不可变的 Alpha 7 npm 安装包；合成检查不代表真实代理或账号的恢复验收。
+
 ## 可选能力
 
 新安装只注册模型提供方，其他能力全部保持关闭：
