@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 
 const install = await readFile(new URL('../INSTALL.md', import.meta.url), 'utf8')
 const compatibility = JSON.parse(await readFile(new URL('../verified-compatibility.json', import.meta.url), 'utf8'))
-const candidate = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version
 const firstInstall = install.indexOf('dsh plugin --profile web add ')
 const preflight = install.slice(0, firstInstall)
 const shellBlocks = [...install.matchAll(/```sh\s*\n([\s\S]*?)```/gu)]
@@ -19,7 +18,9 @@ describe('installation version guidance', () => {
     expect(chinese).toContain('**已发布的维护版本：**')
     expect(install).toContain('Published Alpha 5')
     for (const guide of [english, chinese, install]) expect(guide).toContain(`\`${version}\``)
-    expect(compatibility.pluginVersions.filter((entry: { version: string }) => entry.version !== candidate)
+    const firstAlpha5 = compatibility.pluginVersions.findIndex((entry: { version: string }) => entry.version === '0.2.0-alpha.5')
+    expect(firstAlpha5).toBeGreaterThanOrEqual(0)
+    expect(compatibility.pluginVersions.slice(0, firstAlpha5)
       .every((entry: { verifiedDshVersions: string[] }) =>
       !entry.verifiedDshVersions.includes(version))).toBe(true)
   })
