@@ -72,7 +72,7 @@ afterEach(async () => {
 })
 
 describe('legacy Codex search history migration', () => {
-  it('dry-runs, backs up, repairs, and remains idempotent across concatenated frames', async () => {
+  it('dry-runs concatenated frames without modifying history on every platform', async () => {
     const artifact = await createLegacyArtifact('session-fixture')
 
     await expect(migrateOpenAICodexSearchHistory({ root: currentRoot() })).resolves.toMatchObject({
@@ -82,6 +82,11 @@ describe('legacy Codex search history migration', () => {
       files: [{ path: artifact.path, changedEvents: 1 }],
     })
     await expect(readFile(artifact.path)).resolves.toEqual(artifact.original)
+    await expect(readFile(artifact.path + OPENAI_CODEX_HISTORY_BACKUP_SUFFIX)).rejects.toMatchObject({ code: 'ENOENT' })
+  })
+
+  it.skipIf(process.platform === 'win32')('backs up, repairs, and remains idempotent across concatenated frames', async () => {
+    const artifact = await createLegacyArtifact('session-fixture')
 
     await expect(migrateOpenAICodexSearchHistory({ root: currentRoot(), apply: true, confirmStopped: true })).resolves.toMatchObject({
       mode: 'apply',
@@ -124,8 +129,12 @@ describe('legacy Codex search history migration', () => {
     const torn = complete.subarray(0, -1)
     await writeFile(path, torn)
 
-    await expect(migrateOpenAICodexSearchHistory({ root: currentRoot(), apply: true, confirmStopped: true }))
+    await expect(migrateOpenAICodexSearchHistory({ root: currentRoot() }))
       .rejects.toThrow(`Codex search history migration failed at ${path}`)
+    if (process.platform !== 'win32') {
+      await expect(migrateOpenAICodexSearchHistory({ root: currentRoot(), apply: true, confirmStopped: true }))
+        .rejects.toThrow(`Codex search history migration failed at ${path}`)
+    }
     await expect(readFile(path)).resolves.toEqual(torn)
     await expect(readFile(path + OPENAI_CODEX_HISTORY_BACKUP_SUFFIX)).rejects.toMatchObject({ code: 'ENOENT' })
   })
@@ -145,7 +154,7 @@ describe('legacy Codex search history migration', () => {
     await expect(readFile(outside)).resolves.toEqual(artifact.original)
   })
 
-  it('refuses a same-content backup that is not linked to the current artifact', async () => {
+  it.skipIf(process.platform === 'win32')('refuses a same-content backup that is not linked to the current artifact', async () => {
     const artifact = await createLegacyArtifact('session-detached-backup')
     await writeFile(artifact.path + OPENAI_CODEX_HISTORY_BACKUP_SUFFIX, artifact.original)
 
@@ -157,7 +166,7 @@ describe('legacy Codex search history migration', () => {
     await expect(readFile(artifact.path)).resolves.toEqual(artifact.original)
   })
 
-  it('serializes concurrent apply calls with one lock and one actual modification', async () => {
+  it.skipIf(process.platform === 'win32')('serializes concurrent apply calls with one lock and one actual modification', async () => {
     const artifact = await createLegacyArtifact('session-concurrent')
 
     const results = await Promise.all([

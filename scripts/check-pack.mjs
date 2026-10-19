@@ -1,11 +1,17 @@
 import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { validateLibArtifactInventory } from './pack-lib-inventory.mjs'
+import { resolveCommandInvocation } from './bounded-command.mjs'
 
-const result = spawnSync('npm', ['pack', '--dry-run', '--json', '--ignore-scripts'], {
+const invocation = resolveCommandInvocation(process.platform === 'win32' ? 'npm.cmd' : 'npm',
+  ['pack', '--dry-run', '--json', '--ignore-scripts'])
+const result = spawnSync(invocation.command, invocation.args, {
   cwd: new URL('..', import.meta.url),
   encoding: 'utf8',
+  windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+  windowsHide: true,
 })
+if (result.error !== undefined) throw result.error
 if (result.status !== 0) {
   process.stderr.write(result.stderr)
   process.exit(result.status ?? 1)

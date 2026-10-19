@@ -1,0 +1,9 @@
+# Windows packaging and history test contracts
+
+The remaining packaging/history portion of #329 is a tooling and test-contract repair. Runtime history migration continues to reject apply on Windows and permits dry-run. No history, permission, credential or Task activation policy changes.
+
+`check-pack.mjs` previously spawned bare `npm`, which did not resolve the Windows command shim. It now selects `npm.cmd` on Windows and uses the existing bounded-command invocation resolver for explicit cmd.exe argument escaping. POSIX keeps the npm executable. Spawn errors are surfaced directly. A call-site regression imports the actual checker while intercepting only its spawn and verifies both platform invocations, without executing a shell. It failed before the fix (bare npm versus expected cmd.exe) and passes afterward. This is simulated command construction, not native Windows execution.
+
+History tests previously expected successful apply and apply-specific failure messages on every platform, contrary to the runtime's dry-run-only Windows contract. Dry-run and corrupt-input validation now run everywhere; backup/apply/serialization cases remain on POSIX. Explicit Windows rejection, stopped-writer confirmation and unchanged original/no backup assertions remain. A simulated Windows run reproduced five old assertion failures; the corrected suite passes four cases and skips the four POSIX apply cases. Native CI also runs this exact suite.
+
+The existing Windows job now runs the actual `pack:check` against committed build files, including file inventory, declaration/client checks and npm dry-run output. No matrix target, security gate or existing Windows test is removed. Native CI results must be recorded separately from local command simulation. The existing route lifecycle, artifact-read and writable-flush fixes remain separately reviewed changes (#362–#365); this note does not certify live-account/Desktop acceptance or broader power-loss durability.

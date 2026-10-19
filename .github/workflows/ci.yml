@@ -153,6 +153,10 @@ jobs:
         run: pnpm exec vitest run tests/installation-metadata.spec.ts tests/metadata-leaf-safety.spec.ts tests/metadata-read-races.spec.ts tests/runtime-identity.spec.ts
       - name: Verify task artifact read identity on Windows
         run: pnpm exec vitest run tests/task-artifact-native.spec.ts tests/task-artifact-read-identity.spec.ts
+      - name: Verify Windows history remains dry-run only
+        run: pnpm exec vitest run tests/history-migration.spec.ts
+      - name: Validate the actual package on Windows
+        run: pnpm run pack:check
 
   # Alpha CI deliberately has no npm-publish job. Publishing requires a later,
   # separately authorized release workflow.
