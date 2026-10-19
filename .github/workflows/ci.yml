@@ -145,6 +145,8 @@ jobs:
       - run: pnpm --config.minimum-release-age=0 install --frozen-lockfile
       - name: Verify native Windows task flush access and failure propagation
         run: pnpm exec vitest run tests/task-flush-native.spec.ts tests/task-flush-access.spec.ts
+      - name: Verify native state read identity and disappearance boundaries
+        run: pnpm exec vitest run tests/task-state-native.spec.ts
       - name: Verify scoped proxy decompresses JSON on Windows
         run: pnpm exec vitest run tests/provider-proxy.spec.ts
       - name: Verify manifest safety and runtime receipts on Windows

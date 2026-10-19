@@ -1,6 +1,7 @@
 /** Owner-only task grants and conservative request reservations; never contains OAuth or prompt content. */
 import { createHash } from 'node:crypto'
 import { constants } from 'node:fs'
+import type { BigIntStats } from 'node:fs'
 import { lstat, mkdir, open } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
@@ -67,6 +68,19 @@ export function parseTaskDocument(value: unknown, sessionId: string): TaskDocume
   if (!allowsTaskRoute(document.capabilities, document.route)) taskFailure('TASK_STATE_INVALID')
   return document
 }
+function privateState(stat: BigIntStats): boolean {
+  return stat.isFile() && !stat.isSymbolicLink() && stat.nlink === 1n && stat.size >= 0n && stat.size <= BigInt(MAX_BYTES)
+    && (process.platform === 'win32' || (stat.mode & 0o077n) === 0n)
+}
+function sameState(before: BigIntStats, after: BigIntStats): boolean {
+  return privateState(after) && before.dev === after.dev && before.ino === after.ino
+    && before.size === after.size && before.nlink === after.nlink && before.mode === after.mode
+    && before.uid === after.uid && before.gid === after.gid
+    && before.mtimeNs === after.mtimeNs && before.ctimeNs === after.ctimeNs
+}
+function privateStateDirectory(stat: BigIntStats): boolean {
+  return stat.isDirectory() && !stat.isSymbolicLink() && (process.platform === 'win32' || (stat.mode & 0o077n) === 0n)
+}
 /** One private file/lock per root. Codecs cannot change identity or storage safety checks. */
 export class AtomicTaskDocumentStore<T> {
   constructor(private readonly directory: string, private readonly parse: (value: unknown, sessionId: string) => T) {}
@@ -77,22 +91,42 @@ export class AtomicTaskDocumentStore<T> {
   /** Reads do not create a directory or grant anything. */
   async read(sessionId: string): Promise<T | undefined> {
     const filename = this.filename(sessionId)
+    let parent: BigIntStats, before: BigIntStats
     try {
-      const parent = await lstat(this.directory)
-      if (!parent.isDirectory() || parent.isSymbolicLink()
-        || (process.platform !== 'win32' && (parent.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
+      parent = await lstat(this.directory, { bigint: true })
+      if (!privateStateDirectory(parent)) taskFailure('TASK_STATE_UNSAFE')
+      before = await lstat(filename, { bigint: true })
+      if (!privateState(before)) taskFailure('TASK_STATE_UNSAFE')
+    } catch (error: unknown) {
+      // Only absence before observing the leaf can permit update() to create state.
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+      if (error instanceof AdaptiveTaskError) throw error
+      taskFailure('TASK_STATE_UNAVAILABLE')
+    }
+    try {
+      let bytes: Buffer
       const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK)
       try {
-        const stat = await file.stat()
-        if (!stat.isFile() || stat.nlink !== 1 || stat.size > MAX_BYTES
-          || (process.platform !== 'win32' && (stat.mode & 0o077) !== 0)) taskFailure('TASK_STATE_UNSAFE')
-        const bytes = Buffer.alloc(MAX_BYTES + 1)
-        const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
-        if (bytesRead > MAX_BYTES || bytesRead !== stat.size) taskFailure('TASK_STATE_INVALID')
-        return this.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, bytesRead))), sessionId)
+        if (!sameState(before, await file.stat({ bigint: true }))
+          || !sameState(before, await lstat(filename, { bigint: true }))) taskFailure('TASK_STATE_UNSAFE')
+        const buffer = Buffer.alloc(Number(before.size) + 1)
+        let consumed = 0
+        while (consumed < buffer.length) {
+          const { bytesRead } = await file.read(buffer, consumed, buffer.length - consumed, consumed)
+          if (bytesRead === 0) break
+          consumed += bytesRead
+        }
+        if (!sameState(before, await file.stat({ bigint: true }))) taskFailure('TASK_STATE_UNSAFE')
+        if (consumed !== Number(before.size)) taskFailure('TASK_STATE_INVALID')
+        bytes = buffer.subarray(0, consumed)
       } finally { await file.close() }
+      const after = await lstat(this.directory, { bigint: true })
+      if (!privateStateDirectory(after) || parent.dev !== after.dev || parent.ino !== after.ino
+        || parent.mode !== after.mode || parent.uid !== after.uid || parent.gid !== after.gid
+        || !sameState(before, await lstat(filename, { bigint: true }))) taskFailure('TASK_STATE_UNSAFE')
+      return this.parse(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)), sessionId)
     } catch (error: unknown) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') taskFailure('TASK_STATE_UNSAFE')
       if (error instanceof AdaptiveTaskError) throw error
       taskFailure('TASK_STATE_UNAVAILABLE')
     }
