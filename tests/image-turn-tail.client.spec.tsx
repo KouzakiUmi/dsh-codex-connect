@@ -42,6 +42,22 @@ function result(callId: string, seq: number, meta: unknown, name = 'codex_connec
 afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 describe('generated images outside the folded process', () => {
+  it('keeps original-only recovery visible outside processing, excluding canceled and later rows', () => {
+    const recovered = { ...result('recovered', 2, {
+      kind: 'codex-connect-images', schemaVersion: 3, prompt: 'draw', images: [{ original, previewStatus: 'unavailable' }],
+    }), content: [] }
+    const rows = [{ root: recovered }, { root: { ...recovered, callId: 'canceled', isError: true } },
+      { root: { ...recovered, callId: 'later', seq: 20 } }]
+    expect(selectTurnImageResults(rows, 10).map(item => item.callId)).toEqual(['recovered'])
+    const source = { getSnapshot: () => rows, subscribe: () => () => {} }
+    render(<CodexImageTurnTail {...({
+      sessionId: 'session-1', turn: { turn: 1 }, seq: 10, useChat: () => source, sessions, t,
+    } as unknown as React.ComponentProps<typeof CodexImageTurnTail>)} />)
+    expect(screen.getByText(en.imagePreviewUnavailable).closest('[data-turn-image-results]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: en.downloadOriginal })).toBeTruthy()
+    expect(screen.queryByTestId('codex-image-gallery')).toBeNull()
+  })
+
   it('projects only successful Codex image results before the closing answer, including nested PTC', () => {
     const direct = result('direct', 2, { kind: 'codex-connect-images', prompt: 'draw', images: [preview] })
     const nested = { ...result('nested', 3, undefined), content: [

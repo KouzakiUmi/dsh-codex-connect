@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeImagePresentationMeta, decodeImageResultContent, IMAGE_RESULT_PREFIX } from '../src/image-presentation.ts'
+import { decodeImagePresentationMeta, decodeImageResultContent, IMAGE_RESULT_PREFIX, IMAGE_EDIT_RESULT_PREFIX, IMAGE_RECOVERY_RESULT_PREFIX } from '../src/image-presentation.ts'
 
 const image = { attachmentId: 'sha256:one', mediaType: 'image/png', width: 64, height: 32, bytes: 120, name: 'codex-image-1.png' }
 const original = {
@@ -13,6 +13,30 @@ const original = {
 }
 
 describe('generated image presentation contract', () => {
+  it.each([false, true])('recovers bounded original-only native and PTC results (edit: %s)', editing => {
+    const meta = { kind: 'codex-connect-images', schemaVersion: 3, prompt: 'draw',
+      images: [{ original, previewStatus: 'unavailable' }],
+      ...(editing ? { operation: 'edit', edit: { target: { assetId: original.assetId }, references: [] } } : {}),
+    }
+    expect(decodeImagePresentationMeta(meta)).toEqual(meta)
+    const envelope = { type: 'text', text: IMAGE_RECOVERY_RESULT_PREFIX + JSON.stringify(meta) }
+    expect(decodeImageResultContent([envelope], 'draw')).toEqual(meta)
+    expect(decodeImageResultContent([envelope], 'other')).toBeUndefined()
+    expect(decodeImageResultContent([envelope, envelope], 'draw')).toBeUndefined()
+    expect(decodeImageResultContent([envelope, { type: 'image', attachment: image }], 'draw')).toBeUndefined()
+    expect(decodeImageResultContent([{ type: 'text', text: IMAGE_EDIT_RESULT_PREFIX + JSON.stringify(meta) }], 'draw')).toBeUndefined()
+    for (const invalid of [
+      { ...meta, images: [{ original }] },
+      { ...meta, images: [{ original, previewStatus: 'unavailable', preview: image }] },
+      { ...meta, images: [{ previewStatus: 'unavailable' }] },
+      { ...meta, images: [{ original: { ...original, assetId: '../file' }, previewStatus: 'unavailable' }] },
+      { ...meta, images: [{ original, previewStatus: 'failed with private upstream detail' }] },
+      { ...meta, schemaVersion: 4 },
+      { ...meta, operation: 'generate' },
+      { ...meta, operation: 'edit', edit: undefined },
+    ]) expect(decodeImagePresentationMeta(invalid)).toBeUndefined()
+  })
+
   it('recovers old PTC previews without inventing an original reference', () => {
     expect(decodeImageResultContent([{ type: 'image', attachment: image }], 'draw')).toMatchObject({ images: [{ preview: image }] })
     expect(decodeImageResultContent([{ type: 'image', attachment: image }], 'draw')?.images[0]?.original).toBeUndefined()

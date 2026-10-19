@@ -96,6 +96,8 @@ Reserve 使用 Luna 目录中的 272,000 token 上下文窗口，不沿用原模
 
 生成的原文件保存在 `$DSH_HOME/dsh-codex-connect/images/v1`；对话会收到另一份 DSH 附件预览。结果卡片会报告尺寸和文件大小，并可下载任一版本。原文件仅允许所有者访问，下载前会校验完整性，并且只对创建会话及继承了该结果的 fork 开放。关闭能力或卸载插件不会自动删除这些文件。
 
+**开发中变更，尚未发布：** 启用图片工具后，可保持当前聊天模型（包括 DeepSeek），无需切换模型。如果原图已保存、但对话预览保存失败，结果会明确提示，仍可**下载原图**或**基于此图修改**。直接继续使用该结果即可，无需重新生图来取回原图。原图仍须通过 Host 图片验证及会话所有权检查；取消请求或原图保存失败不会返回可恢复结果。已有安装版本仍保持原先行为。
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/franksong2702/dsh-codex-connect/main/docs/assets/zh/image-generation.png" alt="包含提示词、下载操作与图片详情的 GPT Image 结果" width="780">
 </p>

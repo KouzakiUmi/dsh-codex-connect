@@ -13,7 +13,7 @@ import { OPENAI_CODEX_ORIGINAL_IMAGE_PATH } from '../src/image-assets-contract.t
 import type { OpenAICodexOriginalImageRef } from '../src/image-assets-contract.ts'
 import { registerOpenAICodexOriginalImageRoute } from '../src/image-asset-routes.ts'
 import type { OpenAICodexTrustedOriginsStore } from '../src/trusted-origins.ts'
-import { IMAGE_RESULT_PREFIX, IMAGE_EDIT_RESULT_PREFIX } from '../src/image-presentation.ts'
+import { IMAGE_RESULT_PREFIX, IMAGE_EDIT_RESULT_PREFIX, IMAGE_RECOVERY_RESULT_PREFIX } from '../src/image-presentation.ts'
 
 const PNG_1X1 = Uint8Array.from(Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
@@ -59,6 +59,24 @@ function recordImage(session: Session, ref: OpenAICodexOriginalImageRef): void {
   }, { surfaceOp: 'append' })
 }
 
+function recordRecoveredImage(session: Session, ref: OpenAICodexOriginalImageRef, mode: 'native' | 'ptc', editing: boolean, isError = false): void {
+  const meta = {
+    kind: 'codex-connect-images', schemaVersion: 3, prompt: 'A recovered image',
+    images: [{ original: { ...ref }, previewStatus: 'unavailable' }],
+    ...(editing ? { operation: 'edit', edit: { target: { attachmentId: 'selected-upload' }, references: [] } } : {}),
+  }
+  const content = [{ type: 'text' as const, text: IMAGE_RECOVERY_RESULT_PREFIX + JSON.stringify(meta) }]
+  if (mode === 'native') {
+    session.append('tool/result', { turn: 0, step: 0,
+      message: createToolResultMessage({ callId: 'recovery-call' as never, isError, content }), meta,
+    }, { surfaceOp: 'append' })
+  } else {
+    session.append('tool/ptc-dispatch', { name: 'codex_connect_image_generate', isError,
+      arguments: { prompt: meta.prompt }, content,
+    } as never)
+  }
+}
+
 async function download(route: CapturedHttpRoute, sessionId: string, assetId: string) {
   const res = response()
   await route.handler(request('GET', `${OPENAI_CODEX_ORIGINAL_IMAGE_PATH}?${new URLSearchParams({ sessionId, assetId })}`), res)
@@ -88,6 +106,41 @@ function response(): ServerResponse & { status?: number; headers?: Record<string
 }
 
 describe('OpenAI Codex original image download route', () => {
+  it.each([
+    { mode: 'native' as const, editing: false }, { mode: 'ptc' as const, editing: false },
+    { mode: 'native' as const, editing: true }, { mode: 'ptc' as const, editing: true },
+  ])('downloads only inherited successful v3 originals ($mode, editing: $editing)', async ({ mode, editing }) => {
+    root = await mkdtemp(join(tmpdir(), 'codex-image-v3-fork-'))
+    const ctx = await sessionContext()
+    const parent = ctx.sessions.create(SessionId('recovery-parent'))
+    const early = ctx.sessions.fork(parent, undefined, SessionId('before-recovery'))
+    const unrelated = ctx.sessions.create(SessionId('unrelated-recovery'))
+    const store = new OpenAICodexImageAssetStore(root)
+    const [original] = await store.saveImages(parent.id, [{ data: PNG_1X1, mediaType: 'image/png', width: 1, height: 1, name: 'recovered.png' }])
+    if (original === undefined) throw new Error('missing actual recovered original')
+    recordRecoveredImage(parent, original, mode, editing)
+    const child = ctx.sessions.fork(parent, undefined, SessionId('recovery-child'))
+    const grandchild = ctx.sessions.fork(child, undefined, SessionId('recovery-grandchild'))
+    const route = capture(store, ctx.sessions)
+    for (const session of [child, grandchild]) {
+      const res = await download(route, session.id, original.assetId)
+      expect(res.status).toBe(200)
+      expect(res.headers).toMatchObject({ 'content-type': 'image/png', 'content-length': String(PNG_1X1.byteLength) })
+      expect(Buffer.from(res.body as Uint8Array)).toEqual(Buffer.from(PNG_1X1))
+    }
+    // Identical metadata appended outside the inherited prefix cannot extend access.
+    for (const session of [early, unrelated]) {
+      recordRecoveredImage(session, original, mode, editing)
+      expect((await download(route, session.id, original.assetId)).status).toBe(404)
+    }
+    const failedParent = ctx.sessions.create(SessionId('failed-recovery-parent'))
+    const [failedOriginal] = await store.saveImages(failedParent.id, [{ data: PNG_1X1, mediaType: 'image/png', width: 1, height: 1, name: 'failed.png' }])
+    if (failedOriginal === undefined) throw new Error('missing failure fixture original')
+    recordRecoveredImage(failedParent, failedOriginal, mode, editing, true)
+    const failedChild = ctx.sessions.fork(failedParent, undefined, SessionId('failed-recovery-child'))
+    expect((await download(route, failedChild.id, failedOriginal.assetId)).status).toBe(404)
+  })
+
   it.each(rejectedHttpAdmissions)('rejects $admission before reading Origin, sessions, or original assets', async ({ admission, status, error }) => {
     const read = vi.fn()
     const get = vi.fn()

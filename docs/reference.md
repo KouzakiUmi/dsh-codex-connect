@@ -96,6 +96,8 @@ Automated coverage uses synthetic tokens and quota responses. It verifies local 
 
 Generated originals are stored under `$DSH_HOME/dsh-codex-connect/images/v1`; the conversation receives a separate DSH attachment preview. The result card reports dimensions and file sizes and can download either representation. Originals are owner-only, integrity-checked, and available only to the creating session and forks that inherited the result. Disabling or uninstalling the plugin does not delete those files automatically.
 
+**Development change, not yet released:** keep your current chat model, including DeepSeek, when using the enabled image tool. If the original is saved but its conversation preview cannot be saved, the result reports that condition and keeps **Download original** and **Modify this image** available. Continue from that stored result; regenerating is not required to retrieve it. Originals still require host image validation and session ownership. Cancellation and failed original persistence do not return a recoverable result. Existing installed releases keep their previous behavior.
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/franksong2702/dsh-codex-connect/main/docs/assets/en/image-generation.png" alt="GPT Image result with prompt, download actions, and image details" width="780">
 </p>

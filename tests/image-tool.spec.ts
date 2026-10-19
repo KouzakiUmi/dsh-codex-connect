@@ -5,6 +5,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import type { ImageAttachmentLimits, SaveImageAttachment } from '@deepseek-ai/dsh-attachment'
 import { imageGenerateTool, IMAGE_GENERATE_TOOL_NAME } from '../src/image-tool.ts'
 import type { OpenAICodexImageAssetStore, SaveOpenAICodexOriginalImage } from '../src/image-assets.ts'
+import { decodeImagePresentationMeta, decodeImageResultContent } from '../src/image-presentation.ts'
 
 const PNG_1X1 = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC', 'base64')
 const signal = new AbortController().signal
@@ -28,6 +29,7 @@ async function setup(options: {
   limits?: Partial<ImageAttachmentLimits>
   saveImages?: (inputs: readonly SaveImageAttachment[]) => Promise<readonly unknown[]>
   saveOriginals?: (sessionId: string, inputs: readonly SaveOpenAICodexOriginalImage[]) => Promise<readonly unknown[]>
+  validateImage?: (input: SaveImageAttachment) => Promise<void>
 } = {}) {
   const ctx = new Context()
   context = ctx
@@ -35,6 +37,7 @@ async function setup(options: {
   await ctx.plugin(ToolRuntime, { mode: 'native' })
   const saved: SaveImageAttachment[][] = []
   ctx.provide('attachments', {
+    validateImage: options.validateImage ?? (async () => undefined),
     imageLimits: {
       maxImageBytes: 5 * 1024 * 1024,
       maxImagesPerMessage: 4,
@@ -194,9 +197,60 @@ describe('Codex image generation tool', () => {
     }] })
   })
 
-  it('removes exact originals when preview persistence fails', async () => {
-    const { ctx, removeImages } = await setup({ saveImages: async () => { throw new Error('preview failed') } })
-    expect((await execute(ctx, { prompt: 'rollback this' })).isError).toBe(true)
-    expect(removeImages).toHaveBeenCalledOnce()
+  it.each(['throws', 'incomplete', 'invalid'] as const)('retains exact originals when preview persistence is %s', async kind => {
+    const { ctx, removeImages, generateImages } = await setup({ saveImages: async () => {
+      if (kind === 'throws') throw new Error('private preview storage detail')
+      return kind === 'incomplete' ? [] : [{ attachmentId: 'invalid-preview', width: -1 }]
+    } })
+    const result = await execute(ctx, { prompt: 'keep this original' })
+    expect(result.isError).toBe(false)
+    const decoded = decodeImagePresentationMeta(result.meta)
+    expect(decoded).toMatchObject({ schemaVersion: 3, images: [{ previewStatus: 'unavailable', original: { mediaType: 'image/png' } }] })
+    expect(decoded?.images[0]?.preview).toBeUndefined()
+    expect(result.content.some(block => block.type === 'image')).toBe(false)
+    expect(JSON.stringify(result.content)).not.toContain('private preview storage detail')
+    expect(decodeImageResultContent(result.content, 'keep this original')).toEqual(decoded)
+    expect(generateImages).toHaveBeenCalledOnce()
+    expect(removeImages).not.toHaveBeenCalled()
+  })
+
+  it('does not publish recovery or attempt persistence when host image validation rejects output', async () => {
+    const saveOriginals = vi.fn(async () => [])
+    const { ctx, saved } = await setup({ saveOriginals, validateImage: async () => { throw new Error('private decoder failure') } })
+    const result = await execute(ctx, { prompt: 'unreadable upstream image' })
+    expect(result.isError).toBe(true)
+    expect(result.meta).toBeUndefined()
+    expect(JSON.stringify(result.content)).toContain('The generated images failed host validation.')
+    expect(JSON.stringify(result.content)).not.toContain('private decoder failure')
+    expect(saveOriginals).not.toHaveBeenCalled()
+    expect(saved).toHaveLength(0)
+  })
+
+  it.each(['saved', 'throws'] as const)('does not expose recovery after cancellation during a %s preview attempt', async kind => {
+    const controller = new AbortController()
+    const { ctx, removeImages } = await setup({ saveImages: async () => {
+      controller.abort()
+      if (kind === 'throws') throw new Error('private storage detail')
+      return []
+    } })
+    const result = await execute(ctx, { prompt: 'cancel this' }, controller.signal)
+    expect(result.isError).toBe(true)
+    expect(result.meta).toBeUndefined()
+    expect(decodeImageResultContent(result.content, 'cancel this')).toBeUndefined()
+    // The host can settle cancellation before the detached execute body cleans up.
+    await vi.waitFor(() => expect(removeImages).toHaveBeenCalledOnce())
+  })
+
+  it('does not attempt previews or expose recovery after cancellation during original save', async () => {
+    const controller = new AbortController()
+    const { ctx, saved, removeImages } = await setup({ saveOriginals: async () => {
+      controller.abort()
+      return []
+    } })
+    const result = await execute(ctx, { prompt: 'cancel original save' }, controller.signal)
+    expect(result.isError).toBe(true)
+    expect(saved).toHaveLength(0)
+    expect(result.meta).toBeUndefined()
+    await vi.waitFor(() => expect(removeImages).toHaveBeenCalledOnce())
   })
 })
