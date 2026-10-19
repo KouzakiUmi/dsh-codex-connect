@@ -41,3 +41,10 @@ Review of `b1e5986` found no blocking implementation defect and requested strong
 - Native/PTC v3 generation and edit results are exercised through real Session forks and the download route: lawful child/grandchild requests return exact original bytes; copied metadata outside the inherited prefix and inherited failed results return 404.
 - `pnpm exec vitest run tests/image-edit-tool.spec.ts tests/image-asset-routes.spec.ts`: 2 files / 57 tests passed. `pnpm run typecheck`: passed. No runtime, permissions or image behavior changed in this follow-up.
 - Initial PR CI at `b1e5986`, Node 24 job `117872345767`, passed 2056 tests, build and packaging, then failed resolving `@deepseek-ai/dsh-client-ui-open-in-app@0.1.7-rc.2` because npm registry returned HTTP 502. This is recorded separately from image assertions and the earlier writer-lock failure; it is not evidence that all PR checks passed. The new head's CI still requires completion.
+
+
+## Reviewed merge and release preparation — 2026-10-19
+
+The independent review follow-up completed at `a22e8e2ebdc306e19a8fd26c5354a83e732b3e62`. All ten CI/security checks passed at that exact head, including both Node validation/host matrices, browser regression, Windows contract and CodeQL. The maintainer separately authorized merge and publication; #357 merged normally as `ae82e19c52e28dd6898430309235659aeec47b29`. Alpha7 is now being prepared through the protected release workflow. The earlier iteration's draft/no-publication handoff is historical, not the current release status.
+
+No live-account image, installed Desktop, or rendered user-browser acceptance is claimed by these checks. The underlying image transport endpoints and credential behavior are unchanged.

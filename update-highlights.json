@@ -144,6 +144,10 @@
     {
       "version": "0.2.0-alpha.6",
       "highlights": ["runtime-compatibility", "search-route"]
+    },
+    {
+      "version": "0.2.0-alpha.7",
+      "highlights": []
     }
   ]
 }
