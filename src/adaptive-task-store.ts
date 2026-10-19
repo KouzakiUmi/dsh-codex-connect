@@ -110,7 +110,8 @@ export class AtomicTaskDocumentStore<T> {
       const text = JSON.stringify(next)
       if (Buffer.byteLength(text) > MAX_BYTES) taskFailure('TASK_STATE_TOO_LARGE')
       await writeFileAtomic(filename, text + '\n', { mode: 0o600, dirMode: 0o700 })
-      const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW)
+      // Windows FlushFileBuffers needs write access; ordinary read() stays read-only.
+      const file = await open(filename, (process.platform === 'win32' ? constants.O_RDWR : constants.O_RDONLY) | constants.O_NOFOLLOW)
       try { await file.sync() } finally { await file.close() }
       // Ensure the replacement name is committed before a request reservation may leave this process.
       if (process.platform !== 'win32') {

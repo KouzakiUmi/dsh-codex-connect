@@ -45,7 +45,8 @@ export class TaskDelegationArtifacts {
         if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       }
       await writeFileAtomic(filename, text, { mode: 0o600, dirMode: 0o700 })
-      const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW)
+      // Windows FlushFileBuffers needs write access; existing artifact reads/reuse stay read-only.
+      const file = await open(filename, (process.platform === 'win32' ? constants.O_RDWR : constants.O_RDONLY) | constants.O_NOFOLLOW)
       try { await file.sync() } finally { await file.close() }
       if (process.platform !== 'win32') {
         const directory = await open(this.directory, constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW)
