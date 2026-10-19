@@ -147,6 +147,8 @@ jobs:
         run: pnpm exec vitest run tests/provider-proxy.spec.ts
       - name: Verify manifest safety and runtime receipts on Windows
         run: pnpm exec vitest run tests/installation-metadata.spec.ts tests/metadata-leaf-safety.spec.ts tests/metadata-read-races.spec.ts tests/runtime-identity.spec.ts
+      - name: Verify task artifact read identity on Windows
+        run: pnpm exec vitest run tests/task-artifact-native.spec.ts tests/task-artifact-read-identity.spec.ts
 
   # Alpha CI deliberately has no npm-publish job. Publishing requires a later,
   # separately authorized release workflow.
