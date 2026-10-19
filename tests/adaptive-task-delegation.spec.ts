@@ -47,6 +47,11 @@ function response(item: Record<string, unknown>) {
 }
 const answer = (text = 'Synthetic complete') => response({ type: 'message', id: 'm_test', role: 'assistant', phase: 'final_answer', status: 'completed', content: [{ type: 'output_text', text, annotations: [] }] })
 const tool = (name: string, args: unknown, callId = `c_${randomUUID()}`) => response({ type: 'function_call', id: `fc_${randomUUID()}`, call_id: callId, name, arguments: JSON.stringify(args), status: 'completed' })
+function pendingResponse(signal: AbortSignal): Promise<Response> {
+  // Match fetch: a signal aborted before response setup must reject immediately.
+  if (signal.aborted) return Promise.reject(signal.reason)
+  return new Promise<Response>((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
+}
 async function setup(options: { compression?: 'none' | 'zstd'; persistence?: boolean; childRoute?: typeof route; timeout?: number; maximum?: number; nativeCompaction?: boolean; delegation?: boolean } = {}) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'task-delegation-'))); roots.push(root)
   vi.stubEnv('DSH_HOME', root); vi.stubEnv('OTEL_SDK_DISABLED', 'true')
@@ -165,7 +170,7 @@ it.each(['manual', 'stopped'] as const)('revocation during a pending child reque
   f.setReply(wire => {
     if (f.wires.length === 1) return tool(TASK_DELEGATE_TOOL, f.args, f.parentCall)
     reached()
-    return new Promise<Response>((_resolve, reject) => { wire.signal.addEventListener('abort', () => reject(wire.signal.reason), { once: true }) })
+    return pendingResponse(wire.signal)
   })
   const running = f.send(); await waiting
   await f.runtime.revoke(f.parent, (await f.read()).revision, mode); await running
@@ -178,7 +183,7 @@ it('deadline and disposal cancel owned transport without refund or subsequent fe
   const waiting = new Promise<void>(resolve => { reached = resolve })
   f.setReply(wire => {
     if (f.wires.length === 1) return tool(TASK_DELEGATE_TOOL, f.args, f.parentCall)
-    reached(); return new Promise<Response>((_resolve, reject) => wire.signal.addEventListener('abort', () => reject(wire.signal.reason), { once: true }))
+    reached(); return pendingResponse(wire.signal)
   })
   const running = f.send(); await waiting; await f.runtime.dispose(); await running
   expect(f.wires).toHaveLength(2); expect((await f.read()).reserved).toBe(2)
@@ -248,10 +253,12 @@ it('revocation after host creation but before ledger publication never dispatche
   expect((await f.read()).delegation.runs[0]).toMatchObject({ state: 'cancelled', cleanup: 'verified', attempts: [] })
 })
 it('the actual child deadline cancels a hung request and preserves the spent debit', async () => {
+  const preCancelled = new Error('Synthetic request cancelled before fetch')
+  await expect(pendingResponse(AbortSignal.abort(preCancelled))).rejects.toBe(preCancelled)
   const f = await setup({ timeout: 1000 })
   f.setReply(wire => {
     if (f.wires.length === 1) return tool(TASK_DELEGATE_TOOL, f.args, f.parentCall)
-    if (f.wires.length === 2) return new Promise<Response>((_resolve, reject) => wire.signal.addEventListener('abort', () => reject(wire.signal.reason), { once: true }))
+    if (f.wires.length === 2) return pendingResponse(wire.signal)
     return answer()
   })
   await f.send(); const doc = await f.read()
@@ -263,7 +270,7 @@ it('ordinary parent Stop cancels child ownership and is consumed as durable revo
   const waiting = new Promise<void>(resolve => { reached = resolve })
   f.setReply(wire => {
     if (f.wires.length === 1) return tool(TASK_DELEGATE_TOOL, f.args, f.parentCall)
-    reached(); return new Promise<Response>((_resolve, reject) => wire.signal.addEventListener('abort', () => reject(wire.signal.reason), { once: true }))
+    reached(); return pendingResponse(wire.signal)
   })
   const running = f.send(); await waiting; f.parent.cancel({ kind: 'user' }); await running
   await f.runtime.unresolved(f.parent)
