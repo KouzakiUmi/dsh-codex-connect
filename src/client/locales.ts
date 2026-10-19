@@ -1,5 +1,12 @@
 /** English copy for the OpenAI Codex Plugin configuration card. */
 export const en = {
+  speedStandard: 'Standard',
+  speedFast: 'Fast',
+  speedLoading: 'Reading conversation speed…',
+  speedRecover: 'Speed unconfirmed. Read current selection',
+  ultrafastUnsupported: 'Ultrafast supports only Codex Astra and Sol61.',
+  ultrafastDisclosure: 'Ultrafast uses more quota. Account eligibility and the tier actually served are unverified. No automatic fallback.',
+  ultrafastUnavailable: 'Open a signed-in conversation to select Ultrafast. This does not establish account eligibility.',
   adaptiveTaskLanguage: 'en',
   title: 'Codex Connect',
   modelsProviderName: 'Openai-Codex',
@@ -368,6 +375,13 @@ export type OpenAICodexSettingsKey = keyof typeof en
 
 /** Chinese copy for the OpenAI Codex Plugin configuration card. */
 export const zh: { [Key in OpenAICodexSettingsKey]: string } = {
+  speedStandard: '标准',
+  speedFast: 'Fast',
+  speedLoading: '正在读取会话速度…',
+  speedRecover: '速度尚未确认，读取当前选择',
+  ultrafastUnsupported: 'Ultrafast 仅支持 Codex Astra 和 Sol61。',
+  ultrafastDisclosure: 'Ultrafast 消耗更多额度。账户资格及实际服务等级尚未核实，失败时不会自动回退。',
+  ultrafastUnavailable: '请打开已登录账户的会话以选择 Ultrafast；这不代表账户具备使用资格。',
   adaptiveTaskLanguage: 'zh',
   title: 'Codex Connect',
   modelsProviderName: 'Openai-Codex',

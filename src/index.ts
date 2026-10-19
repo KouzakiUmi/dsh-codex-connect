@@ -38,7 +38,7 @@ import {
   parseOpenAICodexVersion,
 } from './update.ts'
 import { CODEX_CONNECT_VERSION } from './version.ts'
-import { FastModeRegistry } from './fast-mode.ts'
+import { createConversationSpeedRegistry } from './conversation-speed.ts'
 import { registerOpenAICodexFastModeDefaults } from './fast-mode-defaults.ts'
 import { assertNoOpenAICodexProviderConflict } from './doctor.ts'
 import { imageGenerateTool } from './image-tool.ts'
@@ -428,7 +428,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
   const trustedOrigins = new OpenAICodexTrustedOriginsStore(
     join(dirname(credentials.filename), OPENAI_CODEX_TRUSTED_ORIGINS_FILENAME),
   )
-  const fastMode = new FastModeRegistry()
+  const fastMode = createConversationSpeedRegistry(ctx)
   registerOpenAICodexFastModeDefaults(ctx, fastMode, () => resolveOpenAICodexSettings(current()))
   const taskDirectory = join(dirname(credentials.filename), 'codex-connect-tasks')
   taskRuntime = new AdaptiveTaskControlRuntime(ctx, {

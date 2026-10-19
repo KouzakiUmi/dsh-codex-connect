@@ -124,6 +124,7 @@ export function apply(ctx: ClientContext): void {
       locale: namespace,
       inject: (sessionId): OpenAICodexFastModeToggleInjected => ({
         directory: scope.modelDirectories.directoryFor(sessionId).store,
+        account,
       }),
     }, OpenAICodexFastModeToggle))
     scope.slots.inject('conversation.input.right', () => scope.slots.register({

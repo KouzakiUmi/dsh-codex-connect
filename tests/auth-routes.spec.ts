@@ -20,6 +20,7 @@ import {
   trustedRequestDecision,
 } from '../src/auth-routes.ts'
 import type { OpenAICodexCredentialStore } from '../src/store.ts'
+import { OPENAI_CODEX_SPEED_MODE_PATH } from '../src/speed-mode-contract.ts'
 import { OpenAICodexTrustedOriginsStore } from '../src/trusted-origins.ts'
 import {
   OPENAI_CODEX_REAUTH_REQUIRED_MESSAGE,
@@ -270,6 +271,7 @@ describe('OpenAI Codex Web OAuth boundary', () => {
     await fixture.ctx.fiber.dispose()
     expect([...fixture.routes.values()]).toEqual([unrelated])
     expect(fixture.disposedPaths).toEqual([
+      OPENAI_CODEX_SPEED_MODE_PATH,
       OPENAI_CODEX_FAST_MODE_PATH,
       OPENAI_CODEX_AUTH_ACCOUNTS_PATH,
       OPENAI_CODEX_AUTH_LOGOUT_PATH,

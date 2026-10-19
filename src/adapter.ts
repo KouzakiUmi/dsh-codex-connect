@@ -12,6 +12,9 @@ import type { ResolvedPiAiProviderProfile } from '@deepseek-ai/dsh-llm-pi-ai'
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { OpenAICodexCredentialStore } from './store.ts'
 import { readOpenAICodexRequestAuth } from './auth.ts'
+import { ConversationSpeedRegistry } from './conversation-speed.ts'
+import { currentCapturedSpeed, currentSpeedRequestAccount, recordSpeedRequestAccount, streamWithSpeedRequestScope } from './speed-request-scope.ts'
+import { projectOpenAICodexSpeedPayload } from './speed-mode-contract.ts'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
 import type { FastModeRegistry } from './fast-mode.ts'
 import type { OpenAICodexModelCatalogEntry } from './model-contract.ts'
@@ -51,10 +54,6 @@ export const OPENAI_CODEX_REQUEST_IMAGE_MAX_BYTES = 1024 * 1024
  * the explicit override supplied by this plugin; it never discovers an API
  * key from the environment or persistent api-key credentials.
  */
-function isPayloadRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 /** Add the request-scoped Fast Mode hint without changing auth or other options. */
 export function withOpenAICodexFastMode(
   provider: Provider,
@@ -70,16 +69,21 @@ export function withOpenAICodexFastMode(
         && model.id !== OPENAI_CODEX_RESERVE_MODEL
         && fastMode !== undefined
         && fastMode.isEnabled(sessionId)
-      if (!enabled) return streamSimple.call(provider, model, context, options)
+      const scoped = fastMode instanceof ConversationSpeedRegistry
+        && provider.id === OPENAI_CODEX_PROVIDER && model.provider === OPENAI_CODEX_PROVIDER
+      const captured = scoped ? currentCapturedSpeed() ?? fastMode.captureSpeed(sessionId) : undefined
+      const requestedMode = scoped && captured !== undefined ? fastMode.confirmCapturedSpeed(sessionId, captured, {
+        workspace: fastMode.workspaceFor(sessionId), accountKey: currentSpeedRequestAccount(), provider: model.provider, model: model.id,
+      }) : enabled ? 'fast' : 'standard'
+      const mode = model.id === OPENAI_CODEX_RESERVE_MODEL ? 'standard' : requestedMode
+      if (mode === 'standard' && (!scoped || options?.onPayload === undefined)) return streamSimple.call(provider, model, context, options)
       const previousOnPayload = options?.onPayload
       const nextOptions: SimpleStreamOptions = {
         ...options,
         async onPayload(payload, payloadModel) {
           const replaced = await previousOnPayload?.(payload, payloadModel)
           const nextPayload = replaced === undefined ? payload : replaced
-          return isPayloadRecord(nextPayload)
-            ? { ...nextPayload, service_tier: 'priority' }
-            : nextPayload
+          return projectOpenAICodexSpeedPayload(nextPayload, model.provider, model.id, mode)
         },
       }
       return streamSimple.call(provider, model, context, nextOptions)
@@ -282,7 +286,14 @@ export function createOpenAICodexAdapter(
         }, nextOptions)
         return backendRequests?.metrics?.stream(observed, projected) ?? observed(projected)
       }
-      return taskDispatch?.stream(options, dispatch) ?? dispatch(options)
+      const execute = (request: GenerateOptions) => taskDispatch?.stream(request, dispatch) ?? dispatch(request)
+      return fastMode instanceof ConversationSpeedRegistry
+        ? streamWithSpeedRequestScope(execute, options, () => {
+          const captured = fastMode.captureSpeed(options.sessionId)
+          // Auxiliary compaction/title calls do not inherit a paid conversation choice.
+          return options.purpose !== undefined && captured.mode === 'ultrafast' ? { mode: 'standard' } : captured
+        })
+        : execute(options)
     }
 
     override async prepareCall(providerId: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall> {
@@ -314,7 +325,11 @@ export function createOpenAICodexAdapter(
   return new OpenAICodexAdapter({
     profiles: currentProfiles,
     resolveApiKey: async () => {
-      const operation = async () => (await readOpenAICodexRequestAuth(credentials)).access
+      const operation = async () => {
+        const auth = await readOpenAICodexRequestAuth(credentials)
+        recordSpeedRequestAccount(auth.accountId)
+        return auth.access
+      }
       return proxyManager?.run(resolveProxyUrl?.(), operation) ?? operation()
     },
     // Host-side auth accepts only the explicit bearer token resolved above.

@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import { OpenAICodexFastModeToggle } from '../src/client/OpenAICodexFastModeToggle.tsx'
+import { LegacyOpenAICodexFastModeToggle as OpenAICodexFastModeToggle } from '../src/client/OpenAICodexFastModeToggle.tsx'
 import { en, zh } from '../src/client/locales.ts'
 import type { OpenAICodexSettingsKey } from '../src/client/locales.ts'
 import { OPENAI_CODEX_FAST_MODE_PATH } from '../src/fast-mode-paths.ts'
@@ -53,7 +53,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('OpenAI Codex Fast Mode Composer toggle', () => {
+describe('legacy OpenAI Codex Fast Mode Composer toggle', () => {
   it.each(['GET headers', 'GET body', 'POST headers', 'POST body'] as const)('bounds %s and recovers only via explicit GET, ignoring late completion', async phase => {
     vi.useFakeTimers()
     const directory = directoryStore(directoryState('gpt-5'))
