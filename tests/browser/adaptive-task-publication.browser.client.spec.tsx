@@ -79,6 +79,79 @@ it('bounds read-only readiness retries without sending any mutation', async () =
   mount(); await expect.element(page.getByRole('button', { name: 'Existing task controls', exact: true })).toBeVisible()
   expect(reads).toBe(3)
 })
+it.each([404, 405, 409])('keeps an initially routeless or rootless conversation entry-free after bounded GET retries: %s', async status => {
+  const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    expect(init?.method).toBe('GET')
+    return status === 409 ? Response.json({ error: 'TASK_LIVE_ROOT_REQUIRED' }, { status }) : new Response('', { status })
+  })
+  vi.stubGlobal('fetch', fetch); mount()
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(3), { timeout: 2_500 })
+  // Absence is not decoded into an invented off state or an existing-task entry.
+  await vi.waitFor(() => expect(element!.querySelectorAll('button,dialog')).toHaveLength(0))
+  expect(element!.textContent).not.toContain('Recorded state: off')
+})
+it.each([[404, 409], [409, 405], [405, 404]])('recovers a returning task route after mixed initial gaps %s then %s', async (first, second) => {
+  let reads = 0
+  const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    expect(init?.method).toBe('GET')
+    const status = [first, second][reads++]
+    if (status === undefined) return Response.json(state('interrupted'))
+    return status === 409 ? Response.json({ error: 'TASK_LIVE_ROOT_REQUIRED' }, { status }) : new Response('', { status })
+  })
+  vi.stubGlobal('fetch', fetch); mount()
+  await expect.element(page.getByRole('button', { name: 'Existing task controls', exact: true })).toBeVisible()
+  expect(reads).toBe(3)
+})
+it('does not mistake other conflict errors for missing live-root evidence', async () => {
+  const fetch = vi.fn(async () => Response.json({ error: 'TASK_STATE_UNAVAILABLE' }, { status: 409 }))
+  vi.stubGlobal('fetch', fetch); mount()
+  await page.getByRole('button', { name: 'Existing task controls', exact: true }).click()
+  await expect.element(page.getByRole('alert')).toBeVisible()
+  expect(fetch).toHaveBeenCalledTimes(2)
+  expect(element!.textContent).not.toContain('Recorded state: off')
+  expect(await page.getByRole('button', { name: 'Take over manually', exact: true }).elements()).toHaveLength(0)
+})
+it.each([['stop', 404], ['stop', 405], ['stop', 409], ['manual', 404], ['manual', 405], ['manual', 409]] as const)
+  ('retains a known task re-read path after %s fails with %s and never replays POST', async (action, status) => {
+  let broken = false, writes = 0
+  const fetch = vi.fn(async (_url: unknown, init?: RequestInit) => {
+    if (init?.method === 'POST') { writes++; broken = true }
+    if (!broken) return Response.json(state('interrupted'))
+    return status === 409 ? Response.json({ error: 'TASK_LIVE_ROOT_REQUIRED' }, { status }) : new Response('', { status })
+  })
+  vi.stubGlobal('fetch', fetch); mount()
+  await page.getByRole('button', { name: 'Existing task controls', exact: true }).click()
+  await page.getByRole('button', { name: action === 'stop' ? 'Stop this task' : 'Take over manually', exact: true }).click()
+  await expect.element(page.getByRole('alert')).toBeVisible()
+  expect(writes).toBe(1)
+  expect(await page.getByRole('button', { name: 'Take over manually', exact: true }).elements()).toHaveLength(0)
+  await page.getByRole('button', { name: 'Read state again', exact: true }).click()
+  await expect.element(page.getByRole('alert')).toBeVisible()
+  expect(writes).toBe(1)
+  broken = false
+  await page.getByRole('button', { name: 'Read state again', exact: true }).click()
+  await expect.element(page.getByRole('button', { name: 'Take over manually', exact: true })).toBeEnabled()
+  expect(writes).toBe(1)
+})
+it('does not parse missing-route bodies and cancels initial backoff when the session changes', async () => {
+  let oldSignal: AbortSignal | undefined, bodyReads = 0
+  const fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
+    if (!String(url).includes('sessionId=old')) return Response.json(state())
+    oldSignal = init?.signal as AbortSignal
+    const response = new Response('', { status: 404 })
+    response.json = async () => { bodyReads++; throw new Error('Missing route has no JSON body') }
+    return response
+  })
+  vi.stubGlobal('fetch', fetch); mount('en', 'old')
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1))
+  root!.render(createElement(PublishedAdaptiveTaskControl, { language: 'en', sessionId: 'new' }))
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2))
+  expect(oldSignal!.aborted).toBe(true)
+  await new Promise(resolve => setTimeout(resolve, 800))
+  expect(fetch).toHaveBeenCalledTimes(2)
+  expect(bodyReads).toBe(0)
+  expect(element!.querySelectorAll('button,dialog')).toHaveLength(0)
+})
 it('keeps a failed legacy-task read recoverable without enabling stale safety exits', async () => {
   let broken = false
   vi.stubGlobal('fetch', vi.fn(async (_url: unknown, init?: RequestInit) => {

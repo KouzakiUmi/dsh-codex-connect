@@ -35,6 +35,7 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
   const [busy, setBusy] = useState(false)
   const [opened, setOpened] = useState(false)
   const generation = useRef(0)
+  const confirmedTask = useRef(false)
   const working = useRef(false)
   const controller = useRef<AbortController>()
   const dialog = useRef<HTMLDialogElement>(null)
@@ -49,7 +50,7 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
     const timer = setTimeout(() => operation.abort(), 15_000)
     try {
       let decoded: AdaptiveTaskState | undefined
-      // Only the read-only live-root readiness error may be retried, at most twice.
+      // Initial route/readiness gaps get bounded GET retries; mutations are never replayed.
       for (let attempt = 0; attempt < (action === undefined ? 3 : 1); attempt++) {
         const response = await fetch(action === undefined
           ? `${ADAPTIVE_TASK_PATH}?sessionId=${encodeURIComponent(sessionId)}` : ADAPTIVE_TASK_PATH, {
@@ -57,9 +58,11 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
           headers: { accept: 'application/json', ...(action === undefined ? {} : { 'content-type': 'application/json' }) },
           ...(action === undefined ? {} : { body: JSON.stringify({ sessionId, action, revision, operationId: crypto.randomUUID() }) }),
         })
-        const body: unknown = await response.json()
-        if (action === undefined && response.status === 409 && typeof body === 'object' && body !== null
-          && 'error' in body && body.error === 'TASK_LIVE_ROOT_REQUIRED' && attempt < 2) {
+        const missingRoute = response.status === 404 || response.status === 405
+        const body: unknown = missingRoute ? undefined : await response.json()
+        const missingRoot = response.status === 409 && typeof body === 'object' && body !== null
+          && 'error' in body && body.error === 'TASK_LIVE_ROOT_REQUIRED'
+        if (action === undefined && (missingRoot || (missingRoute && !confirmedTask.current)) && attempt < 2) {
           await new Promise<void>((resolve, reject) => {
             const abort = () => { clearTimeout(wait); operation.signal.removeEventListener('abort', abort); reject(operation.signal.reason) }
             const wait = setTimeout(() => { operation.signal.removeEventListener('abort', abort); resolve() }, 250 * (attempt + 1))
@@ -68,11 +71,17 @@ function TaskRecoveryControl({ sessionId, language = 'en' }: Props) {
           })
           continue
         }
+        if (action === undefined && (missingRoute || missingRoot) && !confirmedTask.current) {
+          if (token !== generation.current || operation.signal.aborted) return
+          setState(undefined); setOpened(false)
+          return
+        }
         decoded = response.ok ? decodeTaskState(body) : undefined
         break
       }
       if (decoded === undefined) throw new Error('Unconfirmed task state')
       if (token !== generation.current || operation.signal.aborted) return
+      confirmedTask.current = decoded.mode !== 'off'
       setState(decoded)
       if (decoded.mode === 'off') setOpened(false)
     } catch {
