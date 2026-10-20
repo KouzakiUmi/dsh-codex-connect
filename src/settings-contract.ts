@@ -1,5 +1,8 @@
 /** Node-free settings contract shared by the Host plugin and browser card. */
 
+import { OPENAI_CODEX_REASONING_EFFORTS, parseOpenAICodexReasoningEffort } from './reasoning-contract.ts'
+import type { OpenAICodexReasoningEffort } from './reasoning-contract.ts'
+
 /** Stable Harness settings namespace owned by this plugin. */
 export const OPENAI_CODEX_SETTINGS_NAMESPACE = 'llm-openai-codex'
 
@@ -96,6 +99,8 @@ export const DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS = 10_000
 export interface OpenAICodexSettingsConfig {
   /** Model ids advertised in selectors; undefined advertises the full catalog. */
   models: string[] | undefined
+  /** Optional fallback when a request does not specify reasoning effort. */
+  reasoningEffort: OpenAICodexReasoningEffort | undefined
   /** Route Codex Connect requests through the explicitly configured proxy. */
   enableProxy: boolean
   /** Credential-free HTTP(S) proxy origin; inactive while enableProxy is false. */
@@ -132,6 +137,7 @@ export interface OpenAICodexSettingsConfig {
 
 export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> = Object.freeze({
   models: undefined,
+  reasoningEffort: undefined,
   enableProxy: false,
   proxyUrl: DEFAULT_OPENAI_CODEX_PROXY_URL,
   contextWindowOverrides: undefined,
@@ -152,7 +158,8 @@ export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> 
 })
 
 /** Input settings allow null to disable overrides inherited from a lower settings layer. */
-export interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides'>> {
+export interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides' | 'reasoningEffort'>> {
+  reasoningEffort?: OpenAICodexReasoningEffort | null | undefined
   contextWindowOverrides?: Readonly<Record<string, number | null>> | null | undefined
 }
 
@@ -174,7 +181,7 @@ export function resolveOpenAICodexSettings(
     throw new TypeError('OpenAI Codex proxyUrl must be an HTTP(S) origin without credentials or a path')
   }
   parseOpenAICodexImageModelHint(resolved.imageModelHint)
-  return { ...resolved, contextWindowOverrides: resolveOpenAICodexContextWindowOverrides(resolved.contextWindowOverrides) }
+  return { ...resolved, reasoningEffort: parseOpenAICodexReasoningEffort(resolved.reasoningEffort) ?? undefined, contextWindowOverrides: resolveOpenAICodexContextWindowOverrides(resolved.contextWindowOverrides) }
 }
 
 /** Resolve the active proxy without treating a disabled value as a route. */
@@ -192,6 +199,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 /** Narrow the redacted settings wire payload before it enters React state. */
 export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsConfig | undefined {
   if (!isRecord(value)) return undefined
+  const reasoningEffort = value['reasoningEffort']
+  if (reasoningEffort !== undefined && reasoningEffort !== null && (typeof reasoningEffort !== 'string' || !OPENAI_CODEX_REASONING_EFFORTS.some(effort => effort === reasoningEffort))) return undefined
   const models = value['models']
   const enableProxy = value['enableProxy']
   const proxyUrl = value['proxyUrl']
@@ -232,6 +241,7 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   if (typeof searchMaxOutputTokens !== 'number' || !Number.isInteger(searchMaxOutputTokens) || searchMaxOutputTokens < 1) return undefined
   const overrides = resolveOpenAICodexContextWindowOverrides(contextWindowOverrides)
   return {
+    reasoningEffort: parseOpenAICodexReasoningEffort(reasoningEffort) ?? undefined,
     models: models === undefined ? undefined : [...new Set(models)],
     enableProxy: enableProxy ?? false,
     proxyUrl: proxyUrl === undefined ? DEFAULT_OPENAI_CODEX_PROXY_URL : normalizeOpenAICodexProxyUrl(proxyUrl)!,

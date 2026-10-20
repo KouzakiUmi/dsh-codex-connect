@@ -39,6 +39,12 @@ Ultrafast consumes more quota. Official documentation distinguishes eligible Pro
   <img src="https://raw.githubusercontent.com/franksong2702/dsh-codex-connect/main/docs/assets/composer-capabilities.jpg" alt="Fast Mode and quota controls in the DeepSeek Harness Composer" width="820">
 </p>
 
+## Optional profile reasoning default
+
+**Source change, not yet published:** set `reasoningEffort: max` (or another supported effort) on the Codex Connect plugin row, or use **Default reasoning effort** in More settings. This is a fallback only: an explicit Host request's reasoning effort wins. Omission preserves provider behavior, and `null` masks an inherited default. Saving a change affects newly prepared requests; a request already prepared keeps its profile snapshot. Fast/Ultrafast service tier, output limits and the chat model are unchanged.
+
+`GET /plugins/dsh-codex-connect/models` now includes each model's actual Host `reasoning.efforts` and optional `reasoning.defaultEffort`, without reading credentials or querying account access. This metadata comes from the installed adapter, including supported additions to the static catalog. An unsupported configured effort does not hide a model: dispatch fails with `UNSUPPORTED_REASONING_EFFORT` before credential resolution or network activity. An explicit supported request effort can override that default. The profile accepts `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, and `max`; availability depends on the selected model. The Workflow `agent()` parameter allowlist is Host-owned and is not expanded by this plugin setting.
+
 ## Reasoning effort for ordinary subagents
 
 With DSH `0.2.0-rc.2` or `0.2.1-alpha.1`, ordinary Harness subagents can request an explicit reasoning effort. Enable the Host's subagent model-selection setting, authorize the exact `openai-codex` / `gpt-6.1-sol` route, and start a fresh top-level conversation so it records that policy. The subagent tool must use a backend with `agentOptions` support, such as an in-process Harness backend or DSH SDK, and have `modelSelectionSettings: true`. External Codex, Claude Code and ACP backends do not support this selection interface.

@@ -39,6 +39,12 @@ Ultrafast 消耗更多额度。官方文档区分可用的 Pro500、Enterprise/E
   <img src="https://raw.githubusercontent.com/franksong2702/dsh-codex-connect/main/docs/assets/composer-capabilities.jpg" alt="DeepSeek Harness Composer 中的 Fast Mode 与额度控件" width="820">
 </p>
 
+## 可选的配置级推理默认值
+
+**源码变更，尚未发布：** 可在 Codex Connect 插件配置行设置 `reasoningEffort: max`（或其他受支持强度），也可在更多设置中选择默认推理强度。仅在 Host 请求未显式指定强度时使用；请求值优先。省略保持提供方原行为，`null` 可屏蔽下层继承的默认值。保存后新准备的请求使用新值，已准备的请求保留原配置快照。不改变 Fast/Ultrafast 服务档位、输出上限或聊天模型。
+
+`GET /plugins/dsh-codex-connect/models` 返回 Host 实际提供的 `reasoning.efforts` 和可选 `reasoning.defaultEffort`，不读取凭据，也不查询账户访问权限。元数据来自已安装的 adapter，包含插件对静态目录的受支持补充。配置不受某模型支持的强度不会隐藏该模型，但发送前会报 `UNSUPPORTED_REASONING_EFFORT`，不解析凭据或访问网络；请求显式指定的受支持强度仍可覆盖默认值。配置接受 `off`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max`，实际可用值由所选模型决定。Workflow `agent()` 参数白名单由 Host 控制，此设置不会扩展该白名单。
+
 ## 普通子代理的推理强度
 
 DSH `0.2.0-rc.2` 和 `0.2.1-alpha.1` 的普通 Harness 子代理支持显式指定推理强度。先启用宿主的子代理模型选择设置，授权精确的 `openai-codex` / `gpt-6.1-sol` 路由，再新建主对话，让会话记录这项策略。子代理工具需使用支持 `agentOptions` 的后端，例如 Harness 进程内后端或 DSH SDK，并设置 `modelSelectionSettings: true`。外部 Codex、Claude Code 和 ACP 后端不支持这个选择接口。

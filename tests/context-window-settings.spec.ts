@@ -34,6 +34,16 @@ afterEach(async () => {
 })
 
 describe('context windows through the real Host settings and LLM registry', () => {
+  it('updates the profile effort through real settings and masks an inherited default with null', async () => {
+    const runtime = await boot({ reasoningEffort: 'max' })
+    expect((await runtime.llm.resolveModelInfo(provider, 'gpt-6.1-sol')).reasoning?.defaultEffort).toBe('max')
+    await runtime.settings.mutate(ns, [{ op: 'set', path: ['reasoningEffort'], value: 'high' }])
+    expect((await runtime.llm.resolveModelInfo(provider, 'gpt-6.1-sol')).reasoning?.defaultEffort).toBe('high')
+    await runtime.settings.mutate(ns, [{ op: 'set', path: ['reasoningEffort'], value: null }])
+    expect((await runtime.llm.resolveModelInfo(provider, 'gpt-6.1-sol')).reasoning?.defaultEffort).toBeUndefined()
+    expect(plugin.decodeOpenAICodexSettings(runtime.settings.describe().find(entry => entry.ns === ns)?.value)?.reasoningEffort).toBeUndefined()
+  })
+
   it('uses the calibrated Sol61 default and lets a user override or reset it independently', async () => {
     const runtime = await boot()
     const sol61 = 'gpt-6.1-sol'
