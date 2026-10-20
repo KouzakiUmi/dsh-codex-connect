@@ -152,6 +152,10 @@
     {
       "version": "0.2.0-alpha.8",
       "highlights": ["quota-fast-mode"]
+    },
+    {
+      "version": "0.2.0-alpha.9",
+      "highlights": []
     }
   ]
 }
