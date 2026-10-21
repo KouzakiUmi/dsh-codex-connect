@@ -36,6 +36,7 @@ import {
 } from './update.ts'
 import { CODEX_CONNECT_VERSION } from './version.ts'
 import { FastModeRegistry } from './fast-mode.ts'
+import { createConversationSpeedRegistry } from './conversation-speed.ts'
 import type { OpenAICodexContextTiers } from './model-contract.ts'
 import { registerOpenAICodexFastModeDefaults } from './fast-mode-defaults.ts'
 import { assertNoOpenAICodexProviderConflict } from './doctor.ts'
@@ -130,6 +131,10 @@ import {
   resolveOpenAICodexSettings,
 } from './settings-contract.ts'
 import type { OpenAICodexOutputVerbosity, OpenAICodexReasoningSummarySetting, OpenAICodexSettingsInput } from './settings-contract.ts'
+import { parseOpenAICodexSpeedDefault } from './speed-mode-contract.ts'
+import type { OpenAICodexSpeedMode } from './speed-mode-contract.ts'
+import { parseOpenAICodexReasoningEffort } from './reasoning-contract.ts'
+import type { OpenAICodexReasoningEffort } from './reasoning-contract.ts'
 
 export {
   decodeOpenAICodexSettings,
@@ -290,6 +295,12 @@ export interface Config {
   enableNewSessionFastMode?: boolean
   /** Independent opt-in default for newly started subagent sessions. */
   enableNewSubagentFastMode?: boolean
+  /** Explicit new top-level speed default; omitted retains the legacy Fast preference. */
+  newSessionSpeedMode?: OpenAICodexSpeedMode | null | undefined
+  /** Independent new-subagent speed default; omitted retains the legacy preference. */
+  newSubagentSpeedMode?: OpenAICodexSpeedMode | null | undefined
+  /** Optional fallback effort; explicit request effort wins. Null resets an inherited value. */
+  reasoningEffort?: OpenAICodexReasoningEffort | null | undefined
   /** Explicit profile opt-in to Codex native context management; DSH owns automatic triggers. Disabling stops new native compactions, not replay of existing checkpoints. */
   enableNativeCompaction?: boolean
   /** Register the optional image-loading tool. */
@@ -347,6 +358,9 @@ const configSchema = z.object({
   enableReserveFallback: z.boolean().default(false).volatile(),
   enableNewSessionFastMode: z.boolean().default(false).volatile(),
   enableNewSubagentFastMode: z.boolean().default(false).volatile(),
+  newSessionSpeedMode: z.transform(z.union([z.const(undefined), z.const(null), z.string()]), parseOpenAICodexSpeedDefault).volatile(),
+  newSubagentSpeedMode: z.transform(z.union([z.const(undefined), z.const(null), z.string()]), parseOpenAICodexSpeedDefault).volatile(),
+  reasoningEffort: z.transform(z.union([z.const(undefined), z.const(null), z.string()]), parseOpenAICodexReasoningEffort).volatile(),
   enableNativeCompaction: z.boolean().default(false).volatile(),
   enableImageTool: z.boolean().default(false).volatile(),
   enableImageGeneration: z.boolean().default(false).volatile(),
@@ -378,6 +392,9 @@ export interface VolatileConfig {
   enableReserveFallback: Volatile<boolean>
   enableNewSessionFastMode: Volatile<boolean>
   enableNewSubagentFastMode: Volatile<boolean>
+  newSessionSpeedMode: Volatile<OpenAICodexSpeedMode | null | undefined>
+  newSubagentSpeedMode: Volatile<OpenAICodexSpeedMode | null | undefined>
+  reasoningEffort: Volatile<OpenAICodexReasoningEffort | null | undefined>
   enableNativeCompaction: Volatile<boolean>
   enableImageTool: Volatile<boolean>
   enableImageGeneration: Volatile<boolean>
@@ -412,6 +429,9 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
     enableReserveFallback: configValue(config.enableReserveFallback), enableNativeCompaction: configValue(config.enableNativeCompaction),
     enableNewSessionFastMode: configValue(config.enableNewSessionFastMode),
     enableNewSubagentFastMode: configValue(config.enableNewSubagentFastMode),
+    newSessionSpeedMode: configValue(config.newSessionSpeedMode),
+    newSubagentSpeedMode: configValue(config.newSubagentSpeedMode),
+    reasoningEffort: configValue(config.reasoningEffort),
     enableImageTool: configValue(config.enableImageTool), enableImageGeneration: configValue(config.enableImageGeneration),
     imageModelHint: configValue(config.imageModelHint), autoReviewDisclosureAcknowledged: configValue(config.autoReviewDisclosureAcknowledged),
     enableAutoReview: configValue(config.enableAutoReview), enableComposerQuotaPill: configValue(config.enableComposerQuotaPill),
@@ -438,8 +458,9 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
   const trustedOrigins = new OpenAICodexTrustedOriginsStore(
     join(dirname(credentials.filename), OPENAI_CODEX_TRUSTED_ORIGINS_FILENAME),
   )
-  const fastMode = new FastModeRegistry()
-  registerOpenAICodexFastModeDefaults(ctx, fastMode, () => resolveOpenAICodexSettings(current()))
+  const fastMode = createConversationSpeedRegistry(ctx)
+  registerOpenAICodexFastModeDefaults(ctx, fastMode, () => resolveOpenAICodexSettings(current()),
+    async () => (await credentials.accounts()).find(account => account.active)?.accountKey)
   const taskDirectory = join(dirname(credentials.filename), 'codex-connect-tasks')
   taskRuntime = new AdaptiveTaskControlRuntime(ctx, {
     directory: taskDirectory,

@@ -67,7 +67,7 @@ function accountSummaries(document: AuthDocument | undefined): readonly OpenAICo
   const profiles = resolveOpenAICodexAccountProfiles(credentials)
   const activeAccountId = activeCredential(document).accountId
   return credentials.map((credential, index) => ({
-    accountKey: accountKey(credential.accountId),
+    accountKey: openAICodexAccountKey(credential.accountId),
     displayName: profiles[index]!.displayName,
     ...(profiles[index]!.maskedEmail === undefined ? {} : { maskedEmail: profiles[index]!.maskedEmail }),
     profileSource: profiles[index]!.source,
@@ -179,7 +179,7 @@ function activeCredential(document: AuthDocument): StoredOAuthCredential {
   return active
 }
 
-function accountKey(accountId: string): string {
+export function openAICodexAccountKey(accountId: string): string {
   return `acct_${createHash('sha256').update(accountId).digest('base64url')}`
 }
 
@@ -359,7 +359,7 @@ export class OpenAICodexCredentialStore implements CredentialStore {
       const document = await this.readDocument()
       if (document === undefined) throw new Error('openai-codex: account not found')
       const credentials = documentCredentials(document)
-      const selected = credentials.find(credential => accountKey(credential.accountId) === selectedAccountKey)
+      const selected = credentials.find(credential => openAICodexAccountKey(credential.accountId) === selectedAccountKey)
       if (selected === undefined) throw new Error('openai-codex: account not found')
       await this.writeDocument({
         version: AUTH_FORMAT_VERSION,
@@ -377,7 +377,7 @@ export class OpenAICodexCredentialStore implements CredentialStore {
       const document = await this.readDocument()
       if (document === undefined) throw new Error('openai-codex: account not found')
       const credentials = [...documentCredentials(document)]
-      const removeIndex = credentials.findIndex(credential => accountKey(credential.accountId) === selectedAccountKey)
+      const removeIndex = credentials.findIndex(credential => openAICodexAccountKey(credential.accountId) === selectedAccountKey)
       if (removeIndex < 0) throw new Error('openai-codex: account not found')
       const removed = credentials[removeIndex]!
       const active = activeCredential(document)
@@ -387,7 +387,7 @@ export class OpenAICodexCredentialStore implements CredentialStore {
         if (replacementAccountKey === undefined) {
           throw new Error('openai-codex: removing the active account requires replacementAccountKey')
         }
-        const replacement = remaining.find(credential => accountKey(credential.accountId) === replacementAccountKey)
+        const replacement = remaining.find(credential => openAICodexAccountKey(credential.accountId) === replacementAccountKey)
         if (replacement === undefined) throw new Error('openai-codex: replacement account not found')
         nextActive = replacement.accountId
       } else if (replacementAccountKey !== undefined) {

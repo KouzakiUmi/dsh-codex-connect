@@ -13,6 +13,9 @@ import type { OpenAICodexCredentialStore } from './store.ts'
 import { readOpenAICodexRequestAuth } from './auth.ts'
 import { OPENAI_CODEX_PROVIDER } from './store.ts'
 import type { FastModeRegistry } from './fast-mode.ts'
+import { ConversationSpeedRegistry } from './conversation-speed.ts'
+import { currentCapturedSpeed, currentSpeedRequestAccount, recordSpeedRequestAccount, streamWithSpeedRequestScope } from './speed-request-scope.ts'
+import { projectOpenAICodexSpeedPayload } from './speed-mode-contract.ts'
 import type { ExtendedContextRegistry } from './extended-context.ts'
 import type { OpenAICodexModelCatalogEntry, OpenAICodexContextTiers } from './model-contract.ts'
 import { isValidOpenAICodexContextBudget, openAICodexModelContextWindow, openAICodexContextLimit } from './model-contract.ts'
@@ -56,7 +59,7 @@ function isPayloadRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** Add the request-scoped Fast Mode hint without changing auth or other options. */
+/** Add the request-scoped speed hint without changing auth or other options. */
 export function withOpenAICodexFastMode(
   provider: Provider,
   fastMode: FastModeRegistry | undefined,
@@ -71,16 +74,21 @@ export function withOpenAICodexFastMode(
         && model.id !== OPENAI_CODEX_RESERVE_MODEL
         && fastMode !== undefined
         && fastMode.isEnabled(sessionId)
-      if (!enabled) return streamSimple.call(provider, model, context, options)
+      const scoped = fastMode instanceof ConversationSpeedRegistry
+        && provider.id === OPENAI_CODEX_PROVIDER && model.provider === OPENAI_CODEX_PROVIDER
+      const captured = scoped ? currentCapturedSpeed() ?? fastMode.captureSpeed(sessionId) : undefined
+      const requestedMode = scoped && captured !== undefined ? fastMode.confirmCapturedSpeed(sessionId, captured, {
+        workspace: fastMode.workspaceFor(sessionId), accountKey: currentSpeedRequestAccount(), provider: model.provider, model: model.id,
+      }) : enabled ? 'fast' : 'standard'
+      const mode = model.id === OPENAI_CODEX_RESERVE_MODEL ? 'standard' : requestedMode
+      if (mode === 'standard' && (!scoped || options?.onPayload === undefined)) return streamSimple.call(provider, model, context, options)
       const previousOnPayload = options?.onPayload
       const nextOptions: SimpleStreamOptions = {
         ...options,
         async onPayload(payload, payloadModel) {
           const replaced = await previousOnPayload?.(payload, payloadModel)
           const nextPayload = replaced === undefined ? payload : replaced
-          return isPayloadRecord(nextPayload)
-            ? { ...nextPayload, service_tier: 'priority' }
-            : nextPayload
+          return projectOpenAICodexSpeedPayload(nextPayload, model.provider, model.id, mode)
         },
       }
       return streamSimple.call(provider, model, context, nextOptions)
@@ -378,7 +386,11 @@ export function createOpenAICodexAdapter(
   const adapterOptions = {
     resolveApiKey: async () => {
       const signal = authScope.getStore()?.signal ?? backendRequests?.signal
-      const operation = async () => (await readOpenAICodexRequestAuth(credentials, signal)).access
+      const operation = async () => {
+        const auth = await readOpenAICodexRequestAuth(credentials, signal)
+        recordSpeedRequestAccount(auth.accountId)
+        return auth.access
+      }
       return proxyManager?.run(resolveProxyUrl?.(), operation) ?? operation()
     },
     auth: { credentials: new InMemoryCredentialStore(), authContext: defaultProviderAuthContext() },
@@ -416,7 +428,14 @@ export function createOpenAICodexAdapter(
         )
         return backendRequests?.metrics?.stream(observed, projected) ?? observed(projected)
       }
-      return taskDispatch?.stream(options, dispatch) ?? dispatch(options)
+      const execute = (request: GenerateOptions) => taskDispatch?.stream(request, dispatch) ?? dispatch(request)
+      return fastMode instanceof ConversationSpeedRegistry
+        ? streamWithSpeedRequestScope(execute, options, () => {
+          const captured = fastMode.captureSpeed(options.sessionId)
+          // Auxiliary compaction/title calls do not inherit a paid conversation choice.
+          return options.purpose !== undefined && captured.mode === 'ultrafast' ? { mode: 'standard' } : captured
+        })
+        : execute(options)
     }
 
     override async prepareCall(providerId: string, model: string, signal?: AbortSignal): Promise<PreparedAdapterCall> {
