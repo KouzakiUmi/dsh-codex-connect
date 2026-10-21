@@ -45,7 +45,7 @@ async function fixture(native = false) {
   credentials.captureActiveAccount = async () => credentials
   const adapter = createOpenAICodexAdapter(credentials, () => undefined,
     undefined, undefined, undefined, undefined, undefined, undefined, () => native,
-    undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, () => tiers)
+    undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, () => tiers)
   for (const service of [LlmRuntime, SessionStore, SessionProjections, SystemPrompt, ToolRuntime, AgentRegistry]) await ctx.plugin(service)
   await ctx.plugin(AgentLoop, { agents: [] }); await ctx.plugin(TokenMeter)
   await ctx.plugin(JsonlPersistence, { root: join(root, 'sessions'), compression: 'none' })

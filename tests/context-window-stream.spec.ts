@@ -61,7 +61,7 @@ describe('context-window request snapshots', () => {
     const signal = new AbortController().signal
     const adapter = createOpenAICodexAdapter(credentials, () => undefined,
       undefined, undefined, undefined, undefined, undefined, undefined, undefined,
-      undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, () => tiers)
+      undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, () => tiers)
     const prepared = await adapter.prepareCall('openai-codex', 'gpt-5.6-sol', signal)
     tiers = { 'gpt-5.6-sol': 'maximum' }
     const maximum = await adapter.prepareCall('openai-codex', 'gpt-5.6-sol', signal)
@@ -96,7 +96,7 @@ describe('context-window request snapshots', () => {
       await credentials.modify(OPENAI_CODEX_PROVIDER, () => Promise.resolve(saved('access-one', 'account-1')))
       const adapter = createOpenAICodexAdapter(credentials, () => undefined,
         undefined, undefined, undefined, undefined, undefined, undefined, undefined,
-        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, () => ({ 'gpt-5.6-sol': mode === 'off' ? 'standard' : mode === 'expanded' ? 'extended' : 'maximum' }))
+        undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, () => ({ 'gpt-5.6-sol': mode === 'off' ? 'standard' : mode === 'expanded' ? 'extended' : 'maximum' }))
       const options = { provider: OPENAI_CODEX_PROVIDER, model: 'gpt-5.6-sol', sessionId: SessionId('a'), messages: [] }
       streamGate.pending = true
       const running = (async () => {
