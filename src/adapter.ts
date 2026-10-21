@@ -258,7 +258,10 @@ export function createOpenAICodexProfile(
     modelErrors: new Map<string, string>(),
     piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider, outputStyle),
   }
-  return profile
+  // The host profile declares the pi-ai Provider of the Host's own pi-ai copy while
+  // this module's Provider comes from the devDependency; their `streamSimple` context
+  // parameter differs only by a package-private brand, so bridge the two types here.
+  return profile as unknown as ResolvedPiAiProviderProfile & { piProvider: Provider }
 }
 
 /**
