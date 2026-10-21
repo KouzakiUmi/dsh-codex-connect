@@ -27,6 +27,7 @@ import { registerOpenAICodexProxyRoutes } from './proxy-routes.ts'
 import { OPENAI_CODEX_TRUSTED_ORIGINS_FILENAME, OpenAICodexTrustedOriginsStore } from './trusted-origins.ts'
 import { registerOpenAICodexUpdateRoutes } from './update-routes.ts'
 import { registerOpenAICodexModelCatalogRoute } from './model-routes.ts'
+import { resolveOpenAICodexModelCatalog } from './model-discovery.ts'
 import { registerOpenAICodexOriginalImageRoute } from './image-asset-routes.ts'
 import {
   checkForOpenAICodexUpdate,
@@ -513,9 +514,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
     () => resolveOpenAICodexSettings(current()).enableAutoReview,
     backendRequests,
   )
-  ctx.llm.registerAdapter(
-    [OPENAI_CODEX_PROVIDER],
-    createOpenAICodexAdapter(
+  const adapter = createOpenAICodexAdapter(
       credentials,
       () => ctx.get('attachments'),
       fastMode,
@@ -536,8 +535,8 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       undefined,
       () => resolveOpenAICodexSettings(current()).modelContextTiers,
       config.retryPolicy,
-    ),
-  )
+    )
+  ctx.llm.registerAdapter([OPENAI_CODEX_PROVIDER], adapter)
   registerImageHandleBridge(ctx, {
     // The bridge rides on the image-generation gate: when GPT Image is on,
     // every route gets selection handles, not just the openai-codex adapter.
@@ -547,7 +546,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
   // Public catalog/version metadata does not need access to the operator's account or private resources.
   ctx.inject(['webServer'], webCtx => {
     registerOpenAICodexUpdateRoutes(webCtx, { currentVersion: CODEX_CONNECT_VERSION }, trustedOrigins)
-    registerOpenAICodexModelCatalogRoute(webCtx, openAICodexModelCatalog, trustedOrigins)
+    registerOpenAICodexModelCatalogRoute(webCtx, () => resolveOpenAICodexModelCatalog(adapter), trustedOrigins)
   })
   // Protected routes follow Connection's lifetime as well as WebServer's; no unauthenticated fallback.
   ctx.inject(['webServer', 'connection'], webCtx => {
