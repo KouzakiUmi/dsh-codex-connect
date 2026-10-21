@@ -425,6 +425,20 @@ export declare function evaluateCompatibility(input?: CompatibilityEvaluationInp
 export declare const assessCompatibility: typeof evaluateCompatibility;
 /** Read installed package metadata and return only versions and statuses. */
 export declare function detectCompatibility(options?: CompatibilityDetectionOptions): Promise<CompatibilityReport>;
+/** The observation surface, not proof that another process is running. */
+type OpenAICodexDiagnosticScope = 'standalone' | 'selected-installation' | 'host';
+type OpenAICodexPluginVersionState = 'match' | 'mismatch' | 'unknown';
+type OpenAICodexDshMetadataSource = 'plugin-installation' | 'explicit-install-anchor' | 'host-install-anchor' | 'unknown';
+interface OpenAICodexRuntimeIdentity {
+  scope: OpenAICodexDiagnosticScope;
+  /** Version embedded in the code answering this diagnostic. */
+  loadedPluginVersion: string;
+  /** Current manifest of that same plugin installation, not loaded code. */
+  installedPluginVersion: string | null;
+  /** Version equality does not establish byte identity. */
+  pluginVersionState: OpenAICodexPluginVersionState;
+  dshMetadataSource: OpenAICodexDshMetadataSource;
+}
 /** Inputs that are safe to obtain without booting OAuth. */
 interface OpenAICodexDiagnosticOptions {
   /** Credential pathname to inspect through metadata only. */
@@ -458,6 +472,7 @@ interface OpenAICodexDiagnosticReport {
     changesHarnessSearchRoute: boolean;
   };
   providerConflict: boolean;
+  identity: OpenAICodexRuntimeIdentity;
   compatibility: CompatibilityReport;
   hints: string[];
 }
