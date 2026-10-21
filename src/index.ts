@@ -135,6 +135,8 @@ import { parseOpenAICodexSpeedDefault } from './speed-mode-contract.ts'
 import type { OpenAICodexSpeedMode } from './speed-mode-contract.ts'
 import { parseOpenAICodexReasoningEffort } from './reasoning-contract.ts'
 import type { OpenAICodexReasoningEffort } from './reasoning-contract.ts'
+import { RetryPolicySchema, resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
+import type { RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
 
 export {
   decodeOpenAICodexSettings,
@@ -301,6 +303,8 @@ export interface Config {
   newSubagentSpeedMode?: OpenAICodexSpeedMode | null | undefined
   /** Optional fallback effort; explicit request effort wins. Null resets an inherited value. */
   reasoningEffort?: OpenAICodexReasoningEffort | null | undefined
+  /** Optional Host model-request retry policy; omission preserves defaults. Reload to change. */
+  retryPolicy?: RetryPolicyConfig | undefined
   /** Explicit profile opt-in to Codex native context management; DSH owns automatic triggers. Disabling stops new native compactions, not replay of existing checkpoints. */
   enableNativeCompaction?: boolean
   /** Register the optional image-loading tool. */
@@ -361,6 +365,10 @@ const configSchema = z.object({
   newSessionSpeedMode: z.transform(z.union([z.const(undefined), z.const(null), z.string()]), parseOpenAICodexSpeedDefault).volatile(),
   newSubagentSpeedMode: z.transform(z.union([z.const(undefined), z.const(null), z.string()]), parseOpenAICodexSpeedDefault).volatile(),
   reasoningEffort: z.transform(z.union([z.const(undefined), z.const(null), z.string()]), parseOpenAICodexReasoningEffort).volatile(),
+  retryPolicy: z.transform(z.union([z.const(undefined), RetryPolicySchema]), value => {
+    resolveRetryPolicy(value, 'dsh-codex-connect retryPolicy')
+    return value
+  }).description('Optional Host model-request retry policy. Omit for existing defaults; reload the plugin after changes. More retries can consume more quota. The Host retry plugin executes this policy; cancellation and request accounting remain Host-owned.'),
   enableNativeCompaction: z.boolean().default(false).volatile(),
   enableImageTool: z.boolean().default(false).volatile(),
   enableImageGeneration: z.boolean().default(false).volatile(),
@@ -388,6 +396,8 @@ export interface VolatileConfig {
   enableProxy: Volatile<boolean>
   proxyUrl: Volatile<string>
   contextWindowOverrides: Volatile<Record<string, number | null> | null | undefined>
+  /** Optional Host retry policy; not a Volatile field because it applies at load time. */
+  retryPolicy?: RetryPolicyConfig | undefined
   enableSearch: Volatile<boolean>
   enableReserveFallback: Volatile<boolean>
   enableNewSessionFastMode: Volatile<boolean>
@@ -525,6 +535,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       undefined,
       undefined,
       () => resolveOpenAICodexSettings(current()).modelContextTiers,
+      config.retryPolicy,
     ),
   )
   registerImageHandleBridge(ctx, {

@@ -5,6 +5,7 @@ import { defaultProviderAuthContext, InMemoryCredentialStore } from './pi-ai.ts'
 import type { Provider, SimpleStreamOptions, TranscriptContext } from '@earendil-works/pi-ai'
 import { openaiCodexProvider } from './pi-ai.ts'
 import { resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
+import type { RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, GenerateOptions, PreparedAdapterCall, StreamChunk } from '@deepseek-ai/dsh-llm'
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import type { ResolvedPiAiProviderProfile } from '@deepseek-ai/dsh-llm-pi-ai'
@@ -249,6 +250,7 @@ export function createOpenAICodexProfile(
   backendRequests?: OpenAICodexBackendRequests,
   wrapProvider?: (provider: Provider) => Provider,
   outputStyle?: () => OpenAICodexOutputStyle | undefined,
+  retryPolicy?: RetryPolicyConfig | undefined,
 ): ResolvedPiAiProviderProfile & { piProvider: Provider } {
   const effectiveProvider = contextWindowOverrides === undefined
     ? provider
@@ -261,7 +263,7 @@ export function createOpenAICodexProfile(
     maxRequestImageBytes: OPENAI_CODEX_MAX_REQUEST_IMAGE_BYTES,
     requestImagePixelBudget: OPENAI_CODEX_REQUEST_IMAGE_PIXEL_BUDGET,
     requestImageMaxBytes: OPENAI_CODEX_REQUEST_IMAGE_MAX_BYTES,
-    retryPolicy: resolveRetryPolicy(undefined, 'dsh-codex-connect retryPolicy'),
+    retryPolicy: resolveRetryPolicy(retryPolicy, 'dsh-codex-connect retryPolicy'),
     configuredMaxTokens: new Map(),
     modelErrors: new Map<string, string>(),
     piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider, outputStyle),
@@ -360,6 +362,8 @@ export function createOpenAICodexAdapter(
   _extendedContext?: ExtendedContextRegistry,
   _maximumContextModels?: () => readonly string[] | undefined,
   modelContextTiers?: () => OpenAICodexContextTiers | undefined,
+  /** Optional Host model-request retry policy; omission preserves Host defaults. */
+  retryPolicy?: RetryPolicyConfig | undefined,
 ): PiAiAdapter {
   const baseline = withOpenAICodexModels(openaiCodexProvider())
   const provider = reservePermits === undefined ? baseline : withOpenAICodexReserve(baseline, reservePermits)
@@ -373,7 +377,7 @@ export function createOpenAICodexAdapter(
     const identity = JSON.stringify(budgets)
     if (profiles === undefined || identity !== previousBudgets) {
       profiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
-        provider, fastMode, proxyManager, resolveProxyUrl, budgets, backendRequests, taskDispatch?.wrapProvider, outputStyle,
+        provider, fastMode, proxyManager, resolveProxyUrl, budgets, backendRequests, taskDispatch?.wrapProvider, outputStyle, retryPolicy,
       )]])
       previousBudgets = identity
     }
