@@ -1,16 +1,16 @@
 import { spawnSync } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { validateLibArtifactInventory } from './pack-lib-inventory.mjs'
+
 import { resolveCommandInvocation } from './bounded-command.mjs'
 
 // npm is a .cmd shim on Windows; run it through cmd.exe like the other checkers do.
-const invocation = resolveCommandInvocation(process.platform === 'win32' ? 'npm.cmd' : 'npm',
-  ['pack', '--dry-run', '--json', '--ignore-scripts'])
+const npmArguments = ['pack', '--dry-run', '--json', '--ignore-scripts']
+const invocation = resolveCommandInvocation(process.platform === 'win32' ? 'npm.cmd' : 'npm', npmArguments)
 const result = spawnSync(invocation.command, invocation.args, {
   cwd: new URL('..', import.meta.url),
   encoding: 'utf8',
   windowsVerbatimArguments: invocation.windowsVerbatimArguments,
-  windowsHide: true,
 })
 if (result.error !== undefined) {
   process.stderr.write(`npm pack dry-run failed to start (${result.error.code ?? 'UNKNOWN'})\n`)

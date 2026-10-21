@@ -6,12 +6,9 @@ export const OPENAI_CODEX_MODEL_CATALOG_PATH = '/plugins/dsh-codex-connect/model
 /** Versioned official-client override policy, pinned to the mirrored catalog revision. */
 export const OPENAI_CODEX_CONTEXT_LIMIT_SOURCE = 'https://github.com/openai/codex/blob/d63a9b8344cfe58bc78bbe319b560378fc8756ef/codex-rs/models-manager/models.json'
 
-/** Sol61 provenance refresh; the immutable catalog's default/override limits are unchanged. */
-export const OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE = 'https://github.com/openai/codex/blob/d63a9b8344cfe58bc78bbe319b560378fc8756ef/codex-rs/models-manager/models.json'
-
 /** Provenance of a configuration ceiling; every listed model shares the pinned official catalog. */
-export function openAICodexContextLimitSource(id: string): string {
-  return id === 'gpt-6.1-sol' ? OPENAI_CODEX_SOL61_CONTEXT_LIMIT_SOURCE : OPENAI_CODEX_CONTEXT_LIMIT_SOURCE
+export function openAICodexContextLimitSource(_id: string): string {
+  return OPENAI_CODEX_CONTEXT_LIMIT_SOURCE
 }
 
 /** Pinned official standard tier; unlisted provider capacities are retained. */

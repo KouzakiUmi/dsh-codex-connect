@@ -11,7 +11,7 @@ import { detectEncodedImage } from './image-format.ts'
 import type { CodexImageMediaType, DetectedImage } from './image-format.ts'
 import type { OpenAICodexOriginalImageRef } from './image-assets-contract.ts'
 import type { OpenAICodexImageAssetStore } from './image-assets.ts'
-import { IMAGE_PRESENTATION_KIND, IMAGE_PRESENTATION_SCHEMA_VERSION, IMAGE_RESULT_PREFIX, IMAGE_EDIT_RESULT_PREFIX, IMAGE_RECOVERY_RESULT_PREFIX } from './image-presentation.ts'
+import { IMAGE_PRESENTATION_KIND, IMAGE_PRESENTATION_SCHEMA_VERSION, IMAGE_RESULT_PREFIX, IMAGE_EDIT_RESULT_PREFIX } from './image-presentation.ts'
 import { decodeImageToolRequest, IMAGE_INPUT_SCHEMA, IMAGE_REFERENCES_SCHEMA, IMAGE_EDIT_SOURCES_SCHEMA } from './image-input-contract.ts'
 import type { ImageEditSources } from './image-input-contract.ts'
 import { ImageInputError, promptForImageEdit, resolveImageEditInputs } from './image-inputs.ts'
@@ -27,8 +27,7 @@ interface ImageValue {
   edit?: ImageEditSources
   images: Array<{
     original: OpenAICodexOriginalImageRef
-    previewStatus?: 'unavailable'
-    preview?: {
+    preview: {
       attachmentId: string
       mediaType: CodexImageMediaType
       width: number
@@ -62,7 +61,7 @@ function extension(mediaType: CodexImageMediaType): string {
 function presentation(prompt: string, value: ImageValue) {
   return {
     kind: IMAGE_PRESENTATION_KIND,
-    schemaVersion: value.images.some(image => image.preview === undefined) ? 3 : value.edit === undefined ? IMAGE_PRESENTATION_SCHEMA_VERSION : 2,
+    schemaVersion: value.edit === undefined ? IMAGE_PRESENTATION_SCHEMA_VERSION : 2,
     prompt,
     images: value.images,
     ...(value.edit === undefined ? {} : { operation: 'edit' as const, edit: value.edit }),
@@ -70,15 +69,14 @@ function presentation(prompt: string, value: ImageValue) {
 }
 
 function outputContent(value: ImageValue, prompt: string): ToolContentBlock[] {
-  const recovered = value.images.some(image => image.preview === undefined)
   const lines = value.images.map(({ original, preview }, index) =>
-    `${String(index + 1)}. original ${original.mediaType}, ${String(original.width)}x${String(original.height)} px, ${String(original.bytes)} bytes; assetId=${original.assetId}; ${preview === undefined ? 'preview unavailable; original saved. Download the original or continue editing this exact assetId; do not generate again just to restore a preview.' : `preview ${String(preview.width)}x${String(preview.height)} px, attachment ${preview.attachmentId}`}`)
+    `${String(index + 1)}. original ${original.mediaType}, ${String(original.width)}x${String(original.height)} px, ${String(original.bytes)} bytes; preview ${String(preview.width)}x${String(preview.height)} px, attachment ${preview.attachmentId}`)
   return [
     { type: 'text', text: `${value.edit === undefined ? 'Generated' : 'Edited'} ${String(value.images.length)} image${value.images.length === 1 ? '' : 's'}:\n${lines.join('\n')}` },
-    { type: 'text', text: recovered ? IMAGE_RECOVERY_RESULT_PREFIX + JSON.stringify(presentation(prompt, value)) : value.edit === undefined
+    { type: 'text', text: value.edit === undefined
       ? IMAGE_RESULT_PREFIX + JSON.stringify(value.images)
       : IMAGE_EDIT_RESULT_PREFIX + JSON.stringify(presentation(prompt, value)) },
-    ...value.images.flatMap(({ preview }) => preview === undefined ? [] : [{
+    ...value.images.map(({ preview }) => ({
       type: 'image' as const,
       attachment: {
         attachmentId: AttachmentId(preview.attachmentId),
@@ -88,7 +86,7 @@ function outputContent(value: ImageValue, prompt: string): ToolContentBlock[] {
         bytes: preview.bytes,
         name: preview.name,
       },
-    }]),
+    })),
   ]
 }
 
@@ -96,7 +94,7 @@ function positiveSafeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value > 0
 }
 
-function previewValue(ref: ImageAttachmentRef, fallbackName: string): NonNullable<ImageValue['images'][number]['preview']> {
+function previewValue(ref: ImageAttachmentRef, fallbackName: string): ImageValue['images'][number]['preview'] {
   if (typeof ref.attachmentId !== 'string' || ref.attachmentId.length === 0
     || (ref.mediaType !== 'image/png' && ref.mediaType !== 'image/jpeg' && ref.mediaType !== 'image/webp')
     || !positiveSafeInteger(ref.bytes) || !positiveSafeInteger(ref.width) || !positiveSafeInteger(ref.height)) {
@@ -182,18 +180,6 @@ async function generate(
     inputs.push({ data, mediaType: parsed.mediaType, name })
   }
 
-  // Preview creation used to be the final host validation gate. Validate first
-  // so recovery never publishes an original rejected by that same gate.
-  try {
-    for (const input of inputs) {
-      exec.signal.throwIfAborted()
-      await ctx.attachments.validateImage(input)
-    }
-  } catch {
-    exec.signal.throwIfAborted()
-    failure('The generated images failed host validation.')
-  }
-  exec.signal.throwIfAborted()
   const sessionId = exec.agent?.id
   if (sessionId === undefined) failure('Image generation requires a session-owned tool call.')
   let originals: readonly OpenAICodexOriginalImageRef[]
@@ -213,30 +199,35 @@ async function generate(
     failure('The generated original images could not be saved.')
   }
 
-  if (exec.signal.aborted || originals.length !== inputs.length) {
-    await assets.removeImages(originals)
-    exec.signal.throwIfAborted()
-    failure('The image stores returned an incomplete image batch.')
-  }
-
-  let previews: Array<NonNullable<ImageValue['images'][number]['preview']>> | undefined
+  let refs: readonly ImageAttachmentRef[]
   try {
-    const refs = await ctx.attachments.saveImages(inputs)
-    if (refs.length === inputs.length) previews = refs.map((ref, index) => previewValue(ref, inputs[index]!.name!))
+    refs = await ctx.attachments.saveImages(inputs)
   } catch {
-    // The upstream request completed and originals are durable. A preview failure
-    // must not discard those bytes or invite a second billable generation.
-    previews = undefined
+    await assets.removeImages(originals)
+    failure('The generated images could not be saved; no attachment references were returned.')
   }
   if (exec.signal.aborted) {
     await assets.removeImages(originals)
     exec.signal.throwIfAborted()
   }
-  return {
-    ...(resolvedEdit === undefined ? {} : { edit: resolvedEdit }),
-    images: originals.map((original, index) => previews === undefined
-      ? { original, previewStatus: 'unavailable' as const }
-      : { original, preview: previews[index]! }),
+  if (refs.length !== inputs.length || originals.length !== inputs.length) {
+    await assets.removeImages(originals)
+    failure('The image stores returned an incomplete image batch.')
+  }
+
+  try {
+    return {
+      ...(resolvedEdit === undefined ? {} : { edit: resolvedEdit }),
+      images: refs.map((ref, index) => {
+        const original = originals[index]
+        const name = inputs[index]?.name
+        if (original === undefined || name === undefined) failure('The image stores returned an incomplete image batch.')
+        return { original, preview: previewValue(ref, name) }
+      }),
+    }
+  } catch (error) {
+    await assets.removeImages(originals)
+    throw error
   }
 }
 
@@ -253,7 +244,7 @@ export function imageGenerateTool(ctx: Context, assets: OpenAICodexImageAssetSto
   const inFlight = new Map<string, Promise<ImageValue>>()
   return defineTool({
     name: IMAGE_GENERATE_TOOL_NAME,
-    description: 'Generate or edit images through the ChatGPT image service while keeping the current chat model, including DeepSeek. No chat model switch is needed. Generate a new image, or edit an explicitly selected session image. For edits use operation=edit and target; optional ordered references have separate purposes. Use exact image handles exposed in this conversation. When present, a handle line immediately after an image contains its message-local number and stable attachmentId. When the user edits an uploaded copy (including first/second attached image), copy the complete attachment reference from the adjacent handle line. An attachmentId shared by an upload and a generated result is ambiguous; ask rather than selecting an older original. For older generated originals use exact assetId handles from the conversation. Never guess or use global recent images; never swap target and reference. Ask when the target is ambiguous. An unavailable edit target must not become text-only generation. If a result says preview unavailable, its original was saved: use the returned assetId to continue editing, or let the user download the original; do not regenerate just to recover a preview. Results preserve originals and can be edited again; output size and style are service-controlled.',
+    description: 'Generate a new image, or edit an explicitly selected session image. For edits use operation=edit and target; optional ordered references have separate purposes. When image editing is enabled, Codex Connect places a model-visible handle line immediately after each request image, numbered in that message and containing its stable attachmentId. When the user edits an uploaded copy (including first/second attached image), copy the complete attachment reference from the adjacent handle line. An attachmentId shared by an upload and a generated result is ambiguous; ask rather than selecting an older original. For older generated originals use exact assetId handles from the conversation. Never guess or use global recent images; never swap target and reference. Ask when the target is ambiguous. An unavailable edit target must not become text-only generation. Results preserve originals and can be edited again; output size and style are service-controlled.',
     parameters: {
       prompt: { type: 'string', required: true, description: 'The requested new image or changes to the selected target.' },
       operation: { type: 'string', enum: ['generate', 'edit'], description: 'Use edit whenever modifying a selected image. Omission is legacy text generation only.' },
@@ -287,9 +278,9 @@ export function imageGenerateTool(ctx: Context, assets: OpenAICodexImageAssetSto
                     sha256: { type: 'string', required: true },
                   },
                 },
-                previewStatus: { type: 'string', enum: ['unavailable'] },
                 preview: {
                   type: 'object',
+                  required: true,
                   additionalProperties: false,
                   properties: {
                     attachmentId: { type: 'string', required: true },
@@ -308,7 +299,7 @@ export function imageGenerateTool(ctx: Context, assets: OpenAICodexImageAssetSto
       render: (args, value) => outputContent(value as ImageValue, args.prompt.trim()),
       presentationMeta: (args, value) => ({
         kind: IMAGE_PRESENTATION_KIND,
-        schemaVersion: value.images.some(image => image.preview === undefined) ? 3 : value.edit === undefined ? IMAGE_PRESENTATION_SCHEMA_VERSION : 2,
+        schemaVersion: value.edit === undefined ? IMAGE_PRESENTATION_SCHEMA_VERSION : 2,
         prompt: args.prompt.trim(), images: value.images,
         ...(value.edit === undefined ? {} : { operation: 'edit', edit: value.edit }),
       }),

@@ -12,7 +12,6 @@ import type { OpenAICodexSettingsKey } from './locales.ts'
 import { OpenAICodexConfiguration } from './OpenAICodexConfiguration.tsx'
 import type { OpenAICodexSettingsModule } from './OpenAICodexConfiguration.tsx'
 import { OpenAICodexUpdateSettings } from './OpenAICodexUpdateNotice.tsx'
-import { OpenAICodexRuntimeIdentity } from './OpenAICodexRuntimeIdentity.tsx'
 import type { OpenAICodexUpdateStore } from './update-store.ts'
 
 /** Dependencies injected by the browser plugin entry. */
@@ -454,7 +453,7 @@ export function OpenAICodexSettings({ t, configScope, updater, account, embedded
       ? t('modelsModuleDefault')
       : t('modelsModuleSelected', { count: config.models.length })
     if (module === 'network') return t(config?.enableProxy === true ? 'networkModuleProxy' : 'networkModuleDirect')
-    const count = config === undefined ? 0 : [config.enableSearch, config.enableReserveFallback, (config.newSessionSpeedMode ?? (config.enableNewSessionFastMode ? 'fast' : 'standard')) !== 'standard', (config.newSubagentSpeedMode ?? (config.enableNewSubagentFastMode ? 'fast' : 'standard')) !== 'standard', config.enableNativeCompaction, config.enableImageTool, config.enableImageGeneration, config.enableAutoReview].filter(Boolean).length
+    const count = config === undefined ? 0 : [config.enableSearch, config.enableReserveFallback, config.enableNewSessionFastMode, config.enableNewSubagentFastMode, config.enableNativeCompaction, config.enableImageTool, config.enableImageGeneration, config.enableAutoReview].filter(Boolean).length
     return t('capabilitiesModuleEnabled', { count })
   }
 
@@ -471,7 +470,6 @@ export function OpenAICodexSettings({ t, configScope, updater, account, embedded
       )}
       <div style={embedded ? embeddedCardStyle : cardStyle}>
         {accountOnly || updater === undefined ? null : <OpenAICodexUpdateSettings t={t} updater={updater} />}
-        {accountOnly ? null : <OpenAICodexRuntimeIdentity t={t} />}
         {accountOnly ? null : (
           <div style={moduleTabsStyle} role="tablist" aria-label={t('settingsModules')}>
             {SETTINGS_MODULES.map((module, index) => (

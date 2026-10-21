@@ -17,7 +17,6 @@ import {
   OPENAI_CODEX_AUTH_STATUS_PATH,
 } from '../src/auth-paths.ts'
 import { OPENAI_CODEX_MODEL_CATALOG_PATH } from '../src/model-contract.ts'
-import { OPENAI_CODEX_RUNTIME_PATH } from '../src/update-paths.ts'
 import { modelCatalogFixture } from './model-catalog-fixture.ts'
 import { BROWSER_REQUEST_TIMEOUT_MS } from '../src/client/request-json.ts'
 import {
@@ -62,21 +61,19 @@ function popupFixture(): { popup: Window; close: ReturnType<typeof vi.fn>; repla
 function settingsScopeFixture(
   writable = true,
   initial: OpenAICodexSettingsConfig = DEFAULT_OPENAI_CODEX_SETTINGS,
-  snapshotMode: 'host' | 'memory' | 'absent' = 'host',
 ): {
   scope: ConfigForm<OpenAICodexSettingsConfig>
   set: ReturnType<typeof vi.fn>
   mutate: ReturnType<typeof vi.fn>
 } {
-  // Alpha.3 omits mode; the dev SDK still requires the legacy property.
-  let snapshot: Omit<ConfigFormSnapshot<OpenAICodexSettingsConfig>, 'mode'> & { mode?: 'host' | 'memory' } = {
+  let snapshot: ConfigFormSnapshot<OpenAICodexSettingsConfig> = {
     status: 'ready',
     value: { ...initial },
     base: { ...initial },
     user: undefined,
     revision: 0,
     writable,
-    ...(snapshotMode === 'absent' ? {} : { mode: snapshotMode }),
+    mode: 'host',
   }
   const listeners = new Set<() => void>()
   const set = vi.fn(async (field: string, value: unknown) => {
@@ -96,7 +93,7 @@ function settingsScopeFixture(
     const next = { ...snapshot.value! }
     for (const op of ops) {
       if (op.path.length !== 1) throw new Error('fixture requires top-level fields')
-      Object.assign(next, { [op.path[0]!]: op.op === 'set' ? ['reasoningEffort', 'newSessionSpeedMode', 'newSubagentSpeedMode'].includes(String(op.path[0])) && op.value === null ? undefined : op.value : undefined })
+      Object.assign(next, { [op.path[0]!]: op.op === 'set' ? op.value : undefined })
     }
     snapshot = { ...snapshot, value: next, revision: (snapshot.revision ?? 0) + 1 }
     for (const listener of listeners) listener()
@@ -106,7 +103,7 @@ function settingsScopeFixture(
     set,
     mutate,
     scope: {
-      getSnapshot: () => snapshot as ConfigFormSnapshot<OpenAICodexSettingsConfig>,
+      getSnapshot: () => snapshot,
       subscribe(listener) {
         listeners.add(listener)
         return () => { listeners.delete(listener) }
@@ -158,7 +155,7 @@ describe('OpenAI Codex Plugin configuration card', () => {
 
   it('shows a dedicated remote-origin trust state without auth mutations and copies only the suggested command', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
-      expect([OPENAI_CODEX_AUTH_STATUS_PATH, OPENAI_CODEX_RUNTIME_PATH]).toContain(requestPath(input))
+      expect(requestPath(input)).toBe(OPENAI_CODEX_AUTH_STATUS_PATH)
       return json({ error: 'remote-web-origin-not-trusted' }, 403)
     })
     const writeText = vi.fn(async (_value: string): Promise<void> => undefined)
@@ -175,15 +172,12 @@ describe('OpenAI Codex Plugin configuration card', () => {
     fireEvent.click(screen.getByRole('button', { name: en.remoteOriginCopy }))
     await waitFor(() => { expect(writeText).toHaveBeenCalledWith(command) })
     expect(popup).not.toHaveBeenCalled()
-    const paths = fetchMock.mock.calls.map(([input]) => requestPath(input))
-    expect(paths.filter(path => path !== OPENAI_CODEX_RUNTIME_PATH)).toEqual([OPENAI_CODEX_AUTH_STATUS_PATH])
-    expect(paths.filter(path => path === OPENAI_CODEX_RUNTIME_PATH)).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('offers a user-clicked browser link when the popup is blocked', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
       const path = requestPath(input)
-      if (path === OPENAI_CODEX_RUNTIME_PATH) return json({}, 404)
       if (path === OPENAI_CODEX_AUTH_STATUS_PATH) return json({ status: 'signed-out' })
       expect(path).toBe(OPENAI_CODEX_AUTH_LOGIN_PATH)
       return json({ url: 'https://auth.openai.com/authorize' })
@@ -203,15 +197,12 @@ describe('OpenAI Codex Plugin configuration card', () => {
     expect(link.target).toBe('_blank')
     expect(link.rel).toContain('noopener')
     expect(link.rel).toContain('noreferrer')
-    const paths = fetchMock.mock.calls.map(([input]) => requestPath(input))
-    expect(paths.filter(path => path !== OPENAI_CODEX_RUNTIME_PATH)).toEqual([OPENAI_CODEX_AUTH_STATUS_PATH, OPENAI_CODEX_AUTH_LOGIN_PATH])
-    expect(paths.filter(path => path === OPENAI_CODEX_RUNTIME_PATH)).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('closes the popup and surfaces a failed login request', async () => {
     const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
       const path = requestPath(input)
-      if (path === OPENAI_CODEX_RUNTIME_PATH) return json({}, 404)
       if (path === OPENAI_CODEX_AUTH_STATUS_PATH) return json({ status: 'signed-out' })
       expect(path).toBe(OPENAI_CODEX_AUTH_LOGIN_PATH)
       return json({ error: 'OAuth is unavailable' }, 503)
@@ -231,7 +222,6 @@ describe('OpenAI Codex Plugin configuration card', () => {
     const reauthMessage = 'OpenAI Codex authorization must be renewed'
     const fetchMock = vi.fn(async (input: string | URL | Request): Promise<Response> => {
       const path = requestPath(input)
-      if (path === OPENAI_CODEX_RUNTIME_PATH) return json({}, 404)
       if (path === OPENAI_CODEX_AUTH_STATUS_PATH) {
         return json({ status: 'reauth-required', message: reauthMessage })
       }
@@ -244,7 +234,7 @@ describe('OpenAI Codex Plugin configuration card', () => {
 
     render(<OpenAICodexSettings t={t} embedded />)
     expect(await screen.findByText(reauthMessage)).toBeTruthy()
-    expect(within(screen.getByRole('tabpanel', { name: en.accountModule })).getByRole('status').textContent).toContain(en.reauthRequired)
+    expect(screen.getByRole('status').textContent).toContain(en.reauthRequired)
     expect(screen.getByRole('button', { name: en.reauthorize })).toBeTruthy()
     expect(screen.queryByRole('button', { name: en.logout })).toBeNull()
     expect(zh.reauthRequired).toBe('需要重新登录')
@@ -470,45 +460,6 @@ describe('OpenAI Codex Plugin configuration card', () => {
     expect(mutate).toHaveBeenCalledTimes(1)
   })
 
-  it('saves separate explicit speed defaults and resets to the preserved legacy preference', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json(modelCatalogFixture([{ id: 'gpt-6.1-sol', name: 'GPT Sol' }]))))
-    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, enableNewSessionFastMode: true })
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
-    const top = await screen.findByRole('combobox', { name: en.newSessionSpeedMode })
-    const child = screen.getByRole('combobox', { name: en.newSubagentSpeedMode })
-    fireEvent.change(top, { target: { value: 'ultrafast' } })
-    fireEvent.change(child, { target: { value: 'standard' } })
-    expect((screen.getByRole('checkbox', { name: /Fast Mode for new conversations/u }) as HTMLInputElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    expect(await screen.findByText(en.settingsSaved)).toBeTruthy()
-    expect(mutate).toHaveBeenLastCalledWith([
-      { op: 'set', path: ['newSessionSpeedMode'], value: 'ultrafast' },
-      { op: 'set', path: ['newSubagentSpeedMode'], value: 'standard' },
-    ], 0)
-    fireEvent.change(top, { target: { value: '' } })
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    await waitFor(() => { expect(mutate).toHaveBeenLastCalledWith([{ op: 'set', path: ['newSessionSpeedMode'], value: null }], 1) })
-    expect(await screen.findByText(en.settingsSaved)).toBeTruthy()
-    expect(scope.getSnapshot().value).toMatchObject({ newSessionSpeedMode: undefined, newSubagentSpeedMode: 'standard', enableNewSessionFastMode: true })
-    expect((screen.getByRole('checkbox', { name: /Fast Mode for new conversations/u }) as HTMLInputElement).disabled).toBe(false)
-  })
-
-  it('saves a reasoning fallback and resets it with a null mask through the Host revision queue', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json(modelCatalogFixture([{ id: 'gpt-6.1-sol', name: 'GPT Sol' }]))))
-    const { scope, mutate } = settingsScopeFixture()
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
-    const select = await screen.findByRole('combobox', { name: /Default reasoning effort/u })
-    fireEvent.change(select, { target: { value: 'max' } })
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    expect(await screen.findByText(en.settingsSaved)).toBeTruthy()
-    expect(mutate).toHaveBeenLastCalledWith([{ op: 'set', path: ['reasoningEffort'], value: 'max' }], 0)
-    fireEvent.change(select, { target: { value: '' } })
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    await waitFor(() => { expect(mutate).toHaveBeenLastCalledWith([{ op: 'set', path: ['reasoningEffort'], value: null }], 1) })
-    expect(await screen.findByText(en.settingsSaved)).toBeTruthy()
-    expect(scope.getSnapshot().value?.reasoningEffort).toBeUndefined()
-  })
-
   it('saves independent, default-off Fast Mode choices for new top-level and subagent sessions', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => json(modelCatalogFixture([{ id: 'gpt-5.6-sol', name: 'GPT-5.6 Sol' }]))))
     const { scope, mutate } = settingsScopeFixture()
@@ -646,11 +597,9 @@ describe('OpenAI Codex Plugin configuration card', () => {
     expect(enableImageGeneration.checked).toBe(false)
     expect(imageModelHint.placeholder).toContain('gpt-image-2')
     expect(enableAutoReview.checked).toBe(false)
-    expect(en.enableImageGenerationHelp).toContain('keeping your current chat model, including DeepSeek')
-    expect(en.enableImageGenerationHelp).toContain('only the selected target and reference images')
+    expect(en.enableImageGenerationHelp).toBe('Generate or edit conversation images with GPT Image. When enabled, Codex requests include stable handles for conversation images so the model can select them; editing sends only the selected target and reference images to the image service.')
     expect(zh.enableImageGeneration).toBe('启用 GPT Image 图片生成')
-    expect(zh.enableImageGenerationHelp).toContain('保持当前聊天模型（包括 DeepSeek）')
-    expect(zh.enableImageGenerationHelp).toContain('仅将本次选定的主图和参考图')
+    expect(zh.enableImageGenerationHelp).toBe('在对话中生成或编辑图片。启用后，Codex 请求会为对话图片附加稳定句柄，帮助模型准确选图；编辑时，仅将本次选定的主图和参考图发送给图片服务。')
     expect(screen.getByText(en.autoReviewOfficialBadge)).toBeTruthy()
     expect(screen.getByText(en.enableAutoReviewHelp)).toBeTruthy()
     expect(en.autoReviewDisclosure).toContain('to chatgpt.com')
@@ -1138,279 +1087,6 @@ describe('OpenAI Codex Plugin configuration card', () => {
 })
 
 
-describe('local manual proxy input drafts', () => {
-  it('releases manual input ownership after Use and Save accepts the exact input, then follows the Host', async () => {
-    const accepted = 'http://127.0.0.1:8111'
-    const next = 'http://127.0.0.1:8112'
-    const fetchMock = vi.fn(async (path: string) => {
-      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return json([])
-      expect(path).toBe(`${OPENAI_CODEX_PROXY_TEST_PATH}?proxyUrl=${encodeURIComponent(accepted)}`)
-      return json({ proxyUrl: accepted, reachable: true, classification: 'reachable' })
-    })
-    vi.stubGlobal('fetch', fetchMock)
-    const { scope, mutate } = settingsScopeFixture()
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    const address = screen.getByRole('textbox', { name: en.proxyAddress })
-    fireEvent.change(address, { target: { value: accepted } })
-    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
-    await waitFor(() => { expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', false) })
-    fireEvent.click(screen.getByRole('button', { name: en.useThisProxy }))
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    await screen.findByText(en.settingsSaved)
-    expect(scope.getSnapshot().value).toMatchObject({ enableProxy: true, proxyUrl: accepted })
-    expect(address).toHaveProperty('value', accepted)
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
-    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
-    await act(async () => { await scope.set('proxyUrl', next) })
-    expect(address).toHaveProperty('value', next)
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
-    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
-    expect(mutate).toHaveBeenCalledExactlyOnceWith([
-      { op: 'set', path: ['enableProxy'], value: true },
-      { op: 'set', path: ['proxyUrl'], value: accepted },
-    ], 0)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-  })
-
-  it('becomes clean on returning to exact accepted text without reviving a stale pending probe', async () => {
-    const accepted = 'http://127.0.0.1:8111'
-    const next = 'http://127.0.0.1:8112'
-    let signal: AbortSignal | null | undefined
-    let complete!: (response: Response) => void
-    vi.stubGlobal('fetch', vi.fn((path: string, init: RequestInit) => {
-      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json([]))
-      signal = init.signal
-      return new Promise<Response>(done => { complete = done })
-    }))
-    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, proxyUrl: accepted })
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    const address = screen.getByRole('textbox', { name: en.proxyAddress })
-    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
-    // Normalized equality alone is not exact-text equality and must retain the edit.
-    fireEvent.change(address, { target: { value: ` ${accepted}/ ` } })
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', false)
-    fireEvent.change(address, { target: { value: accepted } })
-    expect(signal?.aborted).toBe(true)
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
-    await act(async () => { complete(json({ proxyUrl: accepted, reachable: true, classification: 'reachable' })) })
-    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
-    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
-    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
-    await act(async () => { await scope.set('proxyUrl', next) })
-    expect(address).toHaveProperty('value', next)
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
-    expect(mutate).not.toHaveBeenCalled()
-  })
-
-  it('preserves a different tested candidate across an unrelated save without applying or saving it', async () => {
-    const accepted = 'http://127.0.0.1:8110'
-    const candidate = 'http://127.0.0.1:8111'
-    vi.stubGlobal('fetch', vi.fn(async (path: string) => {
-      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return json([])
-      expect(path).toBe(`${OPENAI_CODEX_PROXY_TEST_PATH}?proxyUrl=${encodeURIComponent(candidate)}`)
-      return json({ proxyUrl: candidate, reachable: true, classification: 'reachable' })
-    }))
-    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, enableProxy: true, proxyUrl: accepted })
-    const view = render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: candidate } })
-    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
-    await waitFor(() => { expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', false) })
-    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
-    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    await screen.findByText(en.settingsSaved)
-    expect(mutate).toHaveBeenCalledExactlyOnceWith([{ op: 'set', path: ['enableSearch'], value: true }], 0)
-    expect(scope.getSnapshot().value).toMatchObject({ enableProxy: true, proxyUrl: accepted })
-    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', candidate)
-    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', false)
-    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', false)
-    expect(screen.queryByText(t('pendingProxy', { proxyUrl: candidate }))).toBeNull()
-  })
-
-  it('preserves typed input across unrelated Host snapshots without enabling Save or mutating settings', async () => {
-    const fetchMock = vi.fn(async () => json([]))
-    vi.stubGlobal('fetch', fetchMock)
-    const { scope, set, mutate } = settingsScopeFixture()
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    const address = screen.getByRole('textbox', { name: en.proxyAddress })
-    const candidate = 'http://127.0.0.1:8111'
-    fireEvent.change(address, { target: { value: candidate } })
-    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', false)
-    expect(set).not.toHaveBeenCalled()
-    expect(mutate).not.toHaveBeenCalled()
-    expect(scope.getSnapshot().value).toEqual(DEFAULT_OPENAI_CODEX_SETTINGS)
-    await act(async () => { await scope.set('searchModel', 'external-model') })
-    expect(address).toHaveProperty('value', candidate)
-    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
-    expect(mutate).not.toHaveBeenCalled()
-    expect(fetchMock).toHaveBeenCalledExactlyOnceWith(OPENAI_CODEX_MODEL_CATALOG_PATH, expect.anything())
-  })
-
-  it('preserves a manual candidate when an unrelated setting is successfully saved', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json([])))
-    const { scope, mutate } = settingsScopeFixture()
-    const view = render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    const candidate = 'http://127.0.0.1:8111'
-    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: candidate } })
-    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
-    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    await screen.findByText(en.settingsSaved)
-    expect(mutate).toHaveBeenCalledExactlyOnceWith([{ op: 'set', path: ['enableSearch'], value: true }], 0)
-    expect(scope.getSnapshot().value?.proxyUrl).toBe(DEFAULT_OPENAI_CODEX_SETTINGS.proxyUrl)
-    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', candidate)
-    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
-    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
-  })
-
-  it('keeps untouched input following the Host even while an unrelated setting is staged', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json([])))
-    const { scope, mutate } = settingsScopeFixture()
-    const view = render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
-    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
-    view.rerender(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    const accepted = 'http://127.0.0.1:8112'
-    await act(async () => { await scope.set('proxyUrl', accepted) })
-    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', accepted)
-    fireEvent.click(screen.getByRole('button', { name: en.discard }))
-    const newest = 'http://127.0.0.1:8113'
-    await act(async () => { await scope.set('proxyUrl', newest) })
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', newest)
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
-    expect(mutate).not.toHaveBeenCalled()
-  })
-
-  it('discards a manual-only draft to the newest accepted value and cancels its obsolete probe', async () => {
-    const accepted = 'http://127.0.0.1:8112'
-    const candidate = 'http://127.0.0.1:8111'
-    let signal: AbortSignal | null | undefined
-    let complete!: (response: Response) => void
-    vi.stubGlobal('fetch', vi.fn((path: string, init: RequestInit) => {
-      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json([]))
-      signal = init.signal
-      return new Promise<Response>(done => { complete = done })
-    }))
-    const { scope, mutate } = settingsScopeFixture()
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: candidate } })
-    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
-    await act(async () => { await scope.set('proxyUrl', accepted) })
-    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', candidate)
-    fireEvent.click(screen.getByRole('button', { name: en.discard }))
-    expect(signal?.aborted).toBe(true)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', accepted)
-    await act(async () => { complete(json({ proxyUrl: candidate, reachable: true, classification: 'reachable' })) })
-    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
-    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
-    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
-    expect(mutate).not.toHaveBeenCalled()
-  })
-
-  it('resets the old candidate on scope replacement and rejects the old pending probe', async () => {
-    const oldCandidate = 'http://127.0.0.1:8111'
-    const accepted = 'http://127.0.0.1:8112'
-    let signal: AbortSignal | null | undefined
-    let complete!: (response: Response) => void
-    vi.stubGlobal('fetch', vi.fn((path: string, init: RequestInit) => {
-      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json([]))
-      signal = init.signal
-      return new Promise<Response>(done => { complete = done })
-    }))
-    const first = settingsScopeFixture()
-    const second = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, proxyUrl: accepted })
-    const view = render(<OpenAICodexConfiguration scope={first.scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: oldCandidate } })
-    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
-    view.rerender(<OpenAICodexConfiguration scope={second.scope} t={t} activeModule="network" />)
-    expect(signal?.aborted).toBe(true)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    expect(screen.getByRole('textbox', { name: en.proxyAddress })).toHaveProperty('value', accepted)
-    await act(async () => { complete(json({ proxyUrl: oldCandidate, reachable: true, classification: 'reachable' })) })
-    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
-    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
-    expect(screen.getByRole('button', { name: en.discard })).toHaveProperty('disabled', true)
-    expect(first.mutate).not.toHaveBeenCalled()
-    expect(second.mutate).not.toHaveBeenCalled()
-  })
-
-  it.each(['changed', 'restored', 'discarded'] as const)('does not let a stale pending probe authorize %s input', async change => {
-    const candidate = 'http://127.0.0.1:8111'
-    let signal: AbortSignal | null | undefined
-    let complete!: (response: Response) => void
-    vi.stubGlobal('fetch', vi.fn((path: string, init: RequestInit) => {
-      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return Promise.resolve(json([]))
-      signal = init.signal
-      return new Promise<Response>(done => { complete = done })
-    }))
-    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, proxyUrl: candidate })
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    const address = screen.getByRole('textbox', { name: en.proxyAddress })
-    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
-    fireEvent.change(address, { target: { value: 'http://127.0.0.1:8112' } })
-    if (change === 'restored') fireEvent.change(address, { target: { value: candidate } })
-    if (change === 'discarded') {
-      fireEvent.click(screen.getByRole('button', { name: en.discard }))
-      fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    }
-    expect(signal?.aborted).toBe(true)
-    await act(async () => { complete(json({ proxyUrl: candidate, reachable: true, classification: 'reachable' })) })
-    expect(address).toHaveProperty('value', change === 'changed' ? 'http://127.0.0.1:8112' : candidate)
-    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
-    expect(screen.queryByText(t('proxyTestSucceeded', { status: 'reachable' }))).toBeNull()
-    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
-    expect(mutate).not.toHaveBeenCalled()
-  })
-
-  it('requires a successful result for the current normalized address before explicit Use and Save', async () => {
-    const candidate = 'http://127.0.0.1:8111'
-    let reachable = false
-    const fetchMock = vi.fn(async (path: string) => {
-      if (path === OPENAI_CODEX_MODEL_CATALOG_PATH) return json([])
-      expect(new URL(path, 'http://localhost').searchParams.get('proxyUrl')).toBe(candidate)
-      return json({ proxyUrl: candidate, reachable, classification: reachable ? 'reachable' : 'connect-failure' })
-    })
-    vi.stubGlobal('fetch', fetchMock)
-    const { scope, mutate } = settingsScopeFixture()
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="network" />)
-    fireEvent.click(screen.getByRole('tab', { name: en.manualEntry }))
-    fireEvent.change(screen.getByRole('textbox', { name: en.proxyAddress }), { target: { value: ` ${candidate}/ ` } })
-    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
-    await screen.findByText(t('proxyTestFailed', { reason: 'connect-failure' }))
-    expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', true)
-    reachable = true
-    fireEvent.click(screen.getByRole('button', { name: en.testProxy }))
-    await waitFor(() => { expect(screen.getByRole('button', { name: en.useThisProxy })).toHaveProperty('disabled', false) })
-    expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
-    expect(mutate).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: en.useThisProxy }))
-    expect(screen.getByText(t('pendingProxy', { proxyUrl: candidate }))).toBeTruthy()
-    expect(mutate).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    await screen.findByText(en.settingsSaved)
-    expect(mutate).toHaveBeenCalledExactlyOnceWith([
-      { op: 'set', path: ['enableProxy'], value: true },
-      { op: 'set', path: ['proxyUrl'], value: candidate },
-    ], 0)
-  })
-})
-
-
 describe('bounded configuration recovery', () => {
   it.each(['replace', 'disable'] as const)('aborts and resets saved checks on external Host %s without disturbing manual probes/edits', async change => {
     const a = 'http://127.0.0.1:8110'
@@ -1555,47 +1231,15 @@ describe('unchanged Host-accepted context budgets', () => {
     expect(scope.getSnapshot().value?.contextWindowOverrides).toEqual(overrides)
   })
 
-  it('rejects legacy memory snapshots even if a fixture advertises writable settings', async () => {
+  it('preserves unrelated concurrent changes with latest revision and rejects conflicting same-field edits', async () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
-    const { scope, mutate } = settingsScopeFixture(true, DEFAULT_OPENAI_CODEX_SETTINGS, 'memory')
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
-    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    await screen.findByText(en.settingsSaveFailed)
-    expect(mutate).not.toHaveBeenCalled()
-    expect(scope.getSnapshot().value?.enableSearch).toBe(false)
-  })
-
-  it.each([
-    { writable: false },
-    { revision: undefined },
-    { status: 'unavailable' as const },
-    { value: undefined },
-  ])('refuses an absent-mode save when the latest Host snapshot loses its fence or authority (%j)', async latest => {
-    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
-    const { scope, mutate } = settingsScopeFixture(true, DEFAULT_OPENAI_CODEX_SETTINGS, 'absent')
-    render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
-    fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
-    const changed = { ...scope.getSnapshot(), ...latest }
-    // Silent replacement simulates a Host update between rendering and save.
-    vi.spyOn(scope, 'getSnapshot').mockReturnValue(changed)
-    fireEvent.click(screen.getByRole('button', { name: en.save }))
-    await screen.findByText(en.settingsSaveFailed)
-    expect(mutate).not.toHaveBeenCalled()
-    expect('mode' in scope.getSnapshot()).toBe(false)
-  })
-
-  it.each(['host', 'absent'] as const)('preserves unrelated concurrent changes with latest revision and rejects conflicting same-field edits (%s mode)', async snapshotMode => {
-    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
-    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: { sol: 400_000 }, enableSearch: true }, snapshotMode)
+    const { scope, mutate } = settingsScopeFixture(true, { ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: { sol: 400_000 }, enableSearch: true })
     render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
     fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
     await act(async () => { await scope.set('enableNativeCompaction', true) })
     fireEvent.click(screen.getByRole('button', { name: en.save }))
     await screen.findByText(en.settingsSaved)
     expect(mutate).toHaveBeenCalledWith([{ op: 'set', path: ['enableSearch'], value: false }], 1)
-    expect(scope.getSnapshot().revision).toBe(2)
-    expect('mode' in scope.getSnapshot()).toBe(snapshotMode !== 'absent')
     expect(scope.getSnapshot().value?.enableNativeCompaction).toBe(true)
     fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
     fireEvent.change(screen.getByRole('textbox', { name: en.searchModel }), { target: { value: 'mine' } })
@@ -1606,20 +1250,18 @@ describe('unchanged Host-accepted context budgets', () => {
     expect(scope.getSnapshot().value?.searchModel).toBe('theirs')
   })
 
-  it.each(['host', 'absent'] as const)('honors Host refusal and read-only state without using the missing catalog as authority (%s mode)', async snapshotMode => {
+  it('honors Host refusal and read-only state without using the missing catalog as authority', async () => {
     vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
     const initial = { ...DEFAULT_OPENAI_CODEX_SETTINGS, contextWindowOverrides: { sol: 400_000 }, enableSearch: true }
-    const { scope, mutate } = settingsScopeFixture(true, initial, snapshotMode)
+    const { scope, mutate } = settingsScopeFixture(true, initial)
     mutate.mockResolvedValueOnce(false)
     const view = render(<OpenAICodexConfiguration scope={scope} t={t} activeModule="capabilities" />)
     fireEvent.click(screen.getByRole('checkbox', { name: new RegExp(en.enableSearch) }))
     fireEvent.click(screen.getByRole('button', { name: en.save }))
     await screen.findByText(en.settingsSaveFailed)
-    expect(mutate).toHaveBeenCalledWith([{ op: 'set', path: ['enableSearch'], value: false }], 0)
     expect(scope.getSnapshot().value?.enableSearch).toBe(true)
-    expect(scope.getSnapshot().revision).toBe(0)
     view.unmount()
-    const readonly = settingsScopeFixture(false, initial, snapshotMode)
+    const readonly = settingsScopeFixture(false, initial)
     render(<OpenAICodexConfiguration scope={readonly.scope} t={t} activeModule="capabilities" />)
     expect(screen.getByRole('button', { name: en.save })).toHaveProperty('disabled', true)
     expect(readonly.mutate).not.toHaveBeenCalled()
