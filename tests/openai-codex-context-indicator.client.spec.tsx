@@ -16,7 +16,7 @@ function scope(tier?: 'standard' | 'extended' | 'maximum', writable = true) {
   const listeners = new Set<() => void>()
   let snapshot: ConfigFormSnapshot<OpenAICodexSettingsConfig> = { status: 'ready', value: { ...DEFAULT_OPENAI_CODEX_SETTINGS,
     modelContextTiers: { 'gpt-6-astra': 'standard', ...(tier === undefined ? {} : { 'gpt-6.1-sol': tier }) } },
-    base: undefined, user: undefined, revision: 0, writable, mode: 'host' }
+    base: undefined, user: undefined, revision: 0, writable }
   const save = (next: 'standard' | 'extended' | 'maximum') => {
     snapshot = { ...snapshot, value: { ...snapshot.value!, modelContextTiers: { ...snapshot.value!.modelContextTiers, 'gpt-6.1-sol': next } }, revision: (snapshot.revision ?? 0) + 1 }
     listeners.forEach(listener => { listener() })

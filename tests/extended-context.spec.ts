@@ -10,7 +10,7 @@ function adapter(tiers: () => OpenAICodexContextTiers) {
   const credentials = { read: async () => { throw new Error('Metadata must not read credentials') } } as unknown as OpenAICodexCredentialStore
   return createOpenAICodexAdapter(credentials, () => undefined,
     undefined, undefined, undefined, undefined, undefined, undefined, undefined,
-    undefined, undefined, undefined, undefined, undefined, undefined, tiers)
+    undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, tiers)
 }
 describe('persistent model context tiers', () => {
   it.each([['standard', 272_000], ['extended', 500_000], ['maximum', 872_000]] as const)('uses %s on unbound metadata and fresh manual signals', async (tier, window) => {

@@ -136,6 +136,8 @@ import { parseOpenAICodexSpeedDefault } from './speed-mode-contract.ts'
 import type { OpenAICodexSpeedMode } from './speed-mode-contract.ts'
 import { parseOpenAICodexReasoningEffort } from './reasoning-contract.ts'
 import type { OpenAICodexReasoningEffort } from './reasoning-contract.ts'
+import { resolveOpenAICodexPreflightConfig } from './preflight-activity.ts'
+import type { OpenAICodexPreflightConfig } from './preflight-activity.ts'
 import { RetryPolicySchema, resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import type { RetryPolicyConfig } from '@deepseek-ai/dsh-llm'
 
@@ -306,6 +308,8 @@ export interface Config {
   reasoningEffort?: OpenAICodexReasoningEffort | null | undefined
   /** Optional Host model-request retry policy; omission preserves defaults. Reload to change. */
   retryPolicy?: RetryPolicyConfig | undefined
+  /** Explicit startup-only authorization for bounded bili preflight heartbeats; omitted by default. */
+  preflightActivity?: OpenAICodexPreflightConfig | undefined
   /** Explicit profile opt-in to Codex native context management; DSH owns automatic triggers. Disabling stops new native compactions, not replay of existing checkpoints. */
   enableNativeCompaction?: boolean
   /** Register the optional image-loading tool. */
@@ -366,6 +370,9 @@ const configSchema = z.object({
   newSessionSpeedMode: z.transform(z.union([z.const(undefined), z.const(null), z.string()]), parseOpenAICodexSpeedDefault).volatile(),
   newSubagentSpeedMode: z.transform(z.union([z.const(undefined), z.const(null), z.string()]), parseOpenAICodexSpeedDefault).volatile(),
   reasoningEffort: z.transform(z.union([z.const(undefined), z.const(null), z.string()]), parseOpenAICodexReasoningEffort).volatile(),
+  preflightActivity: z.transform(z.union([z.const(undefined), z.object({
+    protocol: z.const('bili-v1'), trustedProxyOrigin: z.string(), maxDurationMs: z.number(),
+  })]), value => value === undefined ? undefined : resolveOpenAICodexPreflightConfig(value)),
   retryPolicy: z.transform(z.union([z.const(undefined), RetryPolicySchema]), value => {
     resolveRetryPolicy(value, 'dsh-codex-connect retryPolicy')
     return value
@@ -399,6 +406,8 @@ export interface VolatileConfig {
   contextWindowOverrides: Volatile<Record<string, number | null> | null | undefined>
   /** Optional Host retry policy; not a Volatile field because it applies at load time. */
   retryPolicy?: RetryPolicyConfig | undefined
+  /** Optional startup-authorized bili preflight activity; omitted by default. */
+  preflightActivity?: OpenAICodexPreflightConfig | undefined
   enableSearch: Volatile<boolean>
   enableReserveFallback: Volatile<boolean>
   enableNewSessionFastMode: Volatile<boolean>
@@ -527,6 +536,8 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       backendRequests,
       taskRuntime,
       () => resolveOpenAICodexSettings(current()).enableImageGeneration,
+      config.preflightActivity,
+      config.retryPolicy,
       (): OpenAICodexOutputStyle => {
         const resolved = resolveOpenAICodexSettings(current())
         return { verbosity: resolved.outputVerbosity, reasoningSummary: resolved.reasoningSummary }
@@ -534,7 +545,6 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       undefined,
       undefined,
       () => resolveOpenAICodexSettings(current()).modelContextTiers,
-      config.retryPolicy,
     )
   ctx.llm.registerAdapter([OPENAI_CODEX_PROVIDER], adapter)
   registerImageHandleBridge(ctx, {

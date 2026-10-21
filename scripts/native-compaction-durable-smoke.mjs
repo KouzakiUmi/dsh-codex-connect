@@ -229,11 +229,11 @@ async function child(phase, root) {
     const captured = { read: async () => credential, list: async () => [{ providerId: PROVIDER, type: 'oauth' }], modify: async () => fail('CREDENTIAL_WRITE_BLOCKED'), delete: async () => fail('CREDENTIAL_WRITE_BLOCKED') }
     captured.captureActiveAccount = async () => captured
     ctx = new Context()
-    for (const module of [llm, sessions, projections, system, tools, agents]) await ctx.plugin(module.default)
-    await ctx.plugin(loop.default, { agents: [] })
-    await ctx.plugin(meter.default)
-    await ctx.plugin(persistence.default, { root: join(root, 'sessions'), compression: 'none', packChunks: true })
-    await ctx.plugin(compaction.default, { auto: false, compactionRetries: 0, maxOverflowRetries: 0, ...(controlled ? { retainTokens: 0, maxTokens: 1024 } : {}) })
+    for (const module of [llm, sessions, projections, system, tools, agents]) await ctx.plugin(module.default ?? module)
+    await ctx.plugin(loop.default ?? loop, { agents: [] })
+    await ctx.plugin(meter.default ?? meter)
+    await ctx.plugin(persistence.default ?? persistence, { root: join(root, 'sessions'), compression: 'none', packChunks: true })
+    await ctx.plugin(compaction.default ?? compaction, { auto: false, compactionRetries: 0, maxOverflowRetries: 0, ...(controlled ? { retainTokens: 0, maxTokens: 1024 } : {}) })
     const adapter = adapterModule.createOpenAICodexAdapter(captured, () => undefined, undefined, () => [MODEL], undefined, undefined, undefined, undefined, () => phase === 'write')
     ctx.llm.registerAdapter([PROVIDER], adapter)
     const selection = { provider: PROVIDER, model: MODEL, reasoningEffort: llm.ReasoningEffortId('low'), maxTokens: controlled ? 2048 : 256 }

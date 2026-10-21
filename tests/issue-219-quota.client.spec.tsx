@@ -15,7 +15,7 @@ const configScope = ((): Pick<OpenAICodexConfigForm, 'getSnapshot' | 'subscribe'
   const snapshot: ConfigFormSnapshot<OpenAICodexSettingsConfig> = {
     status: 'ready',
     value: { ...DEFAULT_OPENAI_CODEX_SETTINGS, enableComposerQuotaPill: true },
-    base: undefined, user: undefined, revision: 7, writable: true, mode: 'host',
+    base: undefined, user: undefined, revision: 7, writable: true,
   }
   return { subscribe: () => () => undefined, getSnapshot: () => snapshot }
 })()

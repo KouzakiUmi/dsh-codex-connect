@@ -23,7 +23,6 @@ function pillScope(enabled: boolean): Pick<OpenAICodexConfigForm, 'getSnapshot' 
     user: undefined,
     revision: 7,
     writable: true,
-    mode: 'host',
   }
   return { subscribe: () => () => undefined, getSnapshot: () => snapshot }
 }

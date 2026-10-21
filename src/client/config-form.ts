@@ -27,13 +27,15 @@ export class OpenAICodexConfigForm implements ConfigForm<OpenAICodexSettingsConf
     this.formSnapshot = form
     this.mirrorSnapshot = mirror
     if (form.status !== 'loading') return (this.projected = form)
-    if (mirror.view === undefined) return (this.projected = mirror.status === 'unavailable' ? { ...form, status: 'unavailable' } : form)
+    // Older Hosts report unavailable here; newer mirror types omit that state.
+    const mirrorStatus: string = mirror.status
+    if (mirror.view === undefined) return (this.projected = mirrorStatus === 'unavailable' ? { ...form, status: 'unavailable' } : form)
     const view = mirror.view.namespaces.find(candidate => candidate.ns === OPENAI_CODEX_SETTINGS_NAMESPACE)
     if (view === undefined) return (this.projected = { ...form, status: 'unavailable' })
     const value = decodeOpenAICodexSettings(view.value)
     this.projected = value === undefined ? { ...form, status: 'unavailable' } : {
-      status: 'ready', value, base: view.base, user: view.user,
-      revision: view.revision, writable: mirror.view.writable, mode: form.mode,
+      ...form, status: 'ready', value, base: view.base, user: view.user,
+      revision: view.revision, writable: mirror.view.writable,
     }
     return this.projected
   }

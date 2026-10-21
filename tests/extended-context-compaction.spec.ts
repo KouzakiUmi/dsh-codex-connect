@@ -8,7 +8,7 @@ import SessionProjections from '@deepseek-ai/dsh-session-projection'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import TokenMeter from '@deepseek-ai/dsh-token-meter'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
-import JsonlPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as JsonlPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -45,7 +45,7 @@ async function fixture(native = false) {
   credentials.captureActiveAccount = async () => credentials
   const adapter = createOpenAICodexAdapter(credentials, () => undefined,
     undefined, undefined, undefined, undefined, undefined, undefined, () => native,
-    undefined, undefined, undefined, undefined, undefined, undefined, () => tiers)
+    undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, () => tiers)
   for (const service of [LlmRuntime, SessionStore, SessionProjections, SystemPrompt, ToolRuntime, AgentRegistry]) await ctx.plugin(service)
   await ctx.plugin(AgentLoop, { agents: [] }); await ctx.plugin(TokenMeter)
   await ctx.plugin(JsonlPersistence, { root: join(root, 'sessions'), compression: 'none' })

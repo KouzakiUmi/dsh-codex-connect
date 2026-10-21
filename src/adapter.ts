@@ -30,6 +30,8 @@ import { withServedModelObserver } from './served-model.ts'
 import { streamWithNativeCompactionScope, withOpenAICodexNativeCompaction } from './native-compaction.ts'
 import { streamWithCodexRequestDiagnostics, withCodexDiagnosticFetch } from './request-diagnostics.ts'
 import { imageSelectionHandleText } from './image-input-contract.ts'
+import { OpenAICodexPreflightActivity } from './preflight-activity.ts'
+import type { OpenAICodexPreflightConfig } from './preflight-activity.ts'
 
 export { OPENAI_CODEX_ASTRA_MODEL_ID, OPENAI_CODEX_TRANSPORT, openAICodexModelCatalog, withOpenAICodexAstra, withOpenAICodexModels } from './model-catalog.ts'
 
@@ -211,6 +213,7 @@ function requestProvider(
   backendRequests?: OpenAICodexBackendRequests,
   wrapProvider?: (provider: Provider) => Provider,
   outputStyle?: () => OpenAICodexOutputStyle | undefined,
+  preflight?: OpenAICodexPreflightActivity,
 ): Provider {
   const ordinary = withOpenAICodexFastMode(
     withOpenAICodexOutputStyle(withOpenAICodexNativeCompaction(withOpenAICodexDefaultEffort(provider)), outputStyle ?? (() => OFFICIAL_DEFAULT_OUTPUT_STYLE)),
@@ -221,16 +224,21 @@ function requestProvider(
   return {
     ...configured,
     streamSimple(model, context: TranscriptContext, options?: SimpleStreamOptions) {
+      const operation = (actualProxyOrigin: string | undefined) => {
+        const diagnosticOptions = withServedModelObserver(withCodexDiagnosticFetch(options, backendRequests), model.id)
+        const requestOptions = preflight === undefined ? diagnosticOptions : preflight.wrap(diagnosticOptions, actualProxyOrigin)
+        return streamSimple.call(configured, model, context, requestOptions)
+      }
       const proxyUrl = resolveProxyUrl?.()
-      const operation = () => streamSimple.call(configured, model, context, withServedModelObserver(withCodexDiagnosticFetch(options, backendRequests), model.id))
-      return backendRequests?.runStream(operation) ?? proxyManager?.runStream(proxyUrl, operation) ?? operation()
+      return backendRequests?.runStream(origin => operation(origin)) ?? proxyManager?.runStream(proxyUrl, () => operation(proxyUrl)) ?? operation(proxyUrl)
     },
     auth: {
       ...provider.auth,
       apiKey: {
         name: 'OpenAI Codex OAuth bearer token',
-        async resolve({ credential }) {
+        async resolve({ credential, signal }) {
           const apiKey = credential?.key
+          if (apiKey !== undefined && apiKey.length > 0) preflight?.activate(signal)
           return apiKey === undefined || apiKey.length === 0
             ? undefined
             : { auth: { apiKey }, source: 'OAuth' }
@@ -250,6 +258,7 @@ export function createOpenAICodexProfile(
   backendRequests?: OpenAICodexBackendRequests,
   wrapProvider?: (provider: Provider) => Provider,
   outputStyle?: () => OpenAICodexOutputStyle | undefined,
+  preflight?: OpenAICodexPreflightActivity,
   retryPolicy?: RetryPolicyConfig | undefined,
 ): ResolvedPiAiProviderProfile & { piProvider: Provider } {
   const effectiveProvider = contextWindowOverrides === undefined
@@ -259,14 +268,14 @@ export function createOpenAICodexProfile(
     provider: OPENAI_CODEX_PROVIDER,
     displayName: 'OpenAI Codex',
     transport: OPENAI_CODEX_TRANSPORT,
-    streamIdleTimeoutMs: OPENAI_CODEX_STREAM_IDLE_TIMEOUT_MS,
+    streamIdleTimeoutMs: preflight?.hostIdleTimeoutMs ?? OPENAI_CODEX_STREAM_IDLE_TIMEOUT_MS,
     maxRequestImageBytes: OPENAI_CODEX_MAX_REQUEST_IMAGE_BYTES,
     requestImagePixelBudget: OPENAI_CODEX_REQUEST_IMAGE_PIXEL_BUDGET,
     requestImageMaxBytes: OPENAI_CODEX_REQUEST_IMAGE_MAX_BYTES,
     retryPolicy: resolveRetryPolicy(retryPolicy, 'dsh-codex-connect retryPolicy'),
     configuredMaxTokens: new Map(),
     modelErrors: new Map<string, string>(),
-    piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider, outputStyle),
+    piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider, outputStyle, preflight),
   }
   // The host profile declares the pi-ai Provider of the Host's own pi-ai copy while
   // this module's Provider comes from the devDependency; their `streamSimple` context
@@ -356,16 +365,19 @@ export function createOpenAICodexAdapter(
   backendRequests?: OpenAICodexBackendRequests,
   taskDispatch?: OpenAICodexTaskDispatch,
   imageEditingEnabled?: () => boolean,
+  /** Optional startup-authorized bili preflight activity; omitted by default. */
+  preflightActivity?: OpenAICodexPreflightConfig,
+  /** Optional Host model-request retry policy; omission preserves Host defaults. */
+  retryPolicy?: RetryPolicyConfig | undefined,
   /** Profile-scoped output-detail and reasoning-summary preferences read on every request. */
   outputStyle?: () => OpenAICodexOutputStyle | undefined,
   /** Retired session-toggle arguments kept for positional compatibility; never consulted. */
   _extendedContext?: ExtendedContextRegistry,
   _maximumContextModels?: () => readonly string[] | undefined,
   modelContextTiers?: () => OpenAICodexContextTiers | undefined,
-  /** Optional Host model-request retry policy; omission preserves Host defaults. */
-  retryPolicy?: RetryPolicyConfig | undefined,
 ): PiAiAdapter {
   const baseline = withOpenAICodexModels(openaiCodexProvider())
+  const preflight = preflightActivity === undefined ? undefined : new OpenAICodexPreflightActivity(preflightActivity)
   const provider = reservePermits === undefined ? baseline : withOpenAICodexReserve(baseline, reservePermits)
   let profiles: Map<string, ResolvedPiAiProviderProfile> | undefined
   let previousBudgets: string | undefined
@@ -377,7 +389,7 @@ export function createOpenAICodexAdapter(
     const identity = JSON.stringify(budgets)
     if (profiles === undefined || identity !== previousBudgets) {
       profiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
-        provider, fastMode, proxyManager, resolveProxyUrl, budgets, backendRequests, taskDispatch?.wrapProvider, outputStyle, retryPolicy,
+        provider, fastMode, proxyManager, resolveProxyUrl, budgets, backendRequests, taskDispatch?.wrapProvider, outputStyle, preflight, retryPolicy,
       )]])
       previousBudgets = identity
     }
@@ -428,7 +440,10 @@ export function createOpenAICodexAdapter(
       const dispatch = (request: GenerateOptions) => {
         const projected = imageEditingEnabled?.() === true ? withOpenAICodexImageSelectionHandles(request) : request
         const observed = (nextOptions: GenerateOptions) => streamWithCodexRequestDiagnostics(
-          next => streamWithNativeCompactionScope(request => this.streamAuthenticated(stream, request), next, nativeCompactionEnabled?.() === true), nextOptions,
+          next => {
+            const native = (request: GenerateOptions) => streamWithNativeCompactionScope(request => this.streamAuthenticated(stream, request), request, nativeCompactionEnabled?.() === true)
+            return preflight === undefined ? native(next) : preflight.stream(native, next)
+          }, nextOptions,
         )
         return backendRequests?.metrics?.stream(observed, projected) ?? observed(projected)
       }
@@ -455,7 +470,13 @@ export function createOpenAICodexAdapter(
     }
 
     override async listModels(providerId: string) {
-      const catalog = (await super.listModels(providerId)).filter(model => model.id !== OPENAI_CODEX_RESERVE_MODEL)
+      // Codex advertises a static catalog even while signed out. Host listings
+      // resolve credentials; only request dispatch may capture or refresh our
+      // account. Project the current provider metadata instead.
+      const current = currentProfiles().get(providerId)?.piProvider
+      if (current === undefined) return super.listModels(providerId)
+      const catalog = current.getModels().filter(model => model.id !== OPENAI_CODEX_RESERVE_MODEL)
+        .map(model => ({ provider: providerId, id: model.id, name: model.name, inputModalities: [...model.input] }))
       const configured = visibleModelIds?.()
       if (configured === undefined) return catalog
       const visible = new Set(configured)

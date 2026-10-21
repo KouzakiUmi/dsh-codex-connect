@@ -32,7 +32,7 @@ export function OpenAICodexContextIndicator({ directory, configScope, t }: OpenA
   const generation = useRef(0)
   const model = directoryState.current?.model ?? ''
   const provider = directoryState.current?.provider
-  const ready = snapshot?.status === 'ready' && snapshot.value !== undefined && snapshot.mode !== 'memory'
+  const ready = snapshot?.status === 'ready' && snapshot.value !== undefined
   const tooltipId = useId(), dialogId = useId()
   const locate = (width: number) => {
     const rect = root.current?.getBoundingClientRect()
@@ -64,7 +64,7 @@ export function OpenAICodexContextIndicator({ directory, configScope, t }: OpenA
   const save = async (next: OpenAICodexContextTier) => {
     if (!writable || next === (pendingTier ?? tier) || configScope === undefined) return
     const latest = configScope.getSnapshot()
-    if (latest.status !== 'ready' || !latest.writable || latest.mode === 'memory' || latest.value === undefined || latest.revision === undefined) return
+    if (latest.status !== 'ready' || !latest.writable || latest.value === undefined || latest.revision === undefined) return
     const current = generation.current
     const selected = ++selection.current
     const revision = inFlightWrites.current === 0 ? latest.revision : undefined

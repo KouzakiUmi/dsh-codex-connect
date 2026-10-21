@@ -18,7 +18,7 @@ it.each([['en', en], ['zh', zh]] as const)('keeps hover and compact click editor
   const state: ModelDirectoryState = { status: 'ready', pending: null, current: { provider: 'openai-codex', model: 'gpt-6.1-sol' }, groups: [], failures: [], routable: true, error: null }
   const directory: SnapshotStore<ModelDirectoryState> = { getSnapshot: () => state, subscribe: () => () => undefined, set: () => undefined, update: () => undefined }
   const listeners = new Set<() => void>()
-  let snapshot: ConfigFormSnapshot<OpenAICodexSettingsConfig> = { status: 'ready', value: { ...DEFAULT_OPENAI_CODEX_SETTINGS, modelContextTiers: {} }, base: undefined, user: undefined, revision: 1, writable: true, mode: 'host' }
+  let snapshot: ConfigFormSnapshot<OpenAICodexSettingsConfig> = { status: 'ready', value: { ...DEFAULT_OPENAI_CODEX_SETTINGS, modelContextTiers: {} }, base: undefined, user: undefined, revision: 1, writable: true }
   const mutate = vi.fn<ConfigForm<OpenAICodexSettingsConfig>['mutate']>(async (ops, revision) => {
     expect(revision).toBe(1)
     const op = ops[0]

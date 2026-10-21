@@ -88,6 +88,7 @@ describe('Codex Connect global update reminder', () => {
       useSessions={vi.fn() as never}
       useSessionStatus={vi.fn() as never}
       useSessionRetainInfo={vi.fn() as never}
+    useSessionAccess={vi.fn() as never}
       useWorkspaces={vi.fn() as never}
       usePanelInfo={vi.fn() as never}
     />)

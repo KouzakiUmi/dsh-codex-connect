@@ -130,11 +130,11 @@ export async function runNativeLifecyclePhase(phase, { root, importHost, plugin,
       refresh: 'synthetic-refresh', accountId: 'synthetic-account', expires: Date.now() + 3_600_000,
     }))
     ctx = new Context()
-    for (const module of [llm, sessions, projections, system, tools, agents]) await ctx.plugin(module.default)
-    await ctx.plugin(loop.default, { agents: [] })
-    await ctx.plugin(meter.default)
-    await ctx.plugin(persistence.default, { root: join(root, 'sessions'), compression, packChunks: true })
-    await ctx.plugin(compaction.default, { auto: false })
+    for (const module of [llm, sessions, projections, system, tools, agents]) await ctx.plugin(module.default ?? module)
+    await ctx.plugin(loop.default ?? loop, { agents: [] })
+    await ctx.plugin(meter.default ?? meter)
+    await ctx.plugin(persistence.default ?? persistence, { root: join(root, 'sessions'), compression, packChunks: true })
+    await ctx.plugin(compaction.default ?? compaction, { auto: false })
     await ctx.plugin(plugin, { enableNativeCompaction: phase === 'write' || phase === 'failure-paths' })
     ctx.tools.register({
       name: 'lifecycle_lookup', description: 'Return a synthetic value without side effects',

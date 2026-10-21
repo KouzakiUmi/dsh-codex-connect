@@ -78,13 +78,7 @@ describe('OpenAI Codex Host settings integration', () => {
     await ctx.plugin(LocalAttachmentStore, { dshHome: root })
     const { entry } = await loadSettingsPlugin(ctx, root, 'dsh-codex-connect', OpenAICodex, { oauthTimeoutMs: 120_000 })
 
-    expect(ctx.llm.listConfigurableProviders()).toContainEqual({
-      provider: 'openai-codex',
-      displayName: 'openai-codex',
-      settingsNs: 'llm-pi-ai',
-      settingsPath: ['providers', 'openai-codex'],
-      declared: false,
-    })
+    expect(ctx.llm.listConfigurableProviders().find(provider => provider.provider === 'openai-codex')).toMatchObject({ provider: 'openai-codex', displayName: 'openai-codex', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai-codex'], declared: false })
     const descriptor = ctx.settings.describe().find(entry => entry.ns === OpenAICodex.OPENAI_CODEX_SETTINGS_NS)
     expect(descriptor?.value).toMatchObject({
       enableProxy: false,
@@ -162,13 +156,7 @@ describe('OpenAI Codex Host settings integration', () => {
       .toMatchObject({ enableSearch: false, enableImageTool: false, enableImageGeneration: false })
 
     await entry.fiber?.dispose()
-    expect(ctx.llm.listConfigurableProviders()).toContainEqual({
-      provider: 'openai-codex',
-      displayName: 'openai-codex',
-      settingsNs: 'llm-pi-ai',
-      settingsPath: ['providers', 'openai-codex'],
-      declared: false,
-    })
+    expect(ctx.llm.listConfigurableProviders().find(provider => provider.provider === 'openai-codex')).toMatchObject({ provider: 'openai-codex', displayName: 'openai-codex', settingsNs: 'llm-pi-ai', settingsPath: ['providers', 'openai-codex'], declared: false })
     await piAi.dispose()
     expect(ctx.llm.listConfigurableProviders()).toEqual([])
   })

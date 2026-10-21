@@ -70,7 +70,7 @@ describe('Codex Connect plugin update card in Chromium', () => {
       updater,
       t: (key, params = {}) => Object.entries(params).reduce((value, [name, replacement]) => value.replace(`{${name}}`, String(replacement)), locale[key]),
       useSessions: vi.fn() as never, useSessionStatus: vi.fn() as never,
-      useSessionRetainInfo: vi.fn() as never, useWorkspaces: vi.fn() as never,
+      useSessionRetainInfo: vi.fn() as never, useSessionAccess: vi.fn() as never, useWorkspaces: vi.fn() as never,
       usePanelInfo: vi.fn() as never,
     }))
     const overlay = page.getByRole('status', { name: locale.updateHeading })

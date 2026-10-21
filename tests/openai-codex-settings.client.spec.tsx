@@ -73,7 +73,6 @@ function settingsScopeFixture(
     user: undefined,
     revision: 0,
     writable,
-    mode: 'host',
   }
   const listeners = new Set<() => void>()
   const set = vi.fn(async (field: string, value: unknown) => {
