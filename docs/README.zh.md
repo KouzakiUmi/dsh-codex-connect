@@ -14,33 +14,43 @@ Codex Connect 为标准 Harness agent loop 添加 `openai-codex` 模型提供方
 
 ## 快速开始
 
-本指南介绍下方已发布的组合。请先运行 `dsh --version`，再用 `doctor --json` 做本地诊断；单凭 CLI 版本无法证明实际安装的模型运行库版本，缺少版本元数据时会报告未知。其他版本请查阅[安装与升级](../INSTALL.md)。`alpha` 等会移动的 npm tag 不代表兼容性保证。
+本指南推荐 Codex Connect `0.2.0-alpha.9` / DSH `0.2.1-rc.2`；其他受支持的精确宿主版本见下表。请先运行 `dsh --version`，再用 `doctor --json` 做本地诊断；单凭 CLI 版本无法证明实际安装的模型运行库版本，缺少版本元数据时会报告未知。其他版本请查阅[安装与升级](../INSTALL.md)。`alpha` 等会移动的 npm tag 不代表兼容性保证。
 
 | 要求 | 已验证组合 |
 |---|---|
-| Codex Connect | `0.2.0-alpha.3` |
-| DeepSeek Harness | `0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2` 或 `0.2.1-alpha.1`（包版本必须一致） |
+| Codex Connect | `0.2.0-alpha.9` |
+| DeepSeek Harness | `0.1.7-rc.1`、`0.1.7-rc.2`、`0.2.0-rc.1`、`0.2.0-rc.2`、`0.2.1-alpha.1`、`0.2.1-alpha.2`、`0.2.1-alpha.3`、`0.2.1-alpha.4`、`0.2.1-alpha.5`、`0.2.1-rc.1` 或 `0.2.1-rc.2`（包版本必须一致） |
 | Node.js | `^22.19.0 \|\| >=24.0.0` |
 | 账户 | 通过 ChatGPT OAuth 使用所请求的 Codex 模型；可用性由 OpenAI 决定 |
 
-[`0.2.0-alpha.3`](release-notes/0.2.0-alpha.3.md) 增加官方 Desktop 登录适配和桌面版专用账户诊断，保留 Web 登录行为。Desktop 使用独立的 profile 和自带 CLI，请遵循[Desktop 安装说明](../INSTALL.md#official-desktop)。声明的宿主版本、默认设置和账户存储不变。
+**已发布的维护版本：** [`0.2.0-alpha.9`](https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.2.0-alpha.9) 增加可选的推理强度回退设置，以及新顶层会话和普通子代理会话各自独立的 Standard / Fast / Ultrafast 默认设置。显式请求中的推理强度和后续手动速度选择优先；省略或重置时保留对应的旧默认行为。已有／恢复会话继续受到尊重。Ultrafast 仍要求登录并匹配可用的模型／账户路由；资格与实际服务档位仍未知。finite SSE 和 Task 暂停状态不变；不声称已测得提速倍数或完成真实账户／Desktop 验收。
 
-[`0.2.0-alpha.2`](release-notes/0.2.0-alpha.2.md) 已发布精确 DSH `0.2.1-alpha.1` 的兼容适配，以及跨模型路由的图片选择句柄修复。较早的 `0.2.0-alpha.1` 安装包保持不变，仍拒绝该宿主。原有受支持宿主无需升级。
+**历史维护版本：** [`0.2.0-alpha.8`](https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.2.0-alpha.8) 增加显式会话级 Standard / Fast / Ultrafast 选择，保留宿主重试策略，将 GPT-6.1 Sol 默认上下文设为 500,000 token，并修复恢复／文件身份及 Windows 打包检查。Ultrafast 仅对文档列明的两个 Codex 模型显式启用；不包含新主会话／子代理的默认设置。资格与实际服务档位仍报告未知，保留 finite SSE 及原有可选功能默认行为。不声称已测得提速或完成真实账户／Desktop 验收。
 
-截至 2026-10-10，npm `alpha` 指向 `0.2.0-alpha.3`，`latest` 仍为 `0.2.0-alpha.1`。默认安装仍选择较早的 Alpha；`latest` 标签不代表稳定版。安装这些 DSH 组合请使用下方精确版本命令；会移动的 npm tag 不保证其他宿主版本的兼容性。
+**历史图片恢复版本：** [`0.2.0-alpha.7`](https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.2.0-alpha.7) 在 Harness 预览保存失败时保留已完成、已验证的原图，支持下载原图和明确选择继续编辑。工具说明明确：聊天可继续使用 DeepSeek，图片由 Codex Connect 的独立 ChatGPT OAuth 通道处理。上方十一个精确宿主组合均保留验证；底层图片接口与凭据行为不变。合成检查不代表真实账户或 Desktop 验收。
 
-[`0.2.0-alpha.1`](release-notes/0.2.0-alpha.1.md) 通过模型目录补充增加 `gpt-6.1-sol`，并开始较短的独立插件编号。四个受支持的 DSH 版本不变，无需升级宿主。
+`0.2.0-alpha.4` 将精确宿主支持扩展到 DSH `0.2.1-alpha.2` 和 `0.2.1-alpha.3`，保留原有五个宿主。原有受支持宿主无需升级；Task 仍暂停，默认设置不变。
+
+**历史维护版本：** [`0.2.0-alpha.5`](https://github.com/franksong2702/dsh-codex-connect/releases/tag/v0.2.0-alpha.5) 交付精确 DSH `0.2.1-alpha.4`、`0.2.1-alpha.5` 和 `0.2.1-rc.1` 支持及宿主／浏览器运行版本诊断，保留原有七个已发布宿主。诊断共用一份版本策略；详见[兼容性记录](agent-notes/dsh-021-alpha5-rc1-compatibility.md)及 [alpha.4 客户端状态修复](agent-notes/dsh-021-alpha4-compatibility.md)。发布及无凭据验证不等于新的真实账户、Desktop 或已登录浏览器验收；#339 继续保持打开，单独跟进验收。
+
+历史发布 [`0.2.0-alpha.3`](release-notes/0.2.0-alpha.3.md) 增加官方 Desktop 登录适配和桌面版专用账户诊断，保留 Web 登录行为。Desktop 使用独立的 profile 和自带 CLI，请遵循[Desktop 安装说明](../INSTALL.md#official-desktop)。声明的宿主版本、默认设置和账户存储不变。
+
+历史发布 [`0.2.0-alpha.2`](release-notes/0.2.0-alpha.2.md) 已发布精确 DSH `0.2.1-alpha.1` 的兼容适配，以及跨模型路由的图片选择句柄修复。较早的 `0.2.0-alpha.1` 安装包保持不变，仍拒绝该宿主。原有受支持宿主无需升级。
+
+截至 2026-10-20，npm `alpha` 指向 `0.2.0-alpha.9`，`latest` 仍为 `0.2.0-alpha.1`。默认安装仍选择较早的 Alpha；`latest` 标签不代表稳定版。安装这些 DSH 组合请使用下方精确版本命令；会移动的 npm tag 不保证其他宿主版本的兼容性。
+
+历史发布 [`0.2.0-alpha.1`](release-notes/0.2.0-alpha.1.md) 通过模型目录补充增加 `gpt-6.1-sol`，并开始较短的独立插件编号。四个受支持的 DSH 版本不变，无需升级宿主。
 
 它保留 Alpha 4.54 的改动，在 DSH 0.2.0-rc.2 调用固定版本的 Codex 提供方时保留初始系统指令和工具定义，修正宿主与插件使用不同提供方库版本时的诊断，并补强 Canary 的普通请求检查。继续保留 Alpha 4.53 的核心维护改动、已有任务恢复与安全检查，以及 4.52 的[可选本地请求计量](request-metrics.zh.md)。配置私有目录后才采集；未知用量不当作零。不恢复 Task，也不升级模型库或 OAuth。
 
-该安装包已通过上方五个精确 DSH 版本的无凭据安装及运行回归验证。Task 控件仍暂停：激活请求会被拒绝，现有宿主的浏览器回归中，新 Session 不显示这些控件。这些检查不代表真实 OAuth、真实账户图片编辑、新宿主的已登录浏览器验收或完整用户验收；跨 Harness 升级迁移旧任务授权尚未验证。较旧组合及其任务行为见[安装与升级](../INSTALL.md)。
+该安装包已通过上方十一个精确 DSH 版本的无凭据安装及运行回归验证。Task 控件仍暂停：激活请求会被拒绝，现有宿主的浏览器回归中，新 Session 不显示这些控件。这些检查不代表真实 OAuth、真实账户图片编辑、新宿主的已登录浏览器验收或完整用户验收；跨 Harness 升级迁移旧任务授权尚未验证。较旧组合及其任务行为见[安装与升级](../INSTALL.md)。
 
-另有维护者报告：已在 Desktop `0.2.0-rc.2` 用已记录的本地适配包完成登录并正常使用。发布客户端与该客户端仅版本字符串不同；这不代表公开 npm 包的重新登录验收。参见[Desktop 验收记录](../INSTALL.md#official-desktop)。
+历史记录：2026-10-10，维护者报告已在 Desktop `0.2.0-rc.2` 用已记录的本地适配包完成登录并正常使用。仅历史 `0.2.0-alpha.3` 客户端与该本地适配包进行了比较，确认只差包版本字符串。此比较不代表 `0.2.0-alpha.4` 的 Desktop 或真实账户验收，也不代表后续 npm 安装包的验收；未进行新的真实 Desktop 验收。参见[Desktop 验收记录](../INSTALL.md#official-desktop)。
 
 ### 1. 安装
 
 ```sh
-dsh plugin --profile web add dsh-codex-connect@0.2.0-alpha.3
+dsh plugin --profile web add dsh-codex-connect@0.2.0-alpha.9
 dsh web
 ```
 
@@ -54,12 +64,14 @@ dsh web
 
 ### 3. 检查安装
 
+若要求诊断不经过包管理器，请直接运行已经安装的 bin（替换为已经独立识别的实际路径）：
+
 ```sh
-dsh plugin --profile web exec dsh-codex-connect status --json
-dsh plugin --profile web exec dsh-codex-connect doctor --json
+node /absolute/profile/node_modules/dsh-codex-connect/lib/bin.js doctor --json \
+  --install-anchor /absolute/dsh/node_modules/@deepseek-ai/dsh/package.json
 ```
 
-`status --json` 在已登录时返回 `0`，未登录时返回 `1`，不会启动 OAuth。`doctor --json` 输出本地安装诊断，不发送网络请求，也不包含原始凭据。诊断通过不代表账户具有模型权限；实际可用性仍需通过真实请求验证。
+`doctor --json` 只读本地安装元数据，不请求网络或输出原始凭据；指定安装锚点不证明该安装正在运行。`dsh plugin exec` 等包装命令自身可能核对或安装依赖。详见[运行身份与直接诊断](runtime-identity.md)，包括 Desktop/ASAR 限制。包含本改动的开发构建还会在设置中区分页面、Host 已加载和磁盘安装版本。诊断通过不代表模型权限，实际请求须另获授权。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/franksong2702/dsh-codex-connect/main/docs/assets/zh/hero.jpg" alt="Codex Connect — 为 DeepSeek Harness 接入 ChatGPT OAuth" width="100%">
@@ -143,6 +155,7 @@ OAuth 凭据保存在运行 DSH 的主机上，由该主机用于向 OpenAI 认�
 - [安装与升级](../INSTALL.md)
 - [配置、诊断与恢复](reference.zh.md)
 - [本地请求计量：启用、报告与停用](request-metrics.zh.md)
+- [明确授权、有界的 bili 预处理活动（源码改动；默认关闭）](preflight-activity.zh.md)
 - [从 `dsh-codex` 迁移](../MIGRATION.md)
 - [架构与安全细节](design.zh.md)
 - [自动审查行为](auto-review.zh.md)
@@ -161,4 +174,8 @@ pnpm run check:dsh-install
 
 Codex Connect 的修改与新增工作 Copyright 2026 Frank Song。本项目包含派生自 [Yan-Zero/dsh-codex](https://github.com/Yan-Zero/dsh-codex) 的软件；上游内容继续保留 Copyright 2026 Yan-Zero。两部分均按 Apache-2.0 发布，详情见 [NOTICE](../NOTICE)。
 
-已发布的 `0.2.0-alpha.1` 将 `gpt-6.1-sol` 加入手动模型目录与配置选择器，支持 Low、Medium、High、Xhigh、Max；Default 不显式发送推理强度，不支持 Ultra 编排。Codex 目录默认上下文保持 272,000，允许的本地配置上限为 872,000；这不是 API 产品窗口，也不能证明账户访问权限。详见[元数据与验证](agent-notes/gpt61-sol-support.md)。不会扩大 Adaptive Task 授权。
+已发布的 `0.2.0-alpha.1` 将 `gpt-6.1-sol` 加入手动模型目录与配置选择器，支持 Low、Medium、High、Xhigh、Max；Default 不显式发送推理强度，不支持 Ultra 编排。该版本当时的 Codex 回退值为 272,000，允许的本地配置上限为 872,000；这不是 API 产品窗口，也不能证明账户访问权限。详见[元数据与验证](agent-notes/gpt61-sol-support.md)。不会扩大 Adaptive Task 授权。
+
+Alpha 5 能力校准：[来源对照](agent-notes/gpt61-capability-calibration.md) 区分锁定目录的 272k 回退值／872k 本地上限、搜索结果收录的官方 Work/Codex 产品文字所宣称的 500k，以及另一 API 产品的限制。该历史变更仅更新 Sol61 的策略来源锁定；当时的默认值、原生提供方元数据优先级和 Fast／effort 行为不变。没有验证账户或端点的实际容量。
+
+尚未发布的 #338 源码后续修复：按官方 Work/Codex 产品默认策略，将 Sol61 缺失条目和已知旧内置静态元数据的基础默认值校准为 **500,000 token**。显式提供方元数据与用户覆盖值仍优先；其他模型、输出上限和 872,000 本地配置上限不变。[范围与证据](agent-notes/sol61-context-default.md) 区分校准默认值与真实路由容量。

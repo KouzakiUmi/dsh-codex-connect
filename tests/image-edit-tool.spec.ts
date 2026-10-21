@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { lstat, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { deflateSync } from 'node:zlib'
@@ -14,7 +14,9 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { imageGenerateTool, IMAGE_GENERATE_TOOL_NAME } from '../src/image-tool.ts'
 import { OpenAICodexImageAssetStore } from '../src/image-assets.ts'
+import type { OpenAICodexOriginalImageRef } from '../src/image-assets-contract.ts'
 import { decodeImagePresentationMeta, decodeImageResultContent } from '../src/image-presentation.ts'
+import { sessionImageInventory } from '../src/image-history.ts'
 import type { ImageEditSources } from '../src/image-input-contract.ts'
 
 const PNG = Uint8Array.from(Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC', 'base64'))
@@ -73,9 +75,9 @@ async function upload(ctx: Context, session: Session, name = 'upload.png', data:
   return ref
 }
 let callIndex = 0
-async function execute(ctx: Context, session: Session, args: unknown, signal = new AbortController().signal) {
+async function execute(ctx: Context, session: Session, args: unknown, signal = new AbortController().signal, provider = 'openai-codex') {
   return ctx.tools.execute({ signal, callId: `edit-${++callIndex}` as never, name: IMAGE_GENERATE_TOOL_NAME,
-    arguments: args, agent: { id: session.id, options: {}, session } as never })
+    arguments: args, agent: { id: session.id, options: { provider }, session } as never })
 }
 function target(ref: ImageAttachmentRef) { return { attachmentId: String(ref.attachmentId) } }
 function persistResult(session: Session, result: Awaited<ReturnType<typeof execute>>) {
@@ -92,6 +94,71 @@ function firstAsset(result: Awaited<ReturnType<typeof execute>>) {
 }
 
 describe('session-owned image edit tool', () => {
+  it.each(['original-save', 'preview-save'] as const)('removes real original files after cancellation during %s', async phase => {
+    const { ctx, assets, session } = await setup()
+    const controller = new AbortController()
+    const saveOriginals = assets.saveImages.bind(assets)
+    let original: OpenAICodexOriginalImageRef | undefined
+    vi.spyOn(assets, 'saveImages').mockImplementation(async (owner, inputs) => {
+      const refs = await saveOriginals(owner, inputs)
+      original = refs[0]
+      if (original === undefined) throw new Error('expected an actual saved original')
+      const directory = join(assets.root, original.assetId.slice(4, 6), original.assetId)
+      expect((await lstat(join(directory, 'original'))).isFile()).toBe(true)
+      expect((await assets.read(session.id, original.assetId))?.data).toEqual(PNG)
+      if (phase === 'original-save') controller.abort()
+      return refs
+    })
+    const previewSave = vi.spyOn(ctx.attachments, 'saveImages').mockImplementation(async () => {
+      controller.abort()
+      throw new Error('preview canceled after original persistence')
+    })
+    const result = await execute(ctx, session, { prompt: 'A disposable mug' }, controller.signal)
+    expect(result.isError).toBe(true)
+    expect(result.meta).toBeUndefined()
+    expect(decodeImageResultContent(result.content, 'A disposable mug')).toBeUndefined()
+    if (original === undefined) throw new Error('expected original persistence before cancellation')
+    const ref = original
+    const directory = join(assets.root, ref.assetId.slice(4, 6), ref.assetId)
+    // Host cancellation may settle the call before its execution body finishes cleanup.
+    await vi.waitFor(async () => {
+      await expect(lstat(join(directory, 'original'))).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(lstat(join(directory, 'metadata.json'))).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(lstat(directory)).rejects.toMatchObject({ code: 'ENOENT' })
+      await expect(assets.read(session.id, ref.assetId)).resolves.toBeUndefined()
+    })
+    expect(sessionImageInventory(session).originals.size).toBe(0)
+    expect(previewSave).toHaveBeenCalledTimes(phase === 'original-save' ? 0 : 1)
+  })
+
+  it.each(['native', 'ptc'] as const)('continues editing recovered originals on a DeepSeek route (%s), refusing foreign sessions', async mode => {
+    const { ctx, assets, session, editImages, generateImages } = await setup()
+    const previewSave = vi.spyOn(ctx.attachments, 'saveImages').mockRejectedValueOnce(new Error('private preview failure'))
+    const generated = await execute(ctx, session, { prompt: 'a harmless blue mug' }, undefined, 'deepseek-account')
+    expect(generated.isError).toBe(false)
+    expect(generated.meta).toMatchObject({ schemaVersion: 3 })
+    const original = firstAsset(generated)
+    if (mode === 'native') persistResult(session, generated)
+    else session.append('tool/ptc-dispatch', { name: IMAGE_GENERATE_TOOL_NAME, isError: false,
+      arguments: { prompt: 'a harmless blue mug' }, content: generated.content } as never)
+    expect(sessionImageInventory(session).originals.get(original.assetId)).toEqual(original)
+    expect((await assets.read(session.id, original.assetId))?.data).toEqual(PNG)
+    expect((await assets.read('foreign', original.assetId))).toBeUndefined()
+    const foreign = ctx.sessions.create(SessionId('foreign'))
+    // Copying even the real result metadata cannot confer the original's ownership.
+    persistResult(foreign, generated)
+    const rejected = await execute(ctx, foreign, { operation: 'edit', prompt: 'turn it red', target: { assetId: original.assetId } }, undefined, 'deepseek-account')
+    expect(rejected.isError).toBe(true)
+    expect(editImages).not.toHaveBeenCalled()
+    const edited = await execute(ctx, session, { operation: 'edit', prompt: 'turn it red', target: { assetId: original.assetId } }, undefined, 'deepseek-account')
+    expect(edited.isError, JSON.stringify(edited.content)).toBe(false)
+    expect(edited.meta).toMatchObject({ schemaVersion: 2, operation: 'edit', edit: { target: { assetId: original.assetId } } })
+    expect(editImages.mock.calls[0]?.[0]).toMatchObject({ images: [{ data: PNG, mediaType: 'image/png' }] })
+    expect(generateImages).toHaveBeenCalledOnce()
+    expect(previewSave).toHaveBeenCalledTimes(2)
+    expect((await assets.read(session.id, original.assetId))?.data).toEqual(PNG)
+  })
+
   it('PR272 review: a reuploaded preview handle must not silently select the old generated original', async () => {
     const { ctx, session, editImages, generateImages } = await setup()
     const large = pixelPng(255, 0, 0, 3072, 1536)
@@ -99,7 +166,7 @@ describe('session-owned image edit tool', () => {
       responseBytes: large.byteLength, images: [{ b64Json: Buffer.from(large).toString('base64') }] })
     const generated = await execute(ctx, session, { prompt: 'old generated original' })
     persistResult(session, generated)
-    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview
+    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview!
     const storedPreview = await ctx.attachments.readImage(preview)
     const uploaded = await ctx.attachments.saveImage({ data: storedPreview.data, mediaType: storedPreview.ref.mediaType, name: 'current-upload.webp' })
     session.append('user/message', createUserMessage({ content: [{ type: 'image', attachment: uploaded }], source: { kind: 'user' } }), { surfaceOp: 'append' })
@@ -120,7 +187,7 @@ describe('session-owned image edit tool', () => {
     const { ctx, assets, session, editImages } = await setup()
     const generated = await execute(ctx, session, { prompt: 'old generated original' })
     persistResult(session, generated)
-    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview
+    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview!
     const storedPreview = await ctx.attachments.readImage(preview)
     const uploaded = await upload(ctx, session, preview.name!, storedPreview.data)
     await assets.removeImages([firstAsset(generated)])
@@ -163,7 +230,7 @@ describe('session-owned image edit tool', () => {
     const ref = await upload(ctx, session, 'chosen-upload.png')
     const generated = await execute(ctx, session, { prompt: 'same normalized pixels' })
     persistResult(session, generated)
-    expect(decodeImagePresentationMeta(generated.meta)!.images[0]!.preview.attachmentId).toBe(ref.attachmentId)
+    expect(decodeImagePresentationMeta(generated.meta)!.images[0]!.preview!.attachmentId).toBe(ref.attachmentId)
     const result = await execute(ctx, session, { operation: 'edit', prompt: 'edit the upload itself', target: { attachment: ref } })
     expect(result.isError, JSON.stringify(result.content)).toBe(false)
     expect(result.meta).toMatchObject({ edit: { target: { attachment: ref } } })
@@ -224,7 +291,7 @@ describe('session-owned image edit tool', () => {
     const generated = await execute(ctx, session, { prompt: 'generate original' })
     persistResult(session, generated)
     const meta = decodeImagePresentationMeta(generated.meta)!
-    const ref = meta.images[0]!.preview
+    const ref = meta.images[0]!.preview!
     const result = await execute(ctx, session, { operation: 'edit', prompt: 'modify', target: target(ref) })
     expect(result.isError).toBe(false)
     expect(result.meta).toMatchObject({ edit: { target: { assetId: firstAsset(generated).assetId } } })
@@ -243,8 +310,8 @@ describe('session-owned image edit tool', () => {
     persistResult(session, second)
     const firstMeta = decodeImagePresentationMeta(first.meta)!
     const secondMeta = decodeImagePresentationMeta(second.meta)!
-    expect(firstMeta.images[0]!.preview.attachmentId).toBe(secondMeta.images[0]!.preview.attachmentId)
-    const ambiguous = await execute(ctx, session, { operation: 'edit', prompt: 'modify', target: target(firstMeta.images[0]!.preview) })
+    expect(firstMeta.images[0]!.preview!.attachmentId).toBe(secondMeta.images[0]!.preview!.attachmentId)
+    const ambiguous = await execute(ctx, session, { operation: 'edit', prompt: 'modify', target: target(firstMeta.images[0]!.preview!) })
     expect(ambiguous.isError).toBe(true)
     expect(editImages).not.toHaveBeenCalled()
     const explicit = await execute(ctx, session, { operation: 'edit', prompt: 'modify', target: { assetId: firstAsset(first).assetId } })
@@ -396,7 +463,7 @@ describe('session-owned image edit tool', () => {
       responseBytes: large.byteLength, images: [{ b64Json: Buffer.from(large).toString('base64') }] })
     const generated = await execute(ctx, session, { prompt: 'original' })
     persistResult(session, generated)
-    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview
+    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview!
     const previewBytes = (await ctx.attachments.readImage(preview)).data
     const uploaded = await ctx.attachments.saveImage({ data: previewBytes, mediaType: preview.mediaType, name: preview.name! })
     session.append('user/message', createUserMessage({ source: { kind: 'user' }, content: [{ type: 'image', attachment: uploaded }] }), { surfaceOp: 'append' })
@@ -427,7 +494,7 @@ describe('session-owned image edit tool', () => {
     const chosen = await upload(ctx, session, 'subject.png', pixelPng(0, 0, 255))
     const generated = await execute(ctx, session, { prompt: 'reference' })
     persistResult(session, generated)
-    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview
+    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview!
     const bytes = (await ctx.attachments.readImage(preview)).data
     const reference = await upload(ctx, session, 'color.png', bytes)
     const result = await execute(ctx, session, { operation: 'edit', prompt: 'blue', target: { attachment: chosen },
@@ -445,7 +512,7 @@ describe('session-owned image edit tool', () => {
     const { ctx, assets, session, editImages } = await setup()
     const generated = await execute(ctx, session, { prompt: 'old original' })
     persistResult(session, generated)
-    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview
+    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview!
     const bytes = (await ctx.attachments.readImage(preview)).data
     const uploaded = await upload(ctx, session, preview.name!, bytes)
     const child = ctx.sessions.fork(session, undefined, SessionId('upload-child'))
@@ -464,7 +531,7 @@ describe('session-owned image edit tool', () => {
     const { ctx, assets, session, editImages } = await setup()
     const generated = await execute(ctx, session, { prompt: 'old original' })
     persistResult(session, generated)
-    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview
+    const preview = decodeImagePresentationMeta(generated.meta)!.images[0]!.preview!
     const uploaded = await ctx.attachments.saveImage({ data: (await ctx.attachments.readImage(preview)).data,
       mediaType: preview.mediaType, name: preview.name! })
     const before = session.snapshotEvents.bind(session)

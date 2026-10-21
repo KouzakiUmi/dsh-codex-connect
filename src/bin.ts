@@ -97,7 +97,9 @@ function printHelp(): void {
     '       dsh-codex-connect auto-review-probe [--proxy <http(s)-origin>] [--timeout-ms <1..60000>] [--json]',
     '       dsh-codex-connect metrics --file <journal.jsonl> [--file <journal.jsonl>] [--session <DSH-session-id>] [--json]',
     '',
-    '  doctor         inspect secret-free runtime and OAuth file metadata; an explicit DSH anchor verifies host package versions',
+    '  doctor         inspect secret-free local package and OAuth file metadata, without observing a running Host',
+    '  --install-anchor selects explicit DSH installation metadata; it does not prove that Host is running',
+    '  For a read-only invocation, run the installed bin directly with Node; package-manager wrappers may reconcile dependencies.',
     '  auto-review-probe test the hidden approval reviewer with one synthetic no-op',
     '  login          sign in with a separate ChatGPT OAuth session',
     '  logout         remove the dsh credential without changing ~/.codex',
@@ -117,7 +119,8 @@ function doctorExitCode(report: DiagnosticReport): number {
     || report.credentialFile.state === 'not-a-regular-file'
     || report.credentialFile.state === 'unreadable-metadata'
   const compatibilityFailure = report.compatibility !== undefined && report.compatibility.status !== 'compatible'
-  return credentialFailure || compatibilityFailure ? 1 : 0
+  const identityFailure = report.identity !== undefined && report.identity.pluginVersionState !== 'match'
+  return credentialFailure || compatibilityFailure || identityFailure ? 1 : 0
 }
 
 /** Project the diagnostic report without its absolute credential pathname. */
@@ -136,6 +139,7 @@ function doctorJson(report: DiagnosticReport): Record<string, unknown> {
     hints: report.hints,
   }
   if (report.compatibility !== undefined) result.compatibility = report.compatibility
+  if (report.identity !== undefined) result.identity = report.identity
   return result
 }
 
@@ -225,6 +229,10 @@ export async function run(argv: readonly string[]): Promise<number> {
         }
         process.stdout.write([
           `Codex Connect ${report.version} on ${report.node}`,
+          ...report.identity === undefined ? [] : [
+            `Diagnostic scope: ${report.identity.scope}; loaded CLI plugin ${report.identity.loadedPluginVersion}; installed package ${report.identity.installedPluginVersion ?? 'unknown'} (${report.identity.pluginVersionState})`,
+            'Running Host and browser client: not observed by this standalone command',
+          ],
           `OAuth file metadata: ${report.credentialFile.state} (${report.credentialFile.path})`,
           ...(report.compatibility === undefined ? [] : [
             `Compatibility: ${report.compatibility.status} (Node ${report.compatibility.node.installed ?? 'unknown'}; DSH API ${report.compatibility.packages['@deepseek-ai/dsh-llm'].installed ?? 'unknown'}; pi-ai ${report.compatibility.packages['@earendil-works/pi-ai'].installed ?? 'unknown'})`,

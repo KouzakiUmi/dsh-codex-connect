@@ -13,6 +13,7 @@ function fixture() {
   let now = 100_000
   const local: OpenAICodexDiagnosticReport = {
     package: 'dsh-codex-connect', version: '0.1.0-alpha.4.20', node: 'v22.19.0',
+    identity: { scope: 'standalone', loadedPluginVersion: '0.1.0-alpha.4.20', installedPluginVersion: '0.1.0-alpha.4.20', pluginVersionState: 'match', dshMetadataSource: 'plugin-installation' },
     credentialFile: { path: secrets[3]!, state: 'owner-only', mode: '600' },
     capabilities: { modelProvider: true, search: false, imageTool: false, imageGeneration: false, changesHarnessDefaultModel: false, changesHarnessSearchRoute: false },
     providerConflict: false, hints: [],

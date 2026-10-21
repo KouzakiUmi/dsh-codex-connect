@@ -70,6 +70,7 @@ register(UNKNOWN_TRANSPORT_MESSAGE, true)
 register('Invalid image request. Editing requires operation=edit, one explicit target and valid references; no generation was attempted.', false, 'input')
 register('This Codex Connect transport does not support editing. No generation was attempted.', false, 'input')
 register('The Codex Connect image transport is unavailable.', false, 'input')
+register('The generated images failed host validation.', false)
 for (const message of [
   'The generated original images could not be saved.',
   'The generated images could not be saved; no attachment references were returned.',

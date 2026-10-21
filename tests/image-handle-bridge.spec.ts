@@ -116,8 +116,8 @@ async function setup(options: { enabled: boolean; provider?: string; tools?: str
 }
 
 describe('persistent image handle bridge', () => {
-  it('appends a durable handle line to image tool results on non-Codex routes', async () => {
-    const { execute, attachment } = await setup({ enabled: true })
+  it.each(['kimi-coding', 'deepseek-account'])('appends durable handles on the %s route', async provider => {
+    const { execute, attachment } = await setup({ enabled: true, provider })
     const result = await execute()
     expect(result.isError).not.toBe(true)
     const texts = (result.content as ContentBlock[]).filter(block => block.type === 'text')

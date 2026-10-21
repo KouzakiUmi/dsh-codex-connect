@@ -9,6 +9,9 @@ import {
 } from './compatibility.ts'
 export { CODEX_CONNECT_VERSION } from './version.ts'
 import { CODEX_CONNECT_VERSION } from './version.ts'
+import { readDshInstallationMetadata, readInstalledPluginVersion } from './installation-metadata.ts'
+import { openAICodexPluginVersionState } from './runtime-identity.ts'
+import type { OpenAICodexRuntimeIdentity } from './runtime-identity.ts'
 
 /** Inputs that are safe to obtain without booting OAuth. */
 export interface OpenAICodexDiagnosticOptions {
@@ -30,6 +33,7 @@ export interface OpenAICodexDiagnosticReport {
   package: 'dsh-codex-connect'
   version: string
   node: string
+  identity: OpenAICodexRuntimeIdentity
   credentialFile: {
     path: string
     state: 'missing' | 'owner-only' | 'permissions-too-broad' | 'not-a-regular-file' | 'unreadable-metadata'
@@ -87,7 +91,20 @@ export async function diagnoseOpenAICodex(
 
   const providerConflict = options.providerIds?.includes(OPENAI_CODEX_PROVIDER) ?? false
   const compatibility = await detectCompatibility(options.compatibilityOptions)
-  const hints: string[] = []
+  const installAnchor = options.compatibilityOptions?.installAnchor
+  const installation = installAnchor === undefined ? undefined : await readDshInstallationMetadata(installAnchor)
+  const installedPluginVersion = await readInstalledPluginVersion(options.compatibilityOptions?.pluginManifestPath) ?? null
+  const identity: OpenAICodexRuntimeIdentity = {
+    scope: installation === undefined ? 'standalone' : 'selected-installation',
+    loadedPluginVersion: CODEX_CONNECT_VERSION,
+    installedPluginVersion,
+    pluginVersionState: openAICodexPluginVersionState(CODEX_CONNECT_VERSION, installedPluginVersion),
+    dshMetadataSource: installation !== undefined ? 'explicit-install-anchor'
+      : installAnchor === undefined && installedPluginVersion !== null ? 'plugin-installation' : 'unknown',
+  }
+  const hints: string[] = [installation === undefined
+    ? 'Standalone diagnostics do not observe a running Host or browser client. Local dependency metadata is not running-Host proof.'
+    : 'The explicit install anchor selects installation metadata only; it does not prove that installation is running or observe its browser client.']
   if (state === 'missing') hints.push('Sign in only when you are ready; installation does not start OAuth.')
   if (state === 'permissions-too-broad') hints.push(`Restrict the OAuth file to its owner before use (current mode ${mode}).`)
   if (state === 'not-a-regular-file') hints.push('Replace the OAuth path with an owner-only regular file created by Codex Connect login.')
@@ -106,6 +123,7 @@ export async function diagnoseOpenAICodex(
     package: 'dsh-codex-connect',
     version: CODEX_CONNECT_VERSION,
     node: process.version,
+    identity,
     credentialFile: { path, state, ...mode === undefined ? {} : { mode } },
     capabilities: {
       modelProvider: true,

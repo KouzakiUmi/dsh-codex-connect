@@ -30,6 +30,8 @@ Host 将 `llm-openai-codex` 注册为插件自有的能力 settings namespace。
 
 远程图片的每次重定向跳转共用一个 30 秒期限，覆盖 DNS、连接与响应体读取。取消会立即结束调用方等待；操作系统 DNS 查询可能稍后才完成，但其结果不能在取消或超时后启动新的 HTTP 请求。
 
+图片预览恢复仅在原图保存成功、预览创建失败时使用新增的元数据及内容 envelope 版本 3。结果记录精确原图和 `previewStatus: unavailable`，不会伪造附件。原图落盘前先通过 Host 验证，避免预览失败绕过原图验证。原生及 PTC 历史可将这些原图用于创建会话或实际继承了该结果的 fork；任意文本不会授予权限。现有结果卡提供原图下载及显式编辑，无需重新发送生图请求。正常版本 1/2 结果不变，取消仍清理未发布的原图。详见[实施与验证记录](agent-notes/image-preview-recovery.md)。
+
 ## 冲突、诊断与兼容边界
 
 注册前检查现有 provider id；发现 `openai-codex` 已被占用时，给出旧 bundle 或手动 provider 配置的定向迁移提示。boot-free CLI doctor 只报告包/运行时版本、OAuth 路径元数据、能力默认值和安全提示。

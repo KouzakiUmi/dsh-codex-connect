@@ -9,6 +9,10 @@ import { checkInstalledNativeCompaction } from './check-installed-native-compact
 import { checkInstalledImages } from './check-installed-images.mjs'
 import { createInstalledHostContext } from './installed-host-context.mjs'
 import { checkInstalledMetrics } from './check-installed-metrics.mjs'
+import { checkInstalledSearchRoute } from './check-installed-search-route.mjs'
+import { checkInstalledTaskHttp } from './check-installed-task-http.mjs'
+import { checkInstalledPreflight } from './check-installed-preflight.mjs'
+import { checkInstalledRetryPolicy } from './check-installed-retry-policy.mjs'
 
 const JSON_SCHEMA_VERSION = 1
 const PROVIDER_ID = 'openai-codex'
@@ -93,7 +97,11 @@ export async function checkInstalledRuntime(profilePackagePath, hostPackagePath 
       throw new Error(`runtime retained the ${PROVIDER_ID} provider after plugin disposal`)
     }
 
+    const searchRouteLifecycle = await checkInstalledSearchRoute(importHost, OpenAICodex)
     const requestMetrics = await checkInstalledMetrics(importHost, OpenAICodex, packagePath)
+    const taskHttpLifecycle = await checkInstalledTaskHttp(importHost, OpenAICodex)
+    const preflightActivity = await checkInstalledPreflight(importHost, OpenAICodex)
+    const retryPolicy = await checkInstalledRetryPolicy(importHost, OpenAICodex)
     const reserveTransitionsVerified = await checkInstalledReserve(importHost, OpenAICodex)
     const nativeCompactionLifecycle = await checkInstalledNativeCompaction(packagePath, hostPath)
     const toolsManifest = JSON.parse(await readFile(createRequire(hostPath).resolve('@deepseek-ai/dsh-tools/package.json'), 'utf8'))
@@ -109,6 +117,10 @@ export async function checkInstalledRuntime(profilePackagePath, hostPackagePath 
       nativeCompactionLifecycle,
       images,
       requestMetrics,
+      searchRouteLifecycle,
+      preflightActivity,
+      retryPolicy,
+      taskHttpLifecycle,
     }
   } finally {
     await ctx.fiber.dispose()

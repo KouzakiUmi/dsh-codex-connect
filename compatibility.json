@@ -12,7 +12,11 @@
       "0.2.0-rc.2",
       "0.2.1-alpha.1",
       "0.2.1-alpha.2",
-      "0.2.1-alpha.3"
+      "0.2.1-alpha.3",
+      "0.2.1-alpha.4",
+      "0.2.1-alpha.5",
+      "0.2.1-rc.1",
+      "0.2.1-rc.2"
     ],
     "packages": [
       "@deepseek-ai/dsh-agent",
@@ -30,6 +34,7 @@
       "@deepseek-ai/dsh-fs",
       "@deepseek-ai/dsh-session",
       "@deepseek-ai/dsh-settings",
+      "@deepseek-ai/dsh-timeout",
       "@deepseek-ai/dsh-tools",
       "@deepseek-ai/dsh-util-values",
       "@deepseek-ai/dsh-web"
@@ -37,6 +42,6 @@
   },
   "piAi": {
     "package": "@earendil-works/pi-ai",
-    "version": "1.2.0"
+    "version": "0.85.1"
   }
 }

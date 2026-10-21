@@ -27,13 +27,53 @@ Codex 目录来自已安装的 `@earendil-works/pi-ai` 包，不是实时查询�
 
 GPT Codex 对话的 Composer 会显示 Fast Mode 与额度：
 
-- **Fast Mode** 只为当前对话请求优先服务（`service_tier: 'priority'`）。默认关闭，也不会更换模型。实际速度和额度消耗取决于服务端，不保证固定提速倍数。
+**源码变更，尚未发布：** 精确匹配 Codex `gpt-6-astra` 和 `gpt-6.1-sol` 的对话提供互斥的 Standard、Fast、Ultrafast 选择。只有显式选择当前对话的 Ultrafast 或明确配置启动偏好后才发送 `service_tier: 'ultrafast'`，模型、推理强度与 SSE 传输不变。省略新偏好时 Ultrafast 仍默认关闭，旧 Fast 布尔值不能启用它；其他模型显示禁用的 Ultrafast。切换模型（包括切走再切回）、登录/退出及账户操作会使付费选择失效，请求派发前还会复核实际账户、模型和实时选择。辅助压缩/标题请求不会继承 Ultrafast。旧布尔 Fast 接口和已保存的 Fast 偏好继续支持；选择 Ultrafast 时，旧 GET 返回 409，避免错误显示为标准模式。
+
+Ultrafast 消耗更多额度。官方文档区分可用的 Pro500、Enterprise/Edu 账户与 Pro100/200；插件不会根据套餐名称或缓存目录推断资格。账户资格与实际服务等级始终保持**未核实**，成功响应也不构成确认。按钮表示请求偏好，不是计费、速度或服务端接受的证据。不新增私有资格端点、OAuth 权限、付费探测或资格缓存。普通 403/429/网络故障不会被判为无资格。选择器不会回退或重放失败请求；现有提供方/宿主重试策略继续用于同一请求等级。不确定的控件写入只能通过显式读取恢复，不会自动重放 POST。详见[实现与验收边界](agent-notes/ultrafast-conversation-speed.md)。
+
+- **Fast Mode** 只为当前对话请求优先服务（`service_tier: 'priority'`）。默认关闭，不会更换模型或降低推理强度。新对话和新子代理的 Fast Mode 默认值也不改变推理强度。实际速度和额度消耗取决于服务端，不保证固定提速倍数。
 - Profile 中的「新对话默认使用 Fast Mode」和「新子代理对话默认使用 Fast Mode」互相独立，初始均关闭。只在新会话启动时应用；修改设置不会倒改已有会话，也不会覆盖 Composer 中的手动选择。单个对话的 Fast Mode 状态仍保存在进程内，因此插件重启后恢复该对话会回到标准速度；之后新建的会话仍按已保存的默认值启动。
+- **源码后续变更，尚未发布：** `newSessionSpeedMode` 与 `newSubagentSpeedMode` 可独立设置为 `standard`、`fast` 或 `ultrafast`。显式值优先于对应旧 Fast 布尔值；省略或 `null` 沿用保留的旧偏好。更多设置提供两个选择器，选定显式值后禁用对应旧开关。只在新会话启动时捕获一次，不改变恢复会话、已有会话或之后的手动选择。Ultrafast 须先登录再创建会话，且仅适用于精确受支持的 Codex 模型；其他初始路由使用 Standard，不据此认定付费权益。切换模型或账户（包括切走再切回）会使旧启动意图失效；异步读取账户期间的手动选择也优先。首个 Host 请求路由或 Composer 已有的速度读取负责绑定偏好，不增加提供方请求。受支持模型缺少登录时明确报错，重试不会自动降为 Standard，直到手动或生命周期变更解除。参见[启动默认值说明](agent-notes/new-session-speed-defaults.md)。
 - **额度条**在已登录且标签页可见时通常每 60 秒刷新一次（隐藏时暂停，失败后延长重试间隔），只显示服务端实际返回的 `5h` 和 `7d` 窗口，并显示精确剩余百分比与重置时间。`gpt-5.3-codex-spark` 使用独立的 Spark 额度桶。Codex Connect 不会虚构缺失窗口，也不会根据套餐名称隐藏已返回窗口。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/franksong2702/dsh-codex-connect/main/docs/assets/composer-capabilities.jpg" alt="DeepSeek Harness Composer 中的 Fast Mode 与额度控件" width="820">
 </p>
+
+## 可选的配置级推理默认值
+
+**源码变更，尚未发布：** 可在 Codex Connect 插件配置行设置 `reasoningEffort: max`（或其他受支持强度），也可在更多设置中选择默认推理强度。仅在 Host 请求未显式指定强度时使用；请求值优先。省略保持提供方原行为，`null` 可屏蔽下层继承的默认值。保存后新准备的请求使用新值，已准备的请求保留原配置快照。不改变 Fast/Ultrafast 服务档位、输出上限或聊天模型。
+
+`GET /plugins/dsh-codex-connect/models` 返回 Host 实际提供的 `reasoning.efforts` 和可选 `reasoning.defaultEffort`，不读取凭据，也不查询账户访问权限。元数据来自已安装的 adapter，包含插件对静态目录的受支持补充。配置不受某模型支持的强度不会隐藏该模型，但发送前会报 `UNSUPPORTED_REASONING_EFFORT`，不解析凭据或访问网络；请求显式指定的受支持强度仍可覆盖默认值。配置接受 `off`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max`，实际可用值由所选模型决定。Workflow `agent()` 参数白名单由 Host 控制，此设置不会扩展该白名单。
+
+## 普通子代理的推理强度
+
+DSH `0.2.0-rc.2` 和 `0.2.1-alpha.1` 的普通 Harness 子代理支持显式指定推理强度。先启用宿主的子代理模型选择设置，授权精确的 `openai-codex` / `gpt-6.1-sol` 路由，再新建主对话，让会话记录这项策略。子代理工具需使用支持 `agentOptions` 的后端，例如 Harness 进程内后端或 DSH SDK，并设置 `modelSelectionSettings: true`。外部 Codex、Claude Code 和 ACP 后端不支持这个选择接口。
+
+先通过 `list_subagent_models` 查看已授权路由与公开的推理强度，再在普通 `subagent` 工具调用中，连同必需的任务参数传入 `provider: "openai-codex"`、`model: "gpt-6.1-sol"` 和 `reasoning_effort: "max"`。允许模型列表记录的是提供方／模型组合；强度是每次调用的独立字段，由所选模型校验。插件供账户卡片使用的 `/models` 响应不是宿主发现推理强度的接口。这不启用已冻结的 Adaptive Task，也不需要插件级强度默认值。
+
+Workflow 的 `agent()` 是宿主的另一个接口：这两个精确 DSH 版本仅接受 `label`、`phase`、`schema`、`provider` 和 `model`，不接受 `reasoningEffort` 或 `reasoning_effort`；普通子代理设置不会为 Workflow 添加这些参数。模型元数据与本地路由校验不能证明账户具有调用权限。
+
+## 请求重试策略
+
+源码配置允许在 Codex Connect 插件行中添加仅加载时读取的可选 `retryPolicy`。这不是 **更多设置** 中的新控件；编辑配置后通过宿主重新加载插件。省略该键时保留宿主当前的普通策略：初次尝试后最多重试五次，可重试码为 `EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT` 和 `TRANSPORT`，初始退避 500 ms、上限 10,000 ms、抖动比例 0.1。
+
+```yaml
+retryPolicy:
+  mode: normal
+  maxRetries: 10
+  retryableCodes: [EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT]
+  backoff:
+    initialDelayMs: 1000
+    maxDelayMs: 20000
+    jitterRatio: 0.1
+```
+
+配置复用已安装宿主的 `RetryPolicySchema` 和解析器。`normal` 模式的 `maxRetries` 必须是非负安全整数；零表示不执行策略重试。错误码列表不能为空，条目须为不重复的非空字符串。退避延迟须为不超过 2,147,483,647 ms 的正有限数，且 `initialDelayMs <= maxDelayMs`；抖动比例须在 0 到 1 之间。策略及退避对象中的未知键、当前模式的非法有效值会使加载失败，不会被静默忽略。删除该键即可恢复默认值，不要用 `null` 作为策略。
+
+宿主还支持显式 `mode: always` 和 `backoff`：对所有模型请求失败持续重试，不限制次数，直到成功、取消或卸载；它从不默认启用。切换分层配置到 `always` 时，宿主会忽略保留的普通模式专用字段，它们不会限制重试次数。已注册策略由宿主重试插件执行，本配置不会安装或启用该插件，也不改变 OAuth、额度、Search、图片或 Auto-review 的重试。调用方取消、请求计量、preflight 截止时间和其他宿主限制均保留。适配器创建时捕获策略，已经准备的调用保留各自捕获的策略。
+
+更多重试可能增加计费尝试次数并消耗额外额度。退避计划不是总请求截止时间，也不保证某个故障恢复窗口；请求耗时、服务端延迟、抖动、取消和其他限制仍会影响结果。这项源码变更不会追溯进入不可变的 Alpha 7 npm 安装包；合成检查不代表真实代理或账号的恢复验收。
 
 ## 可选能力
 
@@ -80,13 +120,15 @@ Reserve 使用 Luna 目录中的 272,000 token 上下文窗口，不沿用原模
 
 ### 搜索与图片工具
 
-- `enableSearch: true` 将 Codex 注册为可用搜索提供方，并用于整个 profile 的搜索。关闭时会注销该提供方，并恢复启用 Codex 搜索之前的路由。
+- `enableSearch: true` 将 Codex 注册为可用搜索提供方，并用于整个 profile 的搜索。关闭时会注销该提供方，并恢复底层 Host 路由，保留 Host 后续的新选择；rc.2 源码候选允许新的实时选择直接生效，无需重启服务。
 - 搜索从认证开始到读完响应共用 30 秒总期限。超过 1 MiB 的响应会被拒绝，失败时会取消尚未读完的响应体。调用方也可以提前取消搜索。
 - `enableImageTool: true` 为具备视觉能力的模型注册 `view_image`。远程读取只接受不带凭据的公网 HTTP(S)，并重新检查 DNS 与重定向。
 - `enableImageGeneration: true` 注册 GPT Image 图片生成；Alpha 4.48 构建还支持编辑明确选定的会话图片。原有纯文字生图保留，可用性、尺寸和额度仍由账户及服务端控制。
 - `imageModelHint` 是“插件配置”或 profile config 中的可选设置，按 profile 保存。留空使用 `gpt-image-2`；自定义值接受 1–128 个 ASCII 字母、数字、点、下划线或连字符，且必须以字母或数字开头。保存后会修改后续请求的 `model` 字段，仍使用固定的生成或编辑端点；清空可恢复默认值。Alpha 4.47 只接受 `prompt`；Alpha 4.48 还接受显式编辑输入。这是未经验证的路由提示：服务端可能忽略或拒绝，也不保证返回指定模型。
 
 生成的原文件保存在 `$DSH_HOME/dsh-codex-connect/images/v1`；对话会收到另一份 DSH 附件预览。结果卡片会报告尺寸和文件大小，并可下载任一版本。原文件仅允许所有者访问，下载前会校验完整性，并且只对创建会话及继承了该结果的 fork 开放。关闭能力或卸载插件不会自动删除这些文件。
+
+**开发中变更，尚未发布：** 启用图片工具后，可保持当前聊天模型（包括 DeepSeek），无需切换模型。如果原图已保存、但对话预览保存失败，结果会明确提示，仍可**下载原图**或**基于此图修改**。直接继续使用该结果即可，无需重新生图来取回原图。原图仍须通过 Host 图片验证及会话所有权检查；取消请求或原图保存失败不会返回可恢复结果。已有安装版本仍保持原先行为。
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/franksong2702/dsh-codex-connect/main/docs/assets/zh/image-generation.png" alt="包含提示词、下载操作与图片详情的 GPT Image 结果" width="780">
@@ -154,6 +196,9 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 模型列表每行提供持久化的微型上下文滑杆：标准（272K）、扩展（500K，不超过目录上限）、最大（当前可扩展模型为 872K）。不支持扩展的模型只提供标准档。未保存档位的 GPT-6.1 Sol 默认 500K，其余现有型号默认 272K；已显式保存的标准／null 仍为 272K。保存后，对该模型的已有和新会话、模型信息／压力检测和手动 `/compact` 共用同一窗口，已准备的请求不变。持久化由宿主设置管理，插件重启不重置已保存档位。单模型 `null` 选择标准并屏蔽继承的扩展；整个映射 `null` 重置映射。旧的 `maximumContextModels` 和 `contextWindowOverrides` 保留为无效的兼容数据，不会悄悄开启持久扩展。
 
 输入区保留原扩展图标及短容量 tooltip：悬停显示已保存档位，点击才打开约两行大小的微型滑杆。上方是三档容量，下方细线内嵌扁平圆点卡位；拖动有吸附阈值，松手提交一次。图标入口立即写入同一模型的宿主设置，设置页仍用保存／放弃提交草稿。灰色标准、蓝色扩展、琥珀色最大；不显示内联数字。容量是客户端预算，不代表已使用 Token 或服务端权限。读写不可用时不提交；失败保留原档位并显示简短提示，不自动重放。历史超过 272K 的会话应保存足够大的档位后再压缩。额度药丸默认开启，但显式关闭仍保留。模型默认及来源依据见[记录](agent-notes/model-context-tiers.md)。
+Sol61（`gpt-6.1-sol`）的缺失条目或已知旧内置静态元数据使用 500,000 token 基础默认值。显式提供方元数据及用户覆盖值依次优先；重置恢复有效基础默认值。872,000 本地覆盖上限及输出上限不变。这遵循[官方 Work/Codex 产品默认策略](https://help.openai.com/en/articles/20001275-chatgpt-work-and-codex)，不是端点容量实测。详见[来源校准边界](agent-notes/sol61-context-default.md)。宿主压缩策略不变，但计算预算可能随更大的上下文输入而变化。
+
+`contextWindowOverrides` 修改的是客户端预算，不是 OpenAI 服务端容量。未知模型 ID 或超过插件文档配置上限的值会明确失败。将整个字段设为 `null` 可屏蔽继承的全部覆盖值；将单个模型设为 `null` 可恢复其目录默认值，同时保留其他条目。请为输出和协议开销预留空间，并把更大的数值视为特定部署的实验，不能当作账户权限证据。所有权与持久化规则见 [Alpha 设计](design.zh.md)。
 
 ## 诊断与恢复
 
@@ -161,7 +206,7 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 
 已发布的 Alpha 4.33 在 DSH `0.1.5-rc.1` 上列出或准备 Codex 模型时，可能报 `Cannot read properties of undefined (reading 'get')`。新宿主要求按模型记录错误的索引，旧插件 profile 没有提供。包含 [Issue #178 修复](https://github.com/franksong2702/dsh-codex-connect/issues/178)的构建会初始化该索引；重新授权不能补齐这个字段。请选择与宿主版本完成验证的精确插件版本，不能仅凭属于同一 Alpha 系列判断。
 
-运行 `dsh plugin --profile web exec dsh-codex-connect doctor --json` 可检查本地安装元数据，不会联网。兼容性状态含义：`compatible` 表示符合声明的版本要求，不是行为测试通过；`unverified` 表示包版本超出声明的支持集合；`unknown` 表示缺少必要版本元数据或无法读取；`incompatible` 表示 Node 版本不满足声明的 engine 要求。汇总状态依次优先采用 `incompatible`、`unknown`、`unverified`。任何非 compatible 结果或不安全的凭据文件元数据都会让 doctor 返回 `1`，但这并不授权或建议更改 DSH。
+若要求诊断不经过包管理器，请按[直接运行已安装 bin](runtime-identity.md#direct-standalone-doctor)的方法执行 `doctor --json`；`dsh plugin exec` 包装器自身可能核对或安装依赖。doctor 只读本地元数据且不联网，不证明另一进程的实际运行身份。兼容性状态含义：`compatible` 表示符合声明的版本要求，不是行为测试通过；`unverified` 包括未声明/混装版本，以及 peer 与明确选定 DSH 主清单不一致；`unknown` 表示缺少必要元数据或无法读取；`incompatible` 表示 Node 不满足 engine 要求。汇总依次优先采用 `incompatible`、`unknown`、`unverified`。非 compatible、不安全的凭据文件元数据或未知/不一致的插件身份会让 doctor 返回 `1`，凭据缺失本身不算错误；这不授权或建议更改 DSH。
 
 DSH `0.1.7-rc.1` 的 `plugin exec` 会启动独立进程，普通模块解析无法看见宿主的 peer 包。Alpha 4.43 的 CLI 自带所需代码，因此所有命令都能在该进程中启动。若要让 `doctor` 核对确切宿主包版本，给 `--install-anchor` 传入该 DSH 安装中 `@deepseek-ai/dsh/package.json` 的绝对路径；该选项只读包元数据，也不会输出路径。未提供 anchor 且无法解析版本时，`doctor` 报 `unknown`，不能据此认定运行时不兼容。安装运行时检查另行启动 DSH 自身的 profile 解析器后再导入插件，保持宿主包身份一致。
 

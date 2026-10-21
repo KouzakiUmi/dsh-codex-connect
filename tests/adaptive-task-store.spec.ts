@@ -65,7 +65,7 @@ it('rejects symlinks, hardlinks and oversized content without following external
   const f = await setup(); await f.store.update('fixture', document)
   const target = join(root!, 'outside.json'); await writeFile(target, JSON.stringify(document()), { mode: 0o600 })
   await rm(f.file); await symlink(target, f.file)
-  await expect(f.store.read('fixture')).rejects.toThrow('TASK_STATE_UNAVAILABLE')
+  await expect(f.store.read('fixture')).rejects.toThrow('TASK_STATE_UNSAFE')
   await rm(f.file); await link(target, f.file)
   await expect(f.store.read('fixture')).rejects.toThrow('TASK_STATE_UNSAFE')
   await rm(f.file); await writeFile(f.file, 'x'.repeat(66000), { mode: 0o600 })

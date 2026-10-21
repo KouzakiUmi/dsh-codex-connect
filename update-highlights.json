@@ -140,6 +140,22 @@
     {
       "version": "0.2.0-alpha.2",
       "highlights": ["runtime-compatibility", "image-generation"]
+    },
+    {
+      "version": "0.2.0-alpha.6",
+      "highlights": ["runtime-compatibility", "search-route"]
+    },
+    {
+      "version": "0.2.0-alpha.7",
+      "highlights": []
+    },
+    {
+      "version": "0.2.0-alpha.8",
+      "highlights": ["quota-fast-mode"]
+    },
+    {
+      "version": "0.2.0-alpha.9",
+      "highlights": []
     }
   ]
 }

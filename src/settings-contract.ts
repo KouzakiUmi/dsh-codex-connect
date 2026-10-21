@@ -1,6 +1,10 @@
 /** Node-free settings contract shared by the Host plugin and browser card. */
 
 import type { OpenAICodexContextTiers } from './model-contract.ts'
+import { parseOpenAICodexSpeedDefault } from './speed-mode-contract.ts'
+import type { OpenAICodexSpeedMode } from './speed-mode-contract.ts'
+import { OPENAI_CODEX_REASONING_EFFORTS, parseOpenAICodexReasoningEffort } from './reasoning-contract.ts'
+import type { OpenAICodexReasoningEffort } from './reasoning-contract.ts'
 
 /** Stable Harness settings namespace owned by this plugin. */
 export const OPENAI_CODEX_SETTINGS_NAMESPACE = 'llm-openai-codex'
@@ -128,6 +132,8 @@ export const DEFAULT_OPENAI_CODEX_SEARCH_MAX_OUTPUT_TOKENS = 10_000
 export interface OpenAICodexSettingsConfig {
   /** Model ids advertised in selectors; undefined advertises the full catalog. */
   models: string[] | undefined
+  /** Optional fallback when a request does not specify reasoning effort. */
+  reasoningEffort: OpenAICodexReasoningEffort | undefined
   /** Persistent model budgets shared by every conversation and manual compaction. */
   modelContextTiers?: OpenAICodexContextTiers
   /** Retired ON-only preference, accepted without automatically expanding a model. */
@@ -150,6 +156,10 @@ export interface OpenAICodexSettingsConfig {
   enableNewSessionFastMode: boolean
   /** Independent default for newly started subagent sessions. */
   enableNewSubagentFastMode: boolean
+  /** Explicit new top-level default; omission retains the legacy Fast preference. */
+  newSessionSpeedMode: OpenAICodexSpeedMode | undefined
+  /** Independent new-subagent default, with the same legacy omission behavior. */
+  newSubagentSpeedMode: OpenAICodexSpeedMode | undefined
   /** Use provider-native Responses V2 compaction when DSH requests compaction. */
   enableNativeCompaction: boolean
   enableImageTool: boolean
@@ -183,6 +193,8 @@ export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> 
   enableReserveFallback: false,
   enableNewSessionFastMode: false,
   enableNewSubagentFastMode: false,
+  newSessionSpeedMode: undefined,
+  newSubagentSpeedMode: undefined,
   enableNativeCompaction: false,
   enableImageTool: false,
   enableImageGeneration: false,
@@ -199,7 +211,10 @@ export const DEFAULT_OPENAI_CODEX_SETTINGS: Readonly<OpenAICodexSettingsConfig> 
 })
 
 /** Input settings allow null to disable overrides inherited from a lower settings layer. */
-export interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides' | 'maximumContextModels' | 'modelContextTiers'>> {
+export interface OpenAICodexSettingsInput extends Partial<Omit<OpenAICodexSettingsConfig, 'contextWindowOverrides' | 'maximumContextModels' | 'modelContextTiers' | 'reasoningEffort' | 'newSessionSpeedMode' | 'newSubagentSpeedMode'>> {
+  reasoningEffort?: OpenAICodexReasoningEffort | null | undefined
+  newSessionSpeedMode?: OpenAICodexSpeedMode | null | undefined
+  newSubagentSpeedMode?: OpenAICodexSpeedMode | null | undefined
   contextWindowOverrides?: Readonly<Record<string, number | null>> | null | undefined
   /** Host null resets this defaulted list, leaving every maximum preference off. */
   maximumContextModels?: string[] | null
@@ -256,7 +271,10 @@ export function resolveOpenAICodexSettings(
   if (!isValidOpenAICodexReasoningSummary(resolved.reasoningSummary)) {
     throw new TypeError('OpenAI Codex reasoningSummary must be auto, concise, detailed, or none')
   }
-  return { ...resolved, maximumContextModels: [...new Set(maximumContextModels)], modelContextTiers: parseOpenAICodexContextTiers(resolved.modelContextTiers), contextWindowOverrides: undefined }
+  return { ...resolved, reasoningEffort: parseOpenAICodexReasoningEffort(resolved.reasoningEffort) ?? undefined,
+    newSessionSpeedMode: parseOpenAICodexSpeedDefault(resolved.newSessionSpeedMode) ?? undefined,
+    newSubagentSpeedMode: parseOpenAICodexSpeedDefault(resolved.newSubagentSpeedMode) ?? undefined,
+    maximumContextModels: [...new Set(maximumContextModels)], modelContextTiers: parseOpenAICodexContextTiers(resolved.modelContextTiers), contextWindowOverrides: undefined }
 }
 
 /** Resolve the active proxy without treating a disabled value as a route. */
@@ -277,6 +295,13 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
   const modelContextTiers = value['modelContextTiers']
   if (modelContextTiers !== undefined && modelContextTiers !== null && !isValidOpenAICodexContextTiers(modelContextTiers)) return undefined
   const models = value['models']
+  const newSessionSpeedMode = value['newSessionSpeedMode']
+  const newSubagentSpeedMode = value['newSubagentSpeedMode']
+  for (const speed of [newSessionSpeedMode, newSubagentSpeedMode]) {
+    if (speed !== undefined && speed !== null && speed !== 'standard' && speed !== 'fast' && speed !== 'ultrafast') return undefined
+  }
+  const reasoningEffort = value['reasoningEffort']
+  if (reasoningEffort !== undefined && reasoningEffort !== null && (typeof reasoningEffort !== 'string' || !OPENAI_CODEX_REASONING_EFFORTS.some(effort => effort === reasoningEffort))) return undefined
   const maximumContextModels = value['maximumContextModels']
   if (maximumContextModels !== undefined && maximumContextModels !== null && !isValidMaximumContextModels(maximumContextModels)) return undefined
   const enableProxy = value['enableProxy']
@@ -326,6 +351,9 @@ export function decodeOpenAICodexSettings(value: unknown): OpenAICodexSettingsCo
     models: models === undefined ? undefined : [...new Set(models)],
     maximumContextModels: [...new Set(maximumContextModels ?? [])],
     modelContextTiers: parseOpenAICodexContextTiers(modelContextTiers),
+    newSessionSpeedMode: parseOpenAICodexSpeedDefault(newSessionSpeedMode) ?? undefined,
+    newSubagentSpeedMode: parseOpenAICodexSpeedDefault(newSubagentSpeedMode) ?? undefined,
+    reasoningEffort: parseOpenAICodexReasoningEffort(reasoningEffort) ?? undefined,
     enableProxy: enableProxy ?? false,
     proxyUrl: proxyUrl === undefined ? DEFAULT_OPENAI_CODEX_PROXY_URL : normalizeOpenAICodexProxyUrl(proxyUrl)!,
     contextWindowOverrides: undefined,

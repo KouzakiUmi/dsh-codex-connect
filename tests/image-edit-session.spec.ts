@@ -8,13 +8,15 @@ import { zstdDecompressSync } from 'node:zlib'
 import { Context } from '@deepseek-ai/cordis'
 import { AgentRegistry } from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import Llm, { createUserMessage } from '@deepseek-ai/dsh-llm'
+import Llm, { createUserMessage, LlmAdapter, ToolCallId } from '@deepseek-ai/dsh-llm'
+import type { GenerateOptions, LlmModelInfo, LlmProviderInfo, LlmResolvedModelInfo, StreamChunk } from '@deepseek-ai/dsh-llm'
 import Sessions, { SessionId } from '@deepseek-ai/dsh-session'
 import Projection from '@deepseek-ai/dsh-session-projection'
 import Prompt from '@deepseek-ai/dsh-system-prompt'
 import Tools from '@deepseek-ai/dsh-tools'
 import LocalAttachments from '@deepseek-ai/dsh-attachment-local'
-import Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import * as Persistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import { selectPersistencePlugin } from '../scripts/persistence-plugin-fixture.mjs'
 import { afterEach, expect, it, vi } from 'vitest'
 import * as CodexConnect from '../src/index.ts'
 import { OpenAICodexCredentialStore } from '../src/store.ts'
@@ -51,14 +53,83 @@ async function host(root: string, compression: 'none' | 'zstd') {
   const ctx = new Context(); contexts.push(ctx)
   for (const plugin of [Llm, Sessions, Projection, AgentRegistry, Prompt, Tools]) await ctx.plugin(plugin)
   await ctx.plugin(AgentLoop, { agents: [] })
-  await ctx.plugin(Persistence, { root: join(root, 'sessions'), compression })
+  await ctx.plugin(selectPersistencePlugin(Persistence), { root: join(root, 'sessions'), compression })
   await ctx.plugin(LocalAttachments, { dshHome: root })
   await ctx.plugin(CodexConnect, { enableImageGeneration: true })
   await new Promise(resolve => setImmediate(resolve))
   return ctx
 }
 
-it.each(['none', 'zstd'] as const)('edits through the real loop, cold-loads physical JSONL and edits the retained original (%s)', async compression => {
+it('advertises the image tool and completes generation and continued editing in a synthetic DeepSeek host loop', async () => {
+  const root = await realpath(await mkdtemp(join(tmpdir(), 'codex-deepseek-image-'))); roots.push(root)
+  vi.stubEnv('DSH_HOME', root); vi.stubEnv('OTEL_SDK_DISABLED', 'true')
+  const network = vi.fn(async () => { throw new Error('No network is allowed in this synthetic route fixture') })
+  vi.stubGlobal('fetch', network)
+  vi.stubGlobal('WebSocket', class { constructor() { throw new Error('No live model access in this fixture') } })
+  const ctx = await host(root, 'none')
+  const reply = async () => ({ apiVersion: 1 as const, traceId: 'synthetic', elapsedMs: 1,
+    responseBytes: PNG.byteLength, images: [{ b64Json: Buffer.from(PNG).toString('base64') }] })
+  const generate = vi.spyOn(ctx.openaiCodexTransport, 'generateImages').mockImplementation(reply)
+  const edit = vi.spyOn(ctx.openaiCodexTransport, 'editImages').mockImplementation(reply)
+  vi.spyOn(ctx.attachments, 'saveImages').mockRejectedValue(new Error('synthetic preview failure'))
+  const requests: GenerateOptions[] = []
+  let next: unknown = { operation: 'generate', prompt: 'A blue mug' }
+  class DeepSeekFixture extends LlmAdapter {
+    providerInfo(provider: string): LlmProviderInfo { return { id: provider, name: 'Synthetic DeepSeek' } }
+    async listModels(provider: string): Promise<readonly LlmModelInfo[]> { return [{ provider, id: 'synthetic-flash', name: 'Synthetic Flash' }] }
+    async resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> { return { provider, id: model, name: 'Synthetic Flash' } }
+    async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+      requests.push(options)
+      expect(options.provider).toBe('deepseek-account')
+      expect(options.model).toBe('synthetic-flash')
+      expect(options.tools?.find(tool => tool.name === 'codex_connect_image_generate')?.description).toContain('No chat model switch is needed')
+      if (next !== undefined) {
+        const args = next; next = undefined
+        const id = ToolCallId(`synthetic-${requests.length}`)
+        yield { type: 'block-start', index: 0, blockType: 'tool-call' }
+        yield { type: 'tool-call-delta', index: 0, id, name: 'codex_connect_image_generate', argumentsDelta: JSON.stringify(args) }
+        yield { type: 'block-end', index: 0, block: { type: 'tool-call', id, name: 'codex_connect_image_generate', arguments: JSON.stringify(args) } }
+        yield { type: 'finish', reason: { kind: 'tool-calls' } }
+      } else {
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: 'Synthetic result' }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: 'Synthetic result' } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      }
+    }
+  }
+  ctx.llm.registerAdapter(['deepseek-account'], new DeepSeekFixture())
+  const handle = await ctx.agents.create({ sessionId: SessionId('deepseek-recovery'), meta: { cwd: root },
+    agentOptions: { provider: 'deepseek-account', model: 'synthetic-flash' } })
+  handle.agent.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Generate a blue mug' }] }))
+  await handle.agent.whenIdle()
+  const first = handle.agent.session.snapshotEvents().find(event => event.type === 'tool/result')
+  const firstMeta = first?.type === 'tool/result' ? decodeImagePresentationMeta(first.data.meta) : undefined
+  expect(firstMeta).toMatchObject({ schemaVersion: 3 })
+  const original = firstMeta?.images[0]?.original
+  expect(original).toBeDefined()
+  if (original === undefined) throw new Error('expected recovered original')
+  expect(JSON.stringify(requests[1]?.messages)).toContain(original.assetId)
+  next = { operation: 'edit', prompt: 'Make the mug red', target: { assetId: original.assetId } }
+  handle.agent.followup(createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Modify the same mug' }] }))
+  await handle.agent.whenIdle()
+  const last = handle.agent.session.snapshotEvents().findLast(event => event.type === 'tool/result')
+  expect(last?.type === 'tool/result' ? decodeImagePresentationMeta(last.data.meta) : undefined).toMatchObject({
+    schemaVersion: 3, operation: 'edit', edit: { target: { assetId: original.assetId } },
+  })
+  expect(generate).toHaveBeenCalledOnce()
+  expect(edit).toHaveBeenCalledWith(expect.objectContaining({ images: [{ data: PNG, mediaType: 'image/png' }] }), expect.anything())
+  expect(requests).toHaveLength(4)
+  expect(network).not.toHaveBeenCalled()
+  await handle.dispose()
+})
+
+it.each([
+  { compression: 'none' as const, previewUnavailable: false },
+  { compression: 'zstd' as const, previewUnavailable: false },
+  { compression: 'none' as const, previewUnavailable: true },
+  { compression: 'zstd' as const, previewUnavailable: true },
+])('edits through the real loop and cold-loads the retained original ($compression, preview unavailable: $previewUnavailable)', async ({ compression, previewUnavailable }) => {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'codex-edit-session-'))); roots.push(root)
   vi.stubEnv('DSH_HOME', root); vi.stubEnv('OTEL_SDK_DISABLED', 'true')
   vi.stubGlobal('WebSocket', class { constructor() { throw new Error('Real WebSocket access is forbidden in this fixture') } })
@@ -95,6 +166,7 @@ it.each(['none', 'zstd'] as const)('edits through the real loop, cold-loads phys
   const ref = await ctx.attachments.saveImage({ data: PNG, mediaType: 'image/png', name: 'synthetic-upload.png' })
   const reference = await ctx.attachments.saveImage({ data: PNG_REFERENCE, mediaType: 'image/png', name: 'synthetic-reference.png' })
   const expectedInput = await ctx.attachments.readImage(ref)
+  if (previewUnavailable) vi.spyOn(ctx.attachments, 'saveImages').mockRejectedValueOnce(new Error('synthetic preview persistence failure'))
   const id = SessionId('edit-durable')
   const options = { provider: 'openai-codex', model: 'gpt-5.6-luna' }
   const handle = await ctx.agents.create({ sessionId: id, meta: { cwd: root }, agentOptions: options })
@@ -119,6 +191,8 @@ it.each(['none', 'zstd'] as const)('edits through the real loop, cold-loads phys
   if (first?.type !== 'tool/result') throw new Error('expected real tool result')
   const firstMeta = decodeImagePresentationMeta(first.data.meta)!
   const original = firstMeta.images[0]!.original!
+  expect(firstMeta.schemaVersion).toBe(previewUnavailable ? 3 : 2)
+  expect(firstMeta.images[0]!.previewStatus).toBe(previewUnavailable ? 'unavailable' : undefined)
   expect(JSON.stringify(modelBodies[0])).toContain(String(ref.attachmentId))
   expect(JSON.stringify(modelBodies[1])).toContain(original.assetId)
   expect(imageRequests).toHaveLength(1)

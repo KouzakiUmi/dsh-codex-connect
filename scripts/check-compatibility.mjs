@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { readFile } from 'node:fs/promises'
-import { findPackageJSON } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -12,10 +11,9 @@ const PACKAGE_FILE = join(REPO_ROOT, 'package.json')
 const JSON_SCHEMA_VERSION = 1
 const REQUIRED_NODE_RANGE = '^22.19.0 || >=24.0.0'
 const REQUIRED_DSH_VERSION = '0.1.7-rc.1'
-const REQUIRED_DSH_VERSIONS = [REQUIRED_DSH_VERSION, '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1', '0.2.1-alpha.2', '0.2.1-alpha.3']
+const REQUIRED_DSH_VERSIONS = [REQUIRED_DSH_VERSION, '0.1.7-rc.2', '0.2.0-rc.1', '0.2.0-rc.2', '0.2.1-alpha.1', '0.2.1-alpha.2', '0.2.1-alpha.3', '0.2.1-alpha.4', '0.2.1-alpha.5', '0.2.1-rc.1', '0.2.1-rc.2']
 const REQUIRED_DSH_RANGE = REQUIRED_DSH_VERSIONS.join(' || ')
-const REQUIRED_PI_AI_RANGE = '1.2.0'
-const REQUIRED_PI_AI_PEER_RANGE = `>=${REQUIRED_PI_AI_RANGE}`
+const REQUIRED_PI_AI_RANGE = '0.85.1'
 const PI_AI_PACKAGE = '@earendil-works/pi-ai'
 const SCHEMASTERY_PACKAGE = '@deepseek-ai/schemastery'
 const REQUIRED_SCHEMASTERY_VERSION = '3.18.4'
@@ -48,16 +46,6 @@ async function readJson(filename) {
 }
 
 async function installedPackageVersion(name) {
-  if (name === PI_AI_PACKAGE) {
-    try {
-      const manifest = findPackageJSON(name, import.meta.resolve('@deepseek-ai/dsh-llm-pi-ai'))
-      if (manifest === undefined) return undefined
-      const metadata = await readJson(manifest)
-      return metadata.name === name && typeof metadata.version === 'string' ? metadata.version : undefined
-    } catch {
-      return undefined
-    }
-  }
   let entry
   try {
     const resolved = import.meta.resolve(name)
@@ -124,12 +112,9 @@ async function main() {
     }
   }
   const dependencies = packageJson.dependencies ?? {}
-  // The host bridge loads the adapter-owned package; never auto-install a profile copy.
-  if (packageJson.peerDependenciesMeta?.[PI_AI_PACKAGE]?.optional !== true) fail('pi-ai peer must be optional; the adapter owns the runtime copy')
-  if (dependencies[PI_AI_PACKAGE] !== undefined) fail(`${PI_AI_PACKAGE} must not be a runtime dependency; the host provides it`)
-  if (peers[PI_AI_PACKAGE] !== REQUIRED_PI_AI_PEER_RANGE) fail(`peer dependency ${PI_AI_PACKAGE} must match ${REQUIRED_PI_AI_PEER_RANGE}`)
+  if (dependencies[PI_AI_PACKAGE] !== REQUIRED_PI_AI_RANGE) fail(`runtime dependency ${PI_AI_PACKAGE} must match ${REQUIRED_PI_AI_RANGE}`)
   if (dependencies[SCHEMASTERY_PACKAGE] !== REQUIRED_SCHEMASTERY_VERSION) fail(`runtime dependency ${SCHEMASTERY_PACKAGE} must match ${REQUIRED_SCHEMASTERY_VERSION}`)
-  if (peers[SCHEMASTERY_PACKAGE] !== undefined) {
+  if (peers[PI_AI_PACKAGE] !== undefined || peers[SCHEMASTERY_PACKAGE] !== undefined) {
     fail('plugin-owned runtime dependencies must not also be peer dependencies')
   }
 

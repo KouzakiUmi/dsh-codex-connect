@@ -179,9 +179,10 @@ function activeCredential(document: AuthDocument): StoredOAuthCredential {
   return active
 }
 
-function accountKey(accountId: string): string {
+export function openAICodexAccountKey(accountId: string): string {
   return `acct_${createHash('sha256').update(accountId).digest('base64url')}`
 }
+const accountKey = openAICodexAccountKey
 
 function serializeDocument(document: AuthDocument): string {
   const text = `${JSON.stringify(document, null, 2)}\n`

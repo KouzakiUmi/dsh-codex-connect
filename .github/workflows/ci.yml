@@ -20,7 +20,7 @@ jobs:
       matrix:
         node-version: ['22.19.0', '24.x']
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -28,7 +28,7 @@ jobs:
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 10.30.3
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
@@ -83,7 +83,7 @@ jobs:
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 10.30.3
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
@@ -106,7 +106,7 @@ jobs:
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
           version: 10.30.3
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24.x
           cache: pnpm
@@ -134,7 +134,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24.15.0
       - name: Validate Windows canary subprocess contracts
@@ -143,8 +143,20 @@ jobs:
         with:
           version: 10.30.3
       - run: pnpm --config.minimum-release-age=0 install --frozen-lockfile
+      - name: Verify native Windows task flush access and failure propagation
+        run: pnpm exec vitest run tests/task-flush-native.spec.ts tests/task-flush-access.spec.ts
+      - name: Verify native state read identity and disappearance boundaries
+        run: pnpm exec vitest run tests/task-state-native.spec.ts
       - name: Verify scoped proxy decompresses JSON on Windows
         run: pnpm exec vitest run tests/provider-proxy.spec.ts
+      - name: Verify manifest safety and runtime receipts on Windows
+        run: pnpm exec vitest run tests/installation-metadata.spec.ts tests/metadata-leaf-safety.spec.ts tests/metadata-read-races.spec.ts tests/runtime-identity.spec.ts
+      - name: Verify task artifact read identity on Windows
+        run: pnpm exec vitest run tests/task-artifact-native.spec.ts tests/task-artifact-read-identity.spec.ts
+      - name: Verify Windows history remains dry-run only
+        run: pnpm exec vitest run tests/history-migration.spec.ts
+      - name: Validate the actual package on Windows
+        run: pnpm run pack:check
 
   # Alpha CI deliberately has no npm-publish job. Publishing requires a later,
   # separately authorized release workflow.
