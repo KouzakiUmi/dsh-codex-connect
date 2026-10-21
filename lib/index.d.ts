@@ -1,6 +1,7 @@
 import z from "@deepseek-ai/schemastery";
 import { GenerateOptions, RetryPolicyConfig, StreamChunk } from "@deepseek-ai/dsh-llm";
 import { PiAiAdapter } from "@deepseek-ai/dsh-llm-pi-ai";
+import "@deepseek-ai/dsh-timeout";
 import { Context, Service, Volatile } from "@deepseek-ai/cordis";
 import "@deepseek-ai/dsh-attachment";
 import "@deepseek-ai/dsh-tools";
@@ -253,7 +254,7 @@ declare class OpenAICodexBackendRequests {
   /** Keep the existing proxy lease for the complete provider stream. */
   runStream<T extends {
     result(): Promise<unknown>;
-  }>(operation: () => T): T;
+  }>(operation: (proxyOrigin: string | undefined) => T): T;
   /** Abort queued/in-flight managed requests and prevent new admission. */
   dispose(): void;
 }
@@ -366,7 +367,7 @@ export declare const SUPPORTED_DSH_PLUGIN_API_VERSIONS: readonly ["0.1.7-rc.1", 
 export declare const SUPPORTED_DSH_PLUGIN_API_RANGE: string;
 export declare const SUPPORTED_PI_AI_RANGE = "1.2.0";
 export declare const PI_AI_PACKAGE = "@earendil-works/pi-ai";
-export declare const DSH_PLUGIN_API_PACKAGES: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-primitives", "@deepseek-ai/dsh-client-ui-tool", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
+export declare const DSH_PLUGIN_API_PACKAGES: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-primitives", "@deepseek-ai/dsh-client-ui-tool", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-timeout", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
 export declare const COMPATIBILITY_PACKAGES: readonly ["@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-compaction", "@earendil-works/pi-ai"];
 type CompatibilityPackageName = (typeof COMPATIBILITY_PACKAGES)[number];
 /** Version metadata proves a declared match, not behavioral failure for an untested package. */
@@ -412,7 +413,7 @@ export declare const COMPATIBILITY_CONTRACT: {
   readonly dshPluginApi: {
     readonly version: "0.1.7-rc.1";
     readonly versions: readonly ["0.1.7-rc.1", "0.1.7-rc.2", "0.2.0-rc.1", "0.2.0-rc.2", "0.2.1-alpha.1", "0.2.1-alpha.2", "0.2.1-alpha.3", "0.2.1-alpha.4", "0.2.1-alpha.5", "0.2.1-rc.1", "0.2.1-rc.2"];
-    readonly packages: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-primitives", "@deepseek-ai/dsh-client-ui-tool", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
+    readonly packages: readonly ["@deepseek-ai/dsh-agent", "@deepseek-ai/dsh-atomic-write", "@deepseek-ai/dsh-attachment", "@deepseek-ai/dsh-client-ui-chat", "@deepseek-ai/dsh-client-ui-layout", "@deepseek-ai/dsh-client-ui-primitives", "@deepseek-ai/dsh-client-ui-tool", "@deepseek-ai/dsh-compaction", "@deepseek-ai/dsh-home-paths", "@deepseek-ai/dsh-host-webserver", "@deepseek-ai/dsh-llm", "@deepseek-ai/dsh-llm-pi-ai", "@deepseek-ai/dsh-fs", "@deepseek-ai/dsh-session", "@deepseek-ai/dsh-settings", "@deepseek-ai/dsh-timeout", "@deepseek-ai/dsh-tools", "@deepseek-ai/dsh-util-values", "@deepseek-ai/dsh-web"];
   };
   readonly piAi: {
     readonly package: "@earendil-works/pi-ai";
@@ -750,6 +751,12 @@ export declare class OpenAICodexSearchProvider implements WebSearchProvider {
   search(request: WebSearchRequest, signal?: AbortSignal): Promise<WebSearchResult>;
   private searchWithoutProxy;
 }
+/** Startup-only authorization for one acquired proxy route and one finite total budget. */
+interface OpenAICodexPreflightConfig {
+  protocol: 'bili-v1';
+  trustedProxyOrigin: string;
+  maxDurationMs: number;
+}
 /** Process-local, per-session OpenAI Codex Fast Mode state. */
 /** Maximum number of enabled sessions retained by one plugin instance. */
 export declare const OPENAI_CODEX_FAST_MODE_MAX_SESSIONS = 256;
@@ -963,6 +970,8 @@ export interface Config {
   reasoningEffort?: OpenAICodexReasoningEffort | null | undefined;
   /** Optional Host model-request retry policy; omission preserves defaults. Reload to change. */
   retryPolicy?: RetryPolicyConfig | undefined;
+  /** Explicit startup-only authorization for bounded bili preflight heartbeats; omitted by default. */
+  preflightActivity?: OpenAICodexPreflightConfig | undefined;
   /** Explicit profile opt-in to Codex native context management; DSH owns automatic triggers. Disabling stops new native compactions, not replay of existing checkpoints. */
   enableNativeCompaction?: boolean;
   /** Register the optional image-loading tool. */
@@ -1005,6 +1014,8 @@ export interface VolatileConfig {
   contextWindowOverrides: Volatile<Record<string, number | null> | null | undefined>;
   /** Optional Host retry policy; not a Volatile field because it applies at load time. */
   retryPolicy?: RetryPolicyConfig | undefined;
+  /** Optional startup-authorized bili preflight activity; omitted by default. */
+  preflightActivity?: OpenAICodexPreflightConfig | undefined;
   enableSearch: Volatile<boolean>;
   enableReserveFallback: Volatile<boolean>;
   enableNewSessionFastMode: Volatile<boolean>;
