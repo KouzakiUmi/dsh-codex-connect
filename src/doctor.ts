@@ -1,12 +1,14 @@
 /** Secret-free diagnostics and duplicate-provider guidance. */
 
-import { lstat } from 'node:fs/promises'
+import { lstat, readFile } from 'node:fs/promises'
 import { openAICodexAuthPath, OPENAI_CODEX_PROVIDER } from './store.ts'
 import {
   detectCompatibility,
   type CompatibilityDetectionOptions,
   type CompatibilityReport,
 } from './compatibility.ts'
+import { isRuntimeMetadataVersion, openAICodexPluginVersionState } from './runtime-identity.ts'
+import type { OpenAICodexRuntimeIdentity } from './runtime-identity.ts'
 export { CODEX_CONNECT_VERSION } from './version.ts'
 import { CODEX_CONNECT_VERSION } from './version.ts'
 
@@ -44,6 +46,7 @@ export interface OpenAICodexDiagnosticReport {
     changesHarnessSearchRoute: boolean
   }
   providerConflict: boolean
+  identity: OpenAICodexRuntimeIdentity
   compatibility: CompatibilityReport
   hints: string[]
 }
@@ -57,6 +60,17 @@ export function openAICodexConflictMessage(): string {
 /** Fail before the generic registry error so the collision has a migration hint. */
 export function assertNoOpenAICodexProviderConflict(providerIds: readonly string[]): void {
   if (providerIds.includes(OPENAI_CODEX_PROVIDER)) throw new Error(openAICodexConflictMessage())
+}
+
+/** Read this plugin installation's own manifest version; loaded code may differ. */
+async function readInstalledPluginVersion(): Promise<string | null> {
+  try {
+    const raw = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as { name?: unknown; version?: unknown }
+    return raw.name === 'dsh-codex-connect' && typeof raw.version === 'string' && isRuntimeMetadataVersion(raw.version)
+      ? raw.version : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -87,6 +101,14 @@ export async function diagnoseOpenAICodex(
 
   const providerConflict = options.providerIds?.includes(OPENAI_CODEX_PROVIDER) ?? false
   const compatibility = await detectCompatibility(options.compatibilityOptions)
+  const installedPluginVersion = await readInstalledPluginVersion()
+  const identity: OpenAICodexRuntimeIdentity = {
+    scope: 'host',
+    loadedPluginVersion: CODEX_CONNECT_VERSION,
+    installedPluginVersion,
+    pluginVersionState: openAICodexPluginVersionState(CODEX_CONNECT_VERSION, installedPluginVersion),
+    dshMetadataSource: installedPluginVersion === null ? 'unknown' : 'plugin-installation',
+  }
   const hints: string[] = []
   if (state === 'missing') hints.push('Sign in only when you are ready; installation does not start OAuth.')
   if (state === 'permissions-too-broad') hints.push(`Restrict the OAuth file to its owner before use (current mode ${mode}).`)
@@ -116,6 +138,7 @@ export async function diagnoseOpenAICodex(
       changesHarnessSearchRoute: options.enableSearch === true,
     },
     providerConflict,
+    identity,
     compatibility,
     hints,
   }

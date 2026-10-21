@@ -11,7 +11,7 @@ function fixture(): AutoReviewProbeDependencies {
       package: 'dsh-codex-connect', version: '0.1.0-alpha.4.27', node: 'v22.19.0',
       credentialFile: { path: '/private/credential.json', state: 'owner-only', mode: '600' },
       capabilities: { modelProvider: true, search: false, imageTool: false, imageGeneration: false, changesHarnessDefaultModel: false, changesHarnessSearchRoute: false },
-      providerConflict: false, hints: [],
+      providerConflict: false, hints: [], identity: { scope: 'host', loadedPluginVersion: '0.1.0-alpha.4.27', installedPluginVersion: null, pluginVersionState: 'unknown', dshMetadataSource: 'unknown' },
       compatibility: evaluateCompatibility({ nodeVersion: 'v22.19.0', packageVersions: {
         '@deepseek-ai/dsh-llm': '0.1.7-rc.1', '@deepseek-ai/dsh-llm-pi-ai': '0.1.7-rc.1',
         '@deepseek-ai/dsh-compaction': '0.1.7-rc.1', '@earendil-works/pi-ai': '1.2.0',
