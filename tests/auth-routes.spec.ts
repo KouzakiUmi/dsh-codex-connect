@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { httpRouteTestContext, rejectedHttpAdmissions } from './http-route-test-context.ts'
 import type { CapturedHttpRoute, TestHttpAdmission } from './http-route-test-context.ts'
 import { OPENAI_CODEX_EXTENDED_CONTEXT_PATH } from '../src/extended-context-paths.ts'
+import { OPENAI_CODEX_SPEED_MODE_PATH } from '../src/speed-mode-contract.ts'
 import {
   OPENAI_CODEX_AUTH_LOGIN_PATH,
   OPENAI_CODEX_AUTH_CALLBACK_PATH,
@@ -271,6 +272,7 @@ describe('OpenAI Codex Web OAuth boundary', () => {
     await fixture.ctx.fiber.dispose()
     expect([...fixture.routes.values()]).toEqual([unrelated])
     expect(fixture.disposedPaths).toEqual([
+      OPENAI_CODEX_SPEED_MODE_PATH,
       OPENAI_CODEX_EXTENDED_CONTEXT_PATH,
       OPENAI_CODEX_FAST_MODE_PATH,
       OPENAI_CODEX_AUTH_ACCOUNTS_PATH,

@@ -1,9 +1,12 @@
 /** Per-conversation OpenAI Codex Fast Mode control for the Composer row. */
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import { OPENAI_CODEX_FAST_MODE_PATH } from '../fast-mode-paths.ts'
+import { supportsOpenAICodexUltrafast } from '../speed-mode-contract.ts'
+import { OpenAICodexSpeedControl } from './OpenAICodexSpeedControl.tsx'
+import type { OpenAICodexAccountStore } from './account-store.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
 import { requestJson } from './request-json.ts'
 
@@ -15,6 +18,8 @@ type Translate = (key: OpenAICodexSettingsKey, params?: Record<string, unknown>)
 export interface OpenAICodexFastModeToggleInjected {
   /** Session-scoped model directory shared with the model selector and quota. */
   readonly directory: SnapshotStore<ModelDirectoryState>
+  /** Optional account state used to gate Ultrafast selection availability. */
+  readonly account?: Pick<OpenAICodexAccountStore, 'subscribe' | 'getSnapshot'>
 }
 
 interface FastModeState {
@@ -46,8 +51,33 @@ function subscribeDirectory(directory: SnapshotStore<ModelDirectoryState>, liste
 
 type ToggleProps = OpenAICodexFastModeToggleInjected & { sessionId: string; t: Translate }
 
+/** Legacy boolean Fast control kept for models that cannot select Ultrafast. */
+export { OpenAICodexSessionToggle as LegacyOpenAICodexFastModeToggle }
+
 export function OpenAICodexFastModeToggle(props: ToggleProps) {
-  return <OpenAICodexSessionToggle {...props} />
+  const snapshot = useSyncExternalStore(listener => props.directory.subscribe(listener), () => props.directory.getSnapshot(), () => props.directory.getSnapshot())
+  if (!isEligible(snapshot)) return null
+  const current = snapshot.current!
+  // Only the two exact models can select Ultrafast; other models keep the legacy toggle.
+  if (supportsOpenAICodexUltrafast(current.provider, current.model)) {
+    return <AccountScopedSpeedControl {...props} model={current.model} />
+  }
+  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+    <OpenAICodexSessionToggle {...props} />
+    <button type="button" disabled title={props.t('ultrafastUnsupported')}>Ultrafast</button>
+  </span>
+}
+
+/** Gate Ultrafast availability on the live account state without owning the choice. */
+function AccountScopedSpeedControl(props: ToggleProps & { model: string }) {
+  const subscribe = useCallback((listener: () => void) => props.account?.subscribe(listener) ?? (() => undefined), [props.account])
+  const read = useCallback(() => props.account?.getSnapshot(), [props.account])
+  const account = useSyncExternalStore(subscribe, read, read)
+  const identity = account === undefined ? '' : [account.accounts.find(row => row.active)?.accountKey ?? '',
+    account.status.status, account.operation.kind, account.authorizationRevision ?? 0].join(':')
+  const available = account === undefined || (!account.busy && account.status.status === 'signed-in')
+  return <OpenAICodexSpeedControl key={props.sessionId + ':' + props.model + ':' + identity}
+    sessionId={props.sessionId} model={props.model} t={props.t} available={available} />
 }
 
 /**
@@ -59,8 +89,7 @@ function OpenAICodexSessionToggle({
   directory,
   sessionId,
   t,
-}: ToggleProps) {
-  const directoryState = useSyncExternalStore(
+}: ToggleProps) {  const directoryState = useSyncExternalStore(
     listener => subscribeDirectory(directory, listener),
     () => directory.getSnapshot(),
     () => directory.getSnapshot(),
