@@ -32,6 +32,7 @@ import { streamWithCodexRequestDiagnostics, withCodexDiagnosticFetch } from './r
 import { imageSelectionHandleText } from './image-input-contract.ts'
 import { OpenAICodexPreflightActivity } from './preflight-activity.ts'
 import type { OpenAICodexPreflightConfig } from './preflight-activity.ts'
+import type { OpenAICodexReasoningEffort } from './reasoning-contract.ts'
 
 export { OPENAI_CODEX_ASTRA_MODEL_ID, OPENAI_CODEX_TRANSPORT, openAICodexModelCatalog, withOpenAICodexAstra, withOpenAICodexModels } from './model-catalog.ts'
 
@@ -257,9 +258,10 @@ export function createOpenAICodexProfile(
   contextWindowOverrides?: Readonly<Record<string, number>> | undefined,
   backendRequests?: OpenAICodexBackendRequests,
   wrapProvider?: (provider: Provider) => Provider,
-  outputStyle?: () => OpenAICodexOutputStyle | undefined,
   preflight?: OpenAICodexPreflightActivity,
   retryPolicy?: RetryPolicyConfig | undefined,
+  reasoningEffort?: OpenAICodexReasoningEffort,
+  outputStyle?: () => OpenAICodexOutputStyle | undefined,
 ): ResolvedPiAiProviderProfile & { piProvider: Provider } {
   const effectiveProvider = contextWindowOverrides === undefined
     ? provider
@@ -273,6 +275,7 @@ export function createOpenAICodexProfile(
     requestImagePixelBudget: OPENAI_CODEX_REQUEST_IMAGE_PIXEL_BUDGET,
     requestImageMaxBytes: OPENAI_CODEX_REQUEST_IMAGE_MAX_BYTES,
     retryPolicy: resolveRetryPolicy(retryPolicy, 'dsh-codex-connect retryPolicy'),
+    ...(reasoningEffort === undefined ? {} : { reasoning: reasoningEffort }),
     configuredMaxTokens: new Map(),
     modelErrors: new Map<string, string>(),
     piProvider: requestProvider(effectiveProvider, fastMode, proxyManager, resolveProxyUrl, backendRequests, wrapProvider, outputStyle, preflight),
@@ -369,6 +372,8 @@ export function createOpenAICodexAdapter(
   preflightActivity?: OpenAICodexPreflightConfig,
   /** Optional Host model-request retry policy; omission preserves Host defaults. */
   retryPolicy?: RetryPolicyConfig | undefined,
+  /** Optional fallback reasoning effort applied by the profile when a request omits one. */
+  resolveReasoningEffort?: () => OpenAICodexReasoningEffort | undefined,
   /** Profile-scoped output-detail and reasoning-summary preferences read on every request. */
   outputStyle?: () => OpenAICodexOutputStyle | undefined,
   /** Retired session-toggle arguments kept for positional compatibility; never consulted. */
@@ -383,13 +388,14 @@ export function createOpenAICodexAdapter(
   let previousBudgets: string | undefined
   const currentProfiles = (): Map<string, ResolvedPiAiProviderProfile> => {
     const tiers = modelContextTiers?.()
+    const effort = resolveReasoningEffort?.()
     const budgets = Object.fromEntries(provider.getModels().map(model => [
       model.id, openAICodexModelContextWindow(model.id, model.contextWindow, tiers?.[model.id]),
     ]))
-    const identity = JSON.stringify(budgets)
+    const identity = JSON.stringify([budgets, effort])
     if (profiles === undefined || identity !== previousBudgets) {
       profiles = new Map([[OPENAI_CODEX_PROVIDER, createOpenAICodexProfile(
-        provider, fastMode, proxyManager, resolveProxyUrl, budgets, backendRequests, taskDispatch?.wrapProvider, outputStyle, preflight, retryPolicy,
+        provider, fastMode, proxyManager, resolveProxyUrl, budgets, backendRequests, taskDispatch?.wrapProvider, preflight, retryPolicy, effort, outputStyle,
       )]])
       previousBudgets = identity
     }

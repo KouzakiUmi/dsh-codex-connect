@@ -538,6 +538,7 @@ export function apply(ctx: Context, config: Config | VolatileConfig): void {
       () => resolveOpenAICodexSettings(current()).enableImageGeneration,
       config.preflightActivity,
       config.retryPolicy,
+      () => resolveOpenAICodexSettings(current()).reasoningEffort,
       (): OpenAICodexOutputStyle => {
         const resolved = resolveOpenAICodexSettings(current())
         return { verbosity: resolved.outputVerbosity, reasoningSummary: resolved.reasoningSummary }
