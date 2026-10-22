@@ -191,6 +191,7 @@ The main plugin options are:
 | `searchContextSize` | `medium` | `low`, `medium`, or `high` |
 | `searchMaxOutputTokens` | `10000` | Positive integer output budget for search |
 | `requestMetricsDirectory` | absent / off | Startup-only private absolute directory for [local request evidence](request-metrics.md); no telemetry upload |
+| `enableQuotaTool` | `false` | Startup-only read-only `codex_connect_quota` tool; reload after editing profile configuration. See [quota observation](quota-tool.md). |
 | `requestMetricsMaxBytes` | `16777216` | Startup-only per-process journal cap, integer `4096`–`67108864`; no directory means no collection |
 
 Each Models row has a compact saved **Context window** slider: Standard (272K), Extended (500K, bounded by the catalog maximum), or Maximum (currently 872K for expandable models). Non-expandable models offer only Standard. Unset GPT-6.1 Sol defaults to 500K; other current models default to 272K. Explicit standard/null choices retain 272K. Save applies the choice to that model's existing and new conversations, metadata/pressure checks and manual `/compact`, without changing an already prepared request. The Host owns settings persistence; plugin restart does not reset saved tiers. A per-model `null` selects Standard and masks an inherited expansion; whole-map `null` resets the map. `maximumContextModels` and `contextWindowOverrides` are retained as inert compatibility data: neither silently enables persistent expansion.

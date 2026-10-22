@@ -191,6 +191,7 @@ Alpha 4.49 中，完整 `attachment` 选择器匹配到实际用户上传记录�
 | `searchContextSize` | `medium` | `low`、`medium` 或 `high` |
 | `searchMaxOutputTokens` | `10000` | 搜索使用的正整数输出预算 |
 | `requestMetricsDirectory` | 不设置／关闭 | 启动配置中的私有绝对路径，记录[本地请求计量](request-metrics.zh.md)，不上传遥测 |
+| `enableQuotaTool` | `false` | 启动时注册只读 `codex_connect_quota`；修改 profile 配置后重载插件。见[额度查询](quota-tool.md)。 |
 | `requestMetricsMaxBytes` | `16777216` | 每进程单日志上限，整数 `4096`–`67108864`；不配置目录则不采集 |
 
 模型列表每行提供持久化的微型上下文滑杆：标准（272K）、扩展（500K，不超过目录上限）、最大（当前可扩展模型为 872K）。不支持扩展的模型只提供标准档。未保存档位的 GPT-6.1 Sol 默认 500K，其余现有型号默认 272K；已显式保存的标准／null 仍为 272K。保存后，对该模型的已有和新会话、模型信息／压力检测和手动 `/compact` 共用同一窗口，已准备的请求不变。持久化由宿主设置管理，插件重启不重置已保存档位。单模型 `null` 选择标准并屏蔽继承的扩展；整个映射 `null` 重置映射。旧的 `maximumContextModels` 和 `contextWindowOverrides` 保留为无效的兼容数据，不会悄悄开启持久扩展。
