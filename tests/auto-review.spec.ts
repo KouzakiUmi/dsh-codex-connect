@@ -113,7 +113,12 @@ describe('Auto-review approval answerer', () => {
     { risk_level: 'low', user_authorization: null, outcome: 'allow', rationale: 'Malformed null.' },
     { risk_level: 'low', outcome: 'allow', rationale: 'Missing authorization.' },
   ])('returns a malformed completed SSE assessment to the human next chain: %j', async assessment => {
-    const target = fixture()
+    // The local authorization gate resolves real filesystem metadata for the
+    // read target; both the workspace and the target file must exist, or the
+    // answerer delegates to human approval before contacting the reviewer.
+    const workspace = await mkdtemp(join(tmpdir(), 'codex-auto-review-malformed-'))
+    await writeFile(join(workspace, 'README.md'), 'Synthetic documentation')
+    const target = fixture({ cwd: workspace })
     const proxy = new OpenAICodexProxyManager()
     const requests = new OpenAICodexBackendRequests(proxy)
     // Auth and fetch are mocked; no credential-store method or real network runs.
@@ -141,6 +146,7 @@ describe('Auto-review approval answerer', () => {
       await proxy.dispose()
       capture.mockRestore()
       vi.mocked(reviewFetch).mockReset()
+      await rm(workspace, { recursive: true, force: true })
     }
   })
 

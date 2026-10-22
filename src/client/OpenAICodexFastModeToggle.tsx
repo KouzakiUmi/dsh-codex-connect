@@ -5,7 +5,7 @@ import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selection/client'
 import { OPENAI_CODEX_FAST_MODE_PATH } from '../fast-mode-paths.ts'
 import { supportsOpenAICodexUltrafast } from '../speed-mode-contract.ts'
-import { OpenAICodexSpeedControl } from './OpenAICodexSpeedControl.tsx'
+import { OpenAICodexSpeedToggle } from './OpenAICodexSpeedToggle.tsx'
 import type { OpenAICodexAccountStore } from './account-store.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
 import { requestJson } from './request-json.ts'
@@ -58,25 +58,23 @@ export function OpenAICodexFastModeToggle(props: ToggleProps) {
   const snapshot = useSyncExternalStore(listener => props.directory.subscribe(listener), () => props.directory.getSnapshot(), () => props.directory.getSnapshot())
   if (!isEligible(snapshot)) return null
   const current = snapshot.current!
-  // Only the two exact models can select Ultrafast; other models keep the legacy toggle.
+  // Only the two exact models get the lightning three-way selector; other
+  // GPT models keep the legacy click toggle unchanged.
   if (supportsOpenAICodexUltrafast(current.provider, current.model)) {
-    return <AccountScopedSpeedControl {...props} model={current.model} />
+    return <AccountScopedSpeedToggle {...props} model={current.model} />
   }
-  return <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-    <OpenAICodexSessionToggle {...props} />
-    <button type="button" disabled title={props.t('ultrafastUnsupported')}>Ultrafast</button>
-  </span>
+  return <OpenAICodexSessionToggle {...props} />
 }
 
 /** Gate Ultrafast availability on the live account state without owning the choice. */
-function AccountScopedSpeedControl(props: ToggleProps & { model: string }) {
+function AccountScopedSpeedToggle(props: ToggleProps & { model: string }) {
   const subscribe = useCallback((listener: () => void) => props.account?.subscribe(listener) ?? (() => undefined), [props.account])
   const read = useCallback(() => props.account?.getSnapshot(), [props.account])
   const account = useSyncExternalStore(subscribe, read, read)
   const identity = account === undefined ? '' : [account.accounts.find(row => row.active)?.accountKey ?? '',
     account.status.status, account.operation.kind, account.authorizationRevision ?? 0].join(':')
   const available = account === undefined || (!account.busy && account.status.status === 'signed-in')
-  return <OpenAICodexSpeedControl key={props.sessionId + ':' + props.model + ':' + identity}
+  return <OpenAICodexSpeedToggle key={props.sessionId + ':' + props.model + ':' + identity}
     sessionId={props.sessionId} model={props.model} t={props.t} available={available} />
 }
 
