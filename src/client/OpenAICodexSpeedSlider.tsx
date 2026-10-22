@@ -64,12 +64,12 @@ export function OpenAICodexSpeedSlider({ mode, label, labels, disabled, canUltra
       if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
       choose(state.index)
     }} onPointerCancel={cancel} onLostPointerCapture={cancel}
-    style={{ position: 'relative', width: 180, maxWidth: '100%', height: 30, flexShrink: 0, touchAction: 'pan-y', userSelect: 'none', cursor: disabled ? 'default' : 'ew-resize', opacity: disabled ? .5 : 1 }}>
+    style={{ position: 'relative', width: 140, maxWidth: '100%', height: 30, flexShrink: 0, touchAction: 'pan-y', userSelect: 'none', cursor: disabled ? 'default' : 'ew-resize', opacity: disabled ? .5 : 1 }}>
     <span aria-hidden="true" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', fontSize: 10, lineHeight: '16px', textAlign: 'center' }}>
       {modes.map((entry, index) => <span key={entry} style={{ color: index === Math.round(current) ? SPEED_ACTIVE_COLORS[active] : 'var(--dsw-alias-label-secondary)', opacity: entry === 'ultrafast' && !canUltra ? .5 : 1 }}>{labels[index]}</span>)}
     </span>
     <span aria-hidden="true" style={{ position: 'absolute', left: position(0), right: position(0), bottom: 5, height: 2, borderRadius: 999, background: 'var(--dsw-alias-border-l2)' }} />
     {modes.map((entry, index) => <span key={entry} aria-hidden="true" style={{ position: 'absolute', left: position(index), transform: 'translateX(-50%)', bottom: 3, width: 6, height: 6, borderRadius: '50%', background: 'var(--dsw-alias-border-l2)' }} />)}
-    <span aria-hidden="true" data-openai-codex-speed-thumb="" style={{ position: 'absolute', left: position(current), transform: 'translateX(-50%)', bottom: 0, width: 12, height: 12, borderRadius: '50%', background: SPEED_ACTIVE_COLORS[active], transition: drag.current === undefined ? 'left 100ms ease-out' : 'none' }} />
+    <span aria-hidden="true" data-openai-codex-speed-thumb="" style={{ position: 'absolute', left: position(current), transform: 'translateX(-50%)', bottom: 0, width: 12, height: 12, borderRadius: '50%', border: 0, boxSizing: 'border-box', background: SPEED_ACTIVE_COLORS[active], transition: drag.current === undefined ? 'left 100ms ease-out' : 'none' }} />
   </div>
 }

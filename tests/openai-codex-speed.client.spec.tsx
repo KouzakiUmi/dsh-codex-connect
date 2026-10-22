@@ -5,6 +5,7 @@ import type { ModelDirectoryState } from '@deepseek-ai/dsh-client-ui-model-selec
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { OpenAICodexFastModeToggle } from '../src/client/OpenAICodexFastModeToggle.tsx'
 import { OpenAICodexSpeedSlider } from '../src/client/OpenAICodexSpeedSlider.tsx'
+import { OpenAICodexContextSlider } from '../src/client/OpenAICodexContextSlider.tsx'
 import { en } from '../src/client/locales.ts'
 import type { OpenAICodexSettingsKey } from '../src/client/locales.ts'
 import type { AccountSnapshot } from '../src/client/account-store.ts'
@@ -25,6 +26,23 @@ async function backend() {
   vi.stubGlobal('fetch', fetch)
   return Object.assign(fetch, f)
 }
+it('matches the context slider geometry, typography, track, detents and thumb', async () => {
+  await backend()
+  const speed = render(<OpenAICodexFastModeToggle directory={directory().store} sessionId="session" t={t} />)
+  const picker = await openPicker(speed)
+  await waitFor(() => { expect(picker.getByRole('slider').getAttribute('aria-disabled')).toBe('false') })
+  const context = render(<OpenAICodexContextSlider model="gpt-6.1-sol" standard={272000} tier="standard" label="Context" onChange={() => undefined} />)
+  const speedSlider = picker.getByRole('slider')
+  const contextSlider = within(context.container).getByRole('slider')
+  expect(picker.getByRole('dialog').style.width).toBe('140px')
+  expect(picker.getByRole('dialog').style.display).toBe('')
+  expect(speedSlider.getAttribute('style')).toBe(contextSlider.getAttribute('style'))
+  expect(speedSlider.children.length).toBe(contextSlider.children.length)
+  for (let index = 0; index < speedSlider.children.length; index++) {
+    expect(speedSlider.children[index]!.getAttribute('style')).toBe(contextSlider.children[index]!.getAttribute('style'))
+  }
+})
+
 it('commits a pointer detent only on release, cancels drags and blocks unavailable tiers', () => {
   const onChange = vi.fn()
   const props = { mode: 'standard' as const, label: 'Speed', labels: ['Standard', 'Fast', 'Ultrafast'], disabled: false, canUltra: true, unavailableTitle: 'Unavailable', onChange }

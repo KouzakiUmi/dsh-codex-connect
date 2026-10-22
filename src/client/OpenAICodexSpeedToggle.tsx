@@ -102,7 +102,7 @@ export function OpenAICodexSpeedToggle({ sessionId, model, t, available = true }
       data-openai-codex-speed-mode={status === 'ready' ? mode : 'unconfirmed'}
       onMouseEnter={() => { if (!open) { locate(180); setHovered(true) } }} onMouseLeave={() => { setHovered(false) }}
       onFocus={() => { if (!open) { locate(180); setHovered(true) } }} onBlur={() => { setHovered(false) }}
-      onClick={() => { if (status === 'unconfirmed') { setReadAttempt(n => n + 1); return } locate(198); setHovered(false); setOpen(previous => !previous) }}
+      onClick={() => { if (status === 'unconfirmed') { setReadAttempt(n => n + 1); return } locate(140); setHovered(false); setOpen(previous => !previous) }}
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: 0, background: 'transparent', borderRadius: 8, color, cursor: 'pointer' }}>
       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path
@@ -116,7 +116,7 @@ export function OpenAICodexSpeedToggle({ sessionId, model, t, available = true }
       </svg>
     </button>
     {hovered && !open ? <span id={tooltipId} role="tooltip" style={{ ...floating, background: 'var(--dsw-specific-tip, #1f2329)', color: 'var(--dsw-alias-label-primary, #fff)', width: 'min(180px, calc(100vw - 32px))', padding: '4px 8px', pointerEvents: 'none' }}>{title}</span> : null}
-    {open ? <span id={dialogId} role="dialog" aria-label={t('speedDialogTitle')} style={{ ...floating, width: 198, maxWidth: 'calc(100vw - 32px)', padding: '6px 8px', border: '1px solid var(--dsw-alias-border-l2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+    {open ? <span id={dialogId} role="dialog" aria-label={t('speedDialogTitle')} style={{ ...floating, width: 140, maxWidth: 'calc(100vw - 32px)', padding: '6px 8px', border: '1px solid var(--dsw-alias-border-l2)' }}>
       {status === 'unconfirmed' ? <button type="button" onClick={() => { setReadAttempt(n => n + 1) }}>{t('speedRecover')}</button>
         : <OpenAICodexSpeedSlider mode={mode} label={t('speedDialogTitle')}
           labels={[t('speedStandard'), t('speedFast'), 'Ultrafast']} disabled={status !== 'ready'}
