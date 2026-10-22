@@ -4,14 +4,9 @@ import { OPENAI_CODEX_SPEED_MODE_PATH, readConversationSpeed } from '../speed-mo
 import type { ConversationSpeedState, OpenAICodexSpeedMode } from '../speed-mode-contract.ts'
 import type { OpenAICodexSettingsKey } from './locales.ts'
 import { requestJson } from './request-json.ts'
+import { OpenAICodexSpeedSlider, SPEED_ACTIVE_COLORS } from './OpenAICodexSpeedSlider.tsx'
 
 type Translate = (key: OpenAICodexSettingsKey, params?: Record<string, unknown>) => string
-
-const SPEED_ACTIVE_COLORS: Readonly<Record<OpenAICodexSpeedMode, string>> = {
-  standard: 'var(--dsw-alias-label-secondary)',
-  fast: '#f97316',
-  ultrafast: '#d97706',
-}
 
 export interface OpenAICodexSpeedToggleProps {
   readonly sessionId: string
@@ -107,7 +102,7 @@ export function OpenAICodexSpeedToggle({ sessionId, model, t, available = true }
       data-openai-codex-speed-mode={status === 'ready' ? mode : 'unconfirmed'}
       onMouseEnter={() => { if (!open) { locate(180); setHovered(true) } }} onMouseLeave={() => { setHovered(false) }}
       onFocus={() => { if (!open) { locate(180); setHovered(true) } }} onBlur={() => { setHovered(false) }}
-      onClick={() => { if (status === 'unconfirmed') { setReadAttempt(n => n + 1); return } locate(150); setHovered(false); setOpen(previous => !previous) }}
+      onClick={() => { if (status === 'unconfirmed') { setReadAttempt(n => n + 1); return } locate(198); setHovered(false); setOpen(previous => !previous) }}
       style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 30, height: 30, padding: 0, border: 0, background: 'transparent', borderRadius: 8, color, cursor: 'pointer' }}>
       <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path
@@ -121,18 +116,11 @@ export function OpenAICodexSpeedToggle({ sessionId, model, t, available = true }
       </svg>
     </button>
     {hovered && !open ? <span id={tooltipId} role="tooltip" style={{ ...floating, background: 'var(--dsw-specific-tip, #1f2329)', color: 'var(--dsw-alias-label-primary, #fff)', width: 'min(180px, calc(100vw - 32px))', padding: '4px 8px', pointerEvents: 'none' }}>{title}</span> : null}
-    {open ? <span id={dialogId} role="dialog" aria-label={t('speedDialogTitle')} style={{ ...floating, width: 150, maxWidth: 'calc(100vw - 32px)', padding: '6px 8px', border: '1px solid var(--dsw-alias-border-l2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+    {open ? <span id={dialogId} role="dialog" aria-label={t('speedDialogTitle')} style={{ ...floating, width: 198, maxWidth: 'calc(100vw - 32px)', padding: '6px 8px', border: '1px solid var(--dsw-alias-border-l2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
       {status === 'unconfirmed' ? <button type="button" onClick={() => { setReadAttempt(n => n + 1) }}>{t('speedRecover')}</button>
-        : (['standard', 'fast', 'ultrafast'] as const).map(entry => <button key={entry} type="button"
-          aria-pressed={status === 'ready' && selection?.mode === entry}
-          aria-busy={busy}
-          disabled={status !== 'ready' || (entry === 'ultrafast' && !canUltra)}
-          title={entry === 'ultrafast' && !canUltra ? t('ultrafastUnavailable') : undefined}
-          onClick={() => { select(entry) }}
-          style={{ borderRadius: 6, padding: '3px 6px', border: status === 'ready' && selection?.mode === entry ? `1px solid ${SPEED_ACTIVE_COLORS[entry]}` : '1px solid var(--dsw-alias-border, #777)',
-            background: status === 'ready' && selection?.mode === entry ? 'var(--dsw-alias-background-secondary, rgba(249,115,22,0.18))' : 'transparent', color: 'inherit', fontSize: 12 }}>
-          {entry === 'standard' ? t('speedStandard') : entry === 'fast' ? t('speedFast') : 'Ultrafast'}
-        </button>)}
+        : <OpenAICodexSpeedSlider mode={mode} label={t('speedDialogTitle')}
+          labels={[t('speedStandard'), t('speedFast'), 'Ultrafast']} disabled={status !== 'ready'}
+          canUltra={canUltra} unavailableTitle={t('ultrafastUnavailable')} onChange={select} />}
     </span> : null}
   </span>
 }
