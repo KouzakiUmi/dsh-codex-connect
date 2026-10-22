@@ -2,7 +2,7 @@
   "name": "dsh-codex-connect",
   "displayName": "Codex Connect",
   "description": "ChatGPT OAuth and Codex models for DeepSeek Harness.",
-  "version": "0.2.0-alpha.4",
+  "version": "0.2.0-alpha.9",
   "author": "Frank Song",
   "contributors": [
     "Yan-Zero (original dsh-codex author)"
@@ -89,7 +89,7 @@
   ],
   "dependencies": {
     "@deepseek-ai/schemastery": "3.18.4",
-    "undici": "^8.10.0"
+    "undici": "^8.12.3"
   },
   "license": "Apache-2.0",
   "dsh": {
@@ -131,12 +131,12 @@
     "@deepseek-ai/dsh-llm-pi-ai": "0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5 || 0.2.1-rc.1 || 0.2.1-rc.2",
     "@deepseek-ai/dsh-session": "0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5 || 0.2.1-rc.1 || 0.2.1-rc.2",
     "@deepseek-ai/dsh-settings": "0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5 || 0.2.1-rc.1 || 0.2.1-rc.2",
+    "@deepseek-ai/dsh-timeout": "0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5 || 0.2.1-rc.1 || 0.2.1-rc.2",
     "@deepseek-ai/dsh-tools": "0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5 || 0.2.1-rc.1 || 0.2.1-rc.2",
     "@deepseek-ai/dsh-util-values": "0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5 || 0.2.1-rc.1 || 0.2.1-rc.2",
     "@deepseek-ai/dsh-web": "0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5 || 0.2.1-rc.1 || 0.2.1-rc.2",
     "@earendil-works/pi-ai": ">=1.2.0",
-    "react": "^18.2.0",
-    "@deepseek-ai/dsh-timeout": "0.1.7-rc.1 || 0.1.7-rc.2 || 0.2.0-rc.1 || 0.2.0-rc.2 || 0.2.1-alpha.1 || 0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4 || 0.2.1-alpha.5 || 0.2.1-rc.1 || 0.2.1-rc.2"
+    "react": "^18.2.0"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-ai": {
@@ -147,7 +147,7 @@
     }
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/cordis": "^4.0.5",
     "@deepseek-ai/cordis-plugin-include": "1.0.9",
     "@deepseek-ai/cordis-plugin-loader": "1.0.5",
     "@deepseek-ai/dsh-agent": "0.2.1-alpha.4",
@@ -201,6 +201,7 @@
     "@deepseek-ai/dsh-storage-domain": "0.2.1-alpha.4",
     "@deepseek-ai/dsh-subagent": "0.2.1-alpha.4",
     "@deepseek-ai/dsh-system-prompt": "0.2.1-alpha.4",
+    "@deepseek-ai/dsh-timeout": "0.2.1-alpha.4",
     "@deepseek-ai/dsh-token-meter": "0.2.1-alpha.4",
     "@deepseek-ai/dsh-tools": "0.2.1-alpha.4",
     "@deepseek-ai/dsh-typert-registry": "0.2.1-alpha.4",
@@ -208,42 +209,41 @@
     "@deepseek-ai/dsh-util-values": "0.2.1-alpha.4",
     "@deepseek-ai/dsh-web": "0.2.1-alpha.4",
     "@deepseek-ai/dsh-workspace": "0.2.1-alpha.4",
-    "@testing-library/react": "^16.3.2",
-    "@shikijs/langs": "^4.3.1",
-    "@types/node": "^22.20.0",
-    "@types/react": "~18.3.1",
-    "@types/react-dom": "~18.3.1",
+    "@earendil-works/pi-ai": "1.2.0",
+    "@shikijs/langs": "^4.5.0",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^22.20.5",
+    "@types/react": "~18.3.31",
+    "@types/react-dom": "~18.3.7",
     "@vitest/browser-playwright": "4.1.12",
     "anser": "^2.3.5",
-    "clsx": "^2.0.0",
+    "clsx": "^2.1.1",
     "diff": "^9.0.0",
-    "eslint": "^10.10.0",
-    "immer": "^10.1.1",
-    "katex": "^0.18.9",
+    "eslint": "^10.13.0",
+    "immer": "^10.2.0",
     "jsdom": "29.1.1",
-    "mdast-util-from-markdown": "^2.0.3",
-    "mdast-util-gfm": "^3.0.0",
+    "katex": "^0.18.10",
+    "mdast-util-from-markdown": "^2.1.0",
+    "mdast-util-gfm": "^3.1.0",
     "mdast-util-math": "^3.0.0",
-    "micromark-core-commonmark": "^2.0.3",
+    "micromark-core-commonmark": "^2.0.4",
     "micromark-extension-gfm": "^3.0.0",
     "micromark-extension-math": "^3.1.0",
-    "micromark-factory-space": "^2.0.1",
+    "micromark-factory-space": "^2.1.0",
     "micromark-util-character": "^2.1.1",
     "micromark-util-classify-character": "^2.0.1",
     "micromark-util-sanitize-uri": "^2.0.1",
     "micromark-util-symbol": "^2.0.1",
-    "@earendil-works/pi-ai": "1.2.0",
     "pi-ai-oauth-source": "npm:@earendil-works/pi-ai@1.2.0",
     "playwright": "1.63.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "shiki": "^4.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "shiki": "^4.5.0",
     "simple-icons": "16.32.0",
-    "tsdown": "^0.23.0",
+    "tsdown": "^0.23.1",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.69.0",
+    "typescript-eslint": "^8.72.0",
     "vitest": "^4.1.12",
-    "zustand": "~4.4.7",
-    "@deepseek-ai/dsh-timeout": "0.2.1-alpha.4"
+    "zustand": "~4.4.7"
   }
 }
