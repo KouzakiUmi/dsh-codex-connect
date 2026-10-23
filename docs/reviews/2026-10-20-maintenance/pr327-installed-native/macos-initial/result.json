@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+  "sourceTree": "155f19ea35967116f69449e65f5035ff26b5a702",
+  "platform": "Darwin",
+  "architecture": "arm64",
+  "osRelease": "27.2.0",
+  "node": "v22.22.3",
+  "npm": "10.9.8",
+  "sourceBinSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "fixtureSha256": "496eb27231d92f70f09943417c3d7960758c82a1acc416e1f80e8c907c589f9b",
+  "installation": "temporary npm prefix, lifecycle scripts disabled, peer dependencies omitted for standalone CLI",
+  "steps": [
+    {
+      "name": "fixture-syntax",
+      "exitCode": 0,
+      "elapsedSeconds": 0.022,
+      "log": "fixture-syntax.log",
+      "logSha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "name": "pack",
+      "exitCode": 0,
+      "elapsedSeconds": 0.835,
+      "log": "pack.log",
+      "logSha256": "62bcf436373618bfde3fa6f3c7abde816fbb1cf82662eb3d711026f50b9a1c63"
+    },
+    {
+      "name": "install",
+      "exitCode": 0,
+      "elapsedSeconds": 7.881,
+      "log": "install.log",
+      "logSha256": "e060b4f6270537e6f05f25ffa54d0b1e1536d28c9e6162eda85ee7c085b1b432"
+    },
+    {
+      "name": "native-acceptance",
+      "exitCode": 1,
+      "elapsedSeconds": 0.447,
+      "log": "native-acceptance.log",
+      "logSha256": "e338c9728e638666145acc86d7986558f4fdf0df2195bd16a884e4a94c43f6c2"
+    }
+  ],
+  "cleanup": {
+    "installationAndCacheRemoved": true
+  },
+  "passed": false,
+  "package": {
+    "name": "dsh-codex-connect",
+    "version": "0.2.0-alpha.9",
+    "filename": "dsh-codex-connect-0.2.0-alpha.9.tgz",
+    "size": 1702338,
+    "unpackedSize": 3862869,
+    "shasum": "91758873ddafc3fc421cbedd007ecfa60c3b224d",
+    "integrity": "sha512-NapbSLBNvyZJzAKQf6G41OI8BQAkpplOVEjKPxLe+Dj78Q1GpPF2vPclzmyzk2H0DjsiNufBgSCMRoo4O/GvaQ==",
+    "sha256": "db797de70efb642369922677a9da29e62e149d45700cc4b324bd56e98d8ca8ac"
+  },
+  "installedBinSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "failure": {
+    "errorKind": "AssertionError",
+    "message": ""
+  },
+  "sourceHeadAfter": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+  "sourceCleanAfter": true
+}

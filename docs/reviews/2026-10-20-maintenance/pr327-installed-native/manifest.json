@@ -1,0 +1,227 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+  "publishedAt": "2026-10-20T14:18:19.075723+00:00",
+  "files": [
+    {
+      "path": "macos-initial/result.json",
+      "rawSha256": "5aa4374d0fc27dbdd5aea73f20a739faa83d85aada14a9a1aa44f2be6c132a36",
+      "publishedSha256": "5aa4374d0fc27dbdd5aea73f20a739faa83d85aada14a9a1aa44f2be6c132a36",
+      "transformations": []
+    },
+    {
+      "path": "macos-initial/native-result.json",
+      "rawSha256": "e338c9728e638666145acc86d7986558f4fdf0df2195bd16a884e4a94c43f6c2",
+      "publishedSha256": "e338c9728e638666145acc86d7986558f4fdf0df2195bd16a884e4a94c43f6c2",
+      "transformations": []
+    },
+    {
+      "path": "macos-initial/native-acceptance.log",
+      "rawSha256": "e338c9728e638666145acc86d7986558f4fdf0df2195bd16a884e4a94c43f6c2",
+      "publishedSha256": "e338c9728e638666145acc86d7986558f4fdf0df2195bd16a884e4a94c43f6c2",
+      "transformations": []
+    },
+    {
+      "path": "macos-initial/install.log",
+      "rawSha256": "e060b4f6270537e6f05f25ffa54d0b1e1536d28c9e6162eda85ee7c085b1b432",
+      "publishedSha256": "e060b4f6270537e6f05f25ffa54d0b1e1536d28c9e6162eda85ee7c085b1b432",
+      "transformations": []
+    },
+    {
+      "path": "macos-initial/fixture-syntax.log",
+      "rawSha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "publishedSha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "transformations": []
+    },
+    {
+      "path": "macos-fixture-mismatch/result.json",
+      "rawSha256": "134c6bf5a938d9405f147442c2cb454a447cff0dd309a4e6cb290993be04cffc",
+      "publishedSha256": "134c6bf5a938d9405f147442c2cb454a447cff0dd309a4e6cb290993be04cffc",
+      "transformations": []
+    },
+    {
+      "path": "macos-fixture-mismatch/native-result.json",
+      "rawSha256": "15e14e7d44d4e1e32de3559d57159d0cf99756fee9166c5586a0dcef1c6e7097",
+      "publishedSha256": "15e14e7d44d4e1e32de3559d57159d0cf99756fee9166c5586a0dcef1c6e7097",
+      "transformations": []
+    },
+    {
+      "path": "macos-fixture-mismatch/native-acceptance.log",
+      "rawSha256": "15e14e7d44d4e1e32de3559d57159d0cf99756fee9166c5586a0dcef1c6e7097",
+      "publishedSha256": "15e14e7d44d4e1e32de3559d57159d0cf99756fee9166c5586a0dcef1c6e7097",
+      "transformations": []
+    },
+    {
+      "path": "macos-fixture-mismatch/install.log",
+      "rawSha256": "e060b4f6270537e6f05f25ffa54d0b1e1536d28c9e6162eda85ee7c085b1b432",
+      "publishedSha256": "e060b4f6270537e6f05f25ffa54d0b1e1536d28c9e6162eda85ee7c085b1b432",
+      "transformations": []
+    },
+    {
+      "path": "macos-fixture-mismatch/fixture-syntax.log",
+      "rawSha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "publishedSha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "transformations": []
+    },
+    {
+      "path": "macos-passed/result.json",
+      "rawSha256": "1507408021b6d23f0fe65bab83c99d334fab40eafaafc0f08d67dc39a8630e7a",
+      "publishedSha256": "1507408021b6d23f0fe65bab83c99d334fab40eafaafc0f08d67dc39a8630e7a",
+      "transformations": []
+    },
+    {
+      "path": "macos-passed/native-result.json",
+      "rawSha256": "f64d2f5f098f1a3787da925a5d64705380b0803d9ed0bf550db44a146a93a775",
+      "publishedSha256": "f64d2f5f098f1a3787da925a5d64705380b0803d9ed0bf550db44a146a93a775",
+      "transformations": []
+    },
+    {
+      "path": "macos-passed/native-acceptance.log",
+      "rawSha256": "f64d2f5f098f1a3787da925a5d64705380b0803d9ed0bf550db44a146a93a775",
+      "publishedSha256": "f64d2f5f098f1a3787da925a5d64705380b0803d9ed0bf550db44a146a93a775",
+      "transformations": []
+    },
+    {
+      "path": "macos-passed/install.log",
+      "rawSha256": "e060b4f6270537e6f05f25ffa54d0b1e1536d28c9e6162eda85ee7c085b1b432",
+      "publishedSha256": "e060b4f6270537e6f05f25ffa54d0b1e1536d28c9e6162eda85ee7c085b1b432",
+      "transformations": []
+    },
+    {
+      "path": "macos-passed/fixture-syntax.log",
+      "rawSha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "publishedSha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "transformations": []
+    },
+    {
+      "path": "package-inventory.json",
+      "rawSha256": "62bcf436373618bfde3fa6f3c7abde816fbb1cf82662eb3d711026f50b9a1c63",
+      "publishedSha256": "62bcf436373618bfde3fa6f3c7abde816fbb1cf82662eb3d711026f50b9a1c63",
+      "transformations": []
+    },
+    {
+      "path": "linux/apt-install.log",
+      "rawSha256": "48035e400933f6890c2524f41f01eeb79af9086b3c2f588a9152e1a7ae813573",
+      "publishedSha256": "26a50da4c0e126b9c176a5c6af8c0a822fae906875d6ae2a1f88187a07424859",
+      "transformations": [
+        {
+          "kind": "line-endings-trailing-whitespace"
+        }
+      ]
+    },
+    {
+      "path": "linux/apt-update.log",
+      "rawSha256": "b06087e446a030abe48fd49e6b94f83bd7713a95d3baf6917dd806c48d519956",
+      "publishedSha256": "b06087e446a030abe48fd49e6b94f83bd7713a95d3baf6917dd806c48d519956",
+      "transformations": []
+    },
+    {
+      "path": "linux/extract-source.log",
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "transformations": []
+    },
+    {
+      "path": "linux/install.log",
+      "rawSha256": "e060b4f6270537e6f05f25ffa54d0b1e1536d28c9e6162eda85ee7c085b1b432",
+      "publishedSha256": "e060b4f6270537e6f05f25ffa54d0b1e1536d28c9e6162eda85ee7c085b1b432",
+      "transformations": []
+    },
+    {
+      "path": "linux/native-daemon.log",
+      "rawSha256": "e0700236c991f8817d74f8a455c238e960f4ca622fd7abdf1882669cddd7a7ad",
+      "publishedSha256": "e0700236c991f8817d74f8a455c238e960f4ca622fd7abdf1882669cddd7a7ad",
+      "transformations": []
+    },
+    {
+      "path": "linux/native-package-versions.log",
+      "rawSha256": "ba994860508a0dd723b7bdc39c9c9770312527837b8fd63c885a3de1b2b7797b",
+      "publishedSha256": "ba994860508a0dd723b7bdc39c9c9770312527837b8fd63c885a3de1b2b7797b",
+      "transformations": []
+    },
+    {
+      "path": "linux/native-result.json",
+      "rawSha256": "9e0ddfa9d79c71743c5987f8379b29361408214f6c9737bfb976b1970b528cd6",
+      "publishedSha256": "9e0ddfa9d79c71743c5987f8379b29361408214f6c9737bfb976b1970b528cd6",
+      "transformations": []
+    },
+    {
+      "path": "linux/native-stderr.log",
+      "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "publishedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "transformations": []
+    },
+    {
+      "path": "linux/private-secret-service.log",
+      "rawSha256": "5ebca0e49e30649c6d2624a3cc84096ca6ed645f67c632a3f8347f44cf30c591",
+      "publishedSha256": "5ebca0e49e30649c6d2624a3cc84096ca6ed645f67c632a3f8347f44cf30c591",
+      "transformations": []
+    },
+    {
+      "path": "linux/result.json",
+      "rawSha256": "cf9206b5ddadacdd6403e2dfb18e98f3d01fb652e6402f5f3e56947d14dfca3a",
+      "publishedSha256": "cf9206b5ddadacdd6403e2dfb18e98f3d01fb652e6402f5f3e56947d14dfca3a",
+      "transformations": []
+    },
+    {
+      "path": "linux/runner-result.json",
+      "rawSha256": "ea6086933a4d586a03d9890f426f5782ac4d3797e3755ea137be8d42254e69d9",
+      "publishedSha256": "ea6086933a4d586a03d9890f426f5782ac4d3797e3755ea137be8d42254e69d9",
+      "transformations": []
+    },
+    {
+      "path": "linux/docker.log",
+      "rawSha256": "20f17af454bdd40b0049916fd1042560bccae11fe22cc6af520efa8134f46bd8",
+      "publishedSha256": "20f17af454bdd40b0049916fd1042560bccae11fe22cc6af520efa8134f46bd8",
+      "transformations": []
+    },
+    {
+      "path": "README.md",
+      "authoredSha256": "fb12cbf597ce66b8a0816623b675f35d75fe610f3dcb17646fd2019c1b45afe5"
+    },
+    {
+      "path": "acceptance.mjs",
+      "authoredSha256": "672ce8c8e84b1c2cae3b71d89f9338a5c19a71d217480abe4c8e8ce5c5a20746"
+    },
+    {
+      "path": "container.mjs",
+      "authoredSha256": "5c83673d2f93641ca9f6c1aace5dbaeff73a08bb1f67faa8bdf4ea608f728804"
+    },
+    {
+      "path": "github-readback.json",
+      "authoredSha256": "eea72374f1a763d15b4e9cd8e97cdce38cdda004762bba3fbb718f7dec5dab33"
+    },
+    {
+      "path": "macos-fixture-mismatch/acceptance.mjs",
+      "authoredSha256": "547e46f23bd4a05d9e262b4411edf88d11e2d2d80b91a35aa453783693ad88de"
+    },
+    {
+      "path": "macos-initial/acceptance.mjs",
+      "authoredSha256": "496eb27231d92f70f09943417c3d7960758c82a1acc416e1f80e8c907c589f9b"
+    },
+    {
+      "path": "macos-initial/run-macos.py",
+      "authoredSha256": "33dd4b1fd037fa7497c2ea0275702fff0e4ed5432bbcb74e8cda9fbdcb438ff6"
+    },
+    {
+      "path": "native-session.mjs",
+      "authoredSha256": "f3ad05ae7f0fd71ec1136f9826d2258b1d842cf9ad70f4208fdb29d9c7e58a4d"
+    },
+    {
+      "path": "run-linux.py",
+      "authoredSha256": "986c93cfec7b8cdbf4ef48cb9050954c779ef8d8fc15d0c445ca60b31033841b"
+    },
+    {
+      "path": "run-macos.py",
+      "authoredSha256": "101a197b451bd0c0e7d2f33838e8758e6809d6a0b8e1cb35e37aeb57c8981aa7"
+    },
+    {
+      "path": "evidence-pack-check.log",
+      "authoredSha256": "28ee4349a416051c7d19680412e451c253e02acb4a10aaf8d4c8e154214602c0"
+    },
+    {
+      "path": "publication-check.json",
+      "authoredSha256": "2d84b67f7249d5699695d5cda0554e4dd3e9bab73587bf6a8b465154c5644972"
+    }
+  ]
+}

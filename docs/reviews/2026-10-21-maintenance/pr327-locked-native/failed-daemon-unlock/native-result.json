@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+  "platform": "linux",
+  "architecture": "arm64",
+  "node": "v24.19.0",
+  "osRelease": "6.10.14-linuxkit",
+  "target": "installed-standalone-cli-with-actually-locked-private-secret-service",
+  "packageVersion": "0.2.0-alpha.9",
+  "binSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "keyringVersion": "2.1.0",
+  "syntheticCredentials": true,
+  "nativeBindingUsed": true,
+  "liveProviderCommands": false,
+  "commands": [
+    {
+      "phase": "owned-fixture-setup",
+      "name": "migrate-credentials --confirm-stopped",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "processError": null,
+      "signal": null,
+      "elapsedMs": 57.223
+    },
+    {
+      "phase": "owned-fixture-setup",
+      "name": "status --json",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "processError": null,
+      "signal": null,
+      "elapsedMs": 48.424
+    },
+    {
+      "phase": "locked-read",
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "processError": null,
+      "signal": null,
+      "elapsedMs": 75.641
+    },
+    {
+      "phase": "locked-migration",
+      "name": "migrate-credentials --confirm-stopped",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "processError": null,
+      "signal": null,
+      "elapsedMs": 60.861
+    }
+  ],
+  "nativeControl": [
+    {
+      "method": "org.freedesktop.Secret.Service.ReadAlias",
+      "response": "(objectpath '/org/freedesktop/secrets/collection/login',)"
+    },
+    {
+      "method": "org.freedesktop.DBus.Properties.Get",
+      "response": "(<false>,)"
+    },
+    {
+      "method": "org.freedesktop.Secret.Service.Lock",
+      "response": "([objectpath '/org/freedesktop/secrets/collection/login'], objectpath '/')"
+    },
+    {
+      "method": "org.freedesktop.DBus.Properties.Get",
+      "response": "(<true>,)"
+    },
+    {
+      "method": "org.freedesktop.DBus.Properties.Get",
+      "response": "(<true>,)"
+    },
+    {
+      "method": "org.freedesktop.DBus.Properties.Get",
+      "response": "(<true>,)"
+    },
+    {
+      "method": "owned-daemon-unlock-via-stdin",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "method": "org.freedesktop.DBus.Properties.Get",
+      "response": "(<true>,)"
+    },
+    {
+      "method": "owned-daemon-unlock-via-stdin",
+      "exitCode": 0,
+      "error": null
+    },
+    {
+      "method": "org.freedesktop.DBus.Properties.Get",
+      "response": "(<true>,)"
+    }
+  ],
+  "steps": [
+    "unlocked-native-precondition-and-owned-existing-key",
+    "native-collection-locked-property-true",
+    "locked-installed-status-refuses-without-file-change",
+    "locked-installed-migration-refuses-without-file-change"
+  ],
+  "cleanup": {
+    "ownedEntries": 2,
+    "entriesAbsent": false,
+    "temporaryHomeRemoved": false,
+    "unlockFailed": true
+  },
+  "failure": {
+    "phase": "owned-unlock-and-identity-check",
+    "name": "AssertionError",
+    "message": "Native collection lock state mismatch\n\ntrue !== false\n"
+  },
+  "passed": false
+}

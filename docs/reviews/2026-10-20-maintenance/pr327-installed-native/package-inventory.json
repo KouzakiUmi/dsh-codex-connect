@@ -1,0 +1,961 @@
+[
+  {
+    "id": "dsh-codex-connect@0.2.0-alpha.9",
+    "name": "dsh-codex-connect",
+    "version": "0.2.0-alpha.9",
+    "size": 1702338,
+    "unpackedSize": 3862869,
+    "shasum": "91758873ddafc3fc421cbedd007ecfa60c3b224d",
+    "integrity": "sha512-NapbSLBNvyZJzAKQf6G41OI8BQAkpplOVEjKPxLe+Dj78Q1GpPF2vPclzmyzk2H0DjsiNufBgSCMRoo4O/GvaQ==",
+    "filename": "dsh-codex-connect-0.2.0-alpha.9.tgz",
+    "files": [
+      {
+        "path": "INSTALL.md",
+        "size": 43846,
+        "mode": 420
+      },
+      {
+        "path": "LICENSE",
+        "size": 10385,
+        "mode": 420
+      },
+      {
+        "path": "MIGRATION.md",
+        "size": 6662,
+        "mode": 420
+      },
+      {
+        "path": "NOTICE",
+        "size": 1269,
+        "mode": 420
+      },
+      {
+        "path": "README.i18n.yaml",
+        "size": 382,
+        "mode": 420
+      },
+      {
+        "path": "README.md",
+        "size": 23293,
+        "mode": 420
+      },
+      {
+        "path": "VERSIONING.md",
+        "size": 6861,
+        "mode": 420
+      },
+      {
+        "path": "compatibility.json",
+        "size": 1190,
+        "mode": 420
+      },
+      {
+        "path": "cordis.patch.yml",
+        "size": 465,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/account-recovery-state.md",
+        "size": 1614,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/adaptive-runtime-status.md",
+        "size": 21076,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/adaptive-runtime-validation-2026-09-18.md",
+        "size": 5188,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/alpha1-install-lifecycle.md",
+        "size": 5380,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/astra-context-audit.md",
+        "size": 3668,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/auth-diagnostics-safety.md",
+        "size": 608,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/bounded-preflight-activity.md",
+        "size": 1876,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/canary-maintenance-loop.md",
+        "size": 1364,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/canary-unverified-doctor.md",
+        "size": 1884,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/compatibility-refresh.md",
+        "size": 2297,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/core-transport-decoupling.md",
+        "size": 2282,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dependency-security-20261006.md",
+        "size": 3777,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dependency-security-floor.md",
+        "size": 6800,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/diagnostic-frame-types-20260928.md",
+        "size": 3609,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dispatcher-ownership.md",
+        "size": 1147,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dsh-016-candidate-validation.md",
+        "size": 3371,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dsh-017-stock-plugin-exec.md",
+        "size": 3063,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dsh-020-compatibility.md",
+        "size": 2861,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dsh-021-alpha4-compatibility.md",
+        "size": 2938,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dsh-021-alpha5-rc1-compatibility.md",
+        "size": 2059,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dsh-021-compatibility.md",
+        "size": 3672,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dsh-021-rc2-compatibility.md",
+        "size": 6774,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/dual-dsh-release.md",
+        "size": 2239,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/env-proxy-dispatcher-preservation.md",
+        "size": 1415,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/evidence/alpha1-install-lifecycle.json",
+        "size": 4517,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/gpt61-capability-calibration.md",
+        "size": 7179,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/gpt61-sol-support.md",
+        "size": 3754,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/http-auth-lifecycle-repair.md",
+        "size": 6894,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/image-preview-recovery.md",
+        "size": 7094,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/image-results-visible-answer.md",
+        "size": 1360,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-211-root-cause.md",
+        "size": 9656,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-215-install-triage-2026-09-19.md",
+        "size": 5093,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-264-isolated-import.md",
+        "size": 1512,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-270-implementation-checkpoint.md",
+        "size": 6811,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-270-review-checkpoint.md",
+        "size": 12561,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-270-sol-live-confirmation.md",
+        "size": 5589,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-270-transport-checkpoint.md",
+        "size": 6860,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-271-independent-review.md",
+        "size": 5796,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-272-post-release-fixes.md",
+        "size": 4405,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/issue-273-independent-review.md",
+        "size": 2064,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/new-session-speed-defaults.md",
+        "size": 3161,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/oauth-cancel-commit.md",
+        "size": 1169,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/oauth-jwt-decoding.md",
+        "size": 1092,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/oauth-manual-callback-validation.md",
+        "size": 5557,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/original-image-fork-access.md",
+        "size": 1636,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/plugin-update-scope.md",
+        "size": 1446,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/proxy-input-draft.md",
+        "size": 3553,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/ptc-image-presentation.md",
+        "size": 2037,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/reasoning-profile-default.md",
+        "size": 1864,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/remember-controlled-probes-delivery.md",
+        "size": 6884,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/remember-delivery-preparation-2026-09-19.md",
+        "size": 7520,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/remember-recall-investigation-2026-09-18.md",
+        "size": 7900,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/request-metrics-runtime-candidate.md",
+        "size": 3600,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/request-response-lifecycle.md",
+        "size": 889,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/search-route-runtime-override.md",
+        "size": 1550,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/shared-reserve-quota.md",
+        "size": 1883,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/sol61-context-default.md",
+        "size": 2716,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/task-activation-ui-retirement.md",
+        "size": 2071,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/task-artifact-read-identity.md",
+        "size": 2918,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/task-recovery-absence.md",
+        "size": 2471,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/task-route-followup.md",
+        "size": 1540,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/task-state-read-identity.md",
+        "size": 2095,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/ui-http-recovery.md",
+        "size": 4603,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/ultrafast-conversation-speed.md",
+        "size": 5610,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/windows-pack-history-contract.md",
+        "size": 1972,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/windows-proxy-compressed-fetch.md",
+        "size": 1683,
+        "mode": 420
+      },
+      {
+        "path": "docs/agent-notes/windows-task-flush.md",
+        "size": 1734,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/composer-capabilities.jpg",
+        "size": 10246,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/en/hero.jpg",
+        "size": 266932,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/en/image-generation.png",
+        "size": 27823,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/en/model-selector.jpg",
+        "size": 14633,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/en/oauth-status.jpg",
+        "size": 7560,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/en/plugin-configuration.jpg",
+        "size": 63272,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/en/plugin-entry.jpg",
+        "size": 12778,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/hero.jpg",
+        "size": 266932,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/model-selector.jpg",
+        "size": 9098,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/oauth-status.jpg",
+        "size": 8256,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/plugin-configuration.jpg",
+        "size": 28366,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/zh/hero.jpg",
+        "size": 206792,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/zh/image-generation.png",
+        "size": 30115,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/zh/model-selector.jpg",
+        "size": 14633,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/zh/oauth-status.jpg",
+        "size": 7401,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/zh/plugin-configuration.jpg",
+        "size": 54654,
+        "mode": 420
+      },
+      {
+        "path": "docs/assets/zh/plugin-entry.jpg",
+        "size": 12458,
+        "mode": 420
+      },
+      {
+        "path": "docs/auto-review.md",
+        "size": 6644,
+        "mode": 420
+      },
+      {
+        "path": "docs/auto-review.zh.md",
+        "size": 5767,
+        "mode": 420
+      },
+      {
+        "path": "docs/design.i18n.yaml",
+        "size": 237,
+        "mode": 420
+      },
+      {
+        "path": "docs/design.md",
+        "size": 13710,
+        "mode": 420
+      },
+      {
+        "path": "docs/design.zh.md",
+        "size": 7207,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-evaluation.md",
+        "size": 4746,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-phase1-acceptance.md",
+        "size": 13641,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-phase1.md",
+        "size": 8760,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-phase2-acceptance.md",
+        "size": 13892,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-phase2-consent.md",
+        "size": 8288,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-phase2-design.md",
+        "size": 19227,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-phase2-execution.md",
+        "size": 8302,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-phase2-ledger.md",
+        "size": 7364,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-phase2-recovery.md",
+        "size": 8454,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/adaptive-task-publication-gate.md",
+        "size": 7919,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/dsh-017rc2-compatibility.md",
+        "size": 5560,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/alpha-449-publication.json",
+        "size": 1019,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/alpha-449-release-verification.json",
+        "size": 2631,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/alpha-450-publication.json",
+        "size": 1930,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/alpha-451-publication.json",
+        "size": 1373,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/alpha-452-publication.json",
+        "size": 1921,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/issue-270-sol-selection/live.json",
+        "size": 2180,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/issue-270-sol-selection/offline.json",
+        "size": 2018,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/issue-271-compatibility.json",
+        "size": 48070,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/issue-272-post-release-fix.json",
+        "size": 3394,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/issue-273-independent-review.json",
+        "size": 954,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/issue-282-final-review-20260928.json",
+        "size": 2859,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/evidence/request-metrics-runtime-review-20260928.json",
+        "size": 3966,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/gpt6-sol-luna-compatibility.md",
+        "size": 3336,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/issue-211-doctor-diagnostic-2026-09-18.json",
+        "size": 8889,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/issue-211-peer-resolution-2026-09-18.json",
+        "size": 29387,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/issue-219-diagnostics.md",
+        "size": 7110,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/issue-270-image-edit.md",
+        "size": 11317,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/native-compaction-durable-m15-2026-09-18-1317.json",
+        "size": 4527,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/native-compaction-durable-m15-2026-09-18-1317.md",
+        "size": 4837,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/native-compaction-lifecycle.md",
+        "size": 13019,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/native-compaction-luna-smoke-m15-2026-09-12.json",
+        "size": 2533,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/native-context-switch-acceptance.md",
+        "size": 9052,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/phase2-matrix-node22.json",
+        "size": 108788,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/phase2-matrix-node24.json",
+        "size": 108788,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/remember-acceptance.md",
+        "size": 8096,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/remember-controlled-acceptance-plan.md",
+        "size": 12520,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/remember-controlled-live-m15-2026-09-18-9n7e.json",
+        "size": 19966,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/remember-controlled-live-m15-2026-09-18-9n7e.md",
+        "size": 3922,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/remember-controlled-offline-evidence.json",
+        "size": 46683,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/remember-recall-offline-diagnostics-2026-09-18.json",
+        "size": 18284,
+        "mode": 420
+      },
+      {
+        "path": "docs/experiments/remember-user-acceptance-plan.md",
+        "size": 3938,
+        "mode": 420
+      },
+      {
+        "path": "docs/licenses/pi-ai-oauth.txt",
+        "size": 1070,
+        "mode": 420
+      },
+      {
+        "path": "docs/licenses/standalone-cli.txt",
+        "size": 6213,
+        "mode": 420
+      },
+      {
+        "path": "docs/maintenance-scope.md",
+        "size": 7917,
+        "mode": 420
+      },
+      {
+        "path": "docs/preflight-activity.md",
+        "size": 4723,
+        "mode": 420
+      },
+      {
+        "path": "docs/preflight-activity.zh.md",
+        "size": 4204,
+        "mode": 420
+      },
+      {
+        "path": "docs/README.zh.md",
+        "size": 21117,
+        "mode": 420
+      },
+      {
+        "path": "docs/reference.i18n.yaml",
+        "size": 265,
+        "mode": 420
+      },
+      {
+        "path": "docs/reference.md",
+        "size": 37337,
+        "mode": 420
+      },
+      {
+        "path": "docs/reference.zh.md",
+        "size": 33750,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/0.2.0-alpha.1.md",
+        "size": 3713,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/0.2.0-alpha.2.md",
+        "size": 3928,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/0.2.0-alpha.3.md",
+        "size": 5329,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/0.2.0-alpha.4.md",
+        "size": 5647,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/0.2.0-alpha.6.md",
+        "size": 4725,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/alpha-4.37.md",
+        "size": 3849,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/alpha-4.38.md",
+        "size": 3510,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/alpha-4.39.md",
+        "size": 3942,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/alpha-4.42.md",
+        "size": 3359,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/alpha-4.43.md",
+        "size": 3371,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/alpha-4.45.md",
+        "size": 1819,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/alpha-4.46.md",
+        "size": 2161,
+        "mode": 420
+      },
+      {
+        "path": "docs/release-notes/alpha-4.47.md",
+        "size": 2012,
+        "mode": 420
+      },
+      {
+        "path": "docs/request-metrics.md",
+        "size": 9484,
+        "mode": 420
+      },
+      {
+        "path": "docs/request-metrics.zh.md",
+        "size": 5661,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/final-validation/browser.log",
+        "size": 8053,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/final-validation/full-check.log",
+        "size": 41778,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/final-validation/prepare-test-browser.log",
+        "size": 4575,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/final-validation/result.json",
+        "size": 2950,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/initial-validation/browser.log",
+        "size": 3745,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/initial-validation/full-check.log",
+        "size": 37953,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/initial-validation/result.json",
+        "size": 3096,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/manifest.json",
+        "size": 1902,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/native-regressions.log",
+        "size": 5364,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/native-results.json",
+        "size": 4213,
+        "mode": 420
+      },
+      {
+        "path": "docs/reviews/2026-10-20-pr327/README.md",
+        "size": 6105,
+        "mode": 420
+      },
+      {
+        "path": "docs/runtime-identity.md",
+        "size": 8819,
+        "mode": 420
+      },
+      {
+        "path": "docs/secure-storage.md",
+        "size": 8077,
+        "mode": 420
+      },
+      {
+        "path": "docs/versioning.i18n.yaml",
+        "size": 255,
+        "mode": 420
+      },
+      {
+        "path": "docs/VERSIONING.zh.md",
+        "size": 5983,
+        "mode": 420
+      },
+      {
+        "path": "lib/bin.js",
+        "size": 329127,
+        "mode": 493
+      },
+      {
+        "path": "lib/client.js",
+        "size": 366083,
+        "mode": 420
+      },
+      {
+        "path": "lib/index.d.ts",
+        "size": 55009,
+        "mode": 420
+      },
+      {
+        "path": "lib/index.js",
+        "size": 593964,
+        "mode": 420
+      },
+      {
+        "path": "lib/invariant.d.ts",
+        "size": 535,
+        "mode": 420
+      },
+      {
+        "path": "lib/invariant.js",
+        "size": 581,
+        "mode": 420
+      },
+      {
+        "path": "lib/models-C36D3Ycq.js",
+        "size": 35005,
+        "mode": 420
+      },
+      {
+        "path": "lib/openai-codex-responses-Lnp5x1aX.js",
+        "size": 110025,
+        "mode": 420
+      },
+      {
+        "path": "lib/undici-runtime-Ctml-NLj.js",
+        "size": 1172,
+        "mode": 420
+      },
+      {
+        "path": "package.json",
+        "size": 12806,
+        "mode": 420
+      }
+    ],
+    "entryCount": 189,
+    "bundled": []
+  }
+]

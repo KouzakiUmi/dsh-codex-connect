@@ -1,0 +1,87 @@
+{
+  "date": "2026-10-20",
+  "head": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+  "total_count": 10,
+  "checks": [
+    {
+      "name": "CodeQL",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/runs/118508725412",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:29:50Z"
+    },
+    {
+      "name": "validate (24.x)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/actions/runs/39386833582/job/118508579222",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:47:28Z"
+    },
+    {
+      "name": "phase2-host-regression (22.19.0)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/actions/runs/39386833582/job/118508579169",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:40:46Z"
+    },
+    {
+      "name": "phase2-host-regression (24.x)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/actions/runs/39386833582/job/118508579023",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:39:30Z"
+    },
+    {
+      "name": "validate (22.19.0)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/actions/runs/39386833582/job/118508579009",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:45:29Z"
+    },
+    {
+      "name": "windows-canary-contract",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/actions/runs/39386833582/job/118508578968",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:30:41Z"
+    },
+    {
+      "name": "browser-ui-regression",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/actions/runs/39386833582/job/118508578742",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:31:17Z"
+    },
+    {
+      "name": "dependency-review",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/actions/runs/39386833501/job/118508578425",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:29:30Z"
+    },
+    {
+      "name": "Analyze (actions)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/actions/runs/39386829857/job/118508569500",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:29:57Z"
+    },
+    {
+      "name": "Analyze (javascript-typescript)",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/franksong2702/dsh-codex-connect/actions/runs/39386829857/job/118508569118",
+      "head_sha": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+      "completed_at": "2026-10-20T07:30:43Z"
+    }
+  ]
+}

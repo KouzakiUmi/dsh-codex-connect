@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "platform": "darwin",
+  "architecture": "arm64",
+  "osRelease": "27.2.0",
+  "node": "v22.22.3",
+  "packageVersion": "0.2.0-alpha.9",
+  "binSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "keyringVersion": "2.1.0",
+  "target": "installed-standalone-cli",
+  "syntheticCredentials": true,
+  "nativeBindingUsed": true,
+  "liveProviderCommands": false,
+  "commands": [
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    }
+  ],
+  "steps": [
+    "empty-installed-status-does-not-create-key"
+  ],
+  "cleanup": {
+    "ownedEntries": 2,
+    "entriesAbsent": true,
+    "temporaryHomeRemoved": true
+  },
+  "failure": {
+    "phase": "installed-migration-and-process-readback",
+    "errorKind": "AssertionError",
+    "message": "The input did not match the regular expression /explicit migration/u. Input:\n\n'dsh-codex-connect: status failed: Secure credential storage failed. Unlock/configure your OS credential store. Legacy plaintext credentials require stopping Harness and explicitly running migrate-credentials --confirm-sto"
+  },
+  "passed": false
+}

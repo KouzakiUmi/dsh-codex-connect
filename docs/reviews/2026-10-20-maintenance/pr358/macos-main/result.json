@@ -1,0 +1,47 @@
+{
+  "label": "pr358-main",
+  "head": "e5579b71339ba932dec7dfba497fc97df8fbf124",
+  "platform": "macOS-27.2-arm64-arm-64bit-Mach-O",
+  "node": "v22.22.3",
+  "pnpm": "10.30.3",
+  "cpu_count": 10,
+  "full_check_attempts": 1,
+  "worker_overrides": false,
+  "concurrency": 12,
+  "production_timeout_unchanged": true,
+  "evidence_directory": "<tmp>/codex-connect-pr358-main-20261020-_r7xlgxd",
+  "commands": [
+    {
+      "name": "focused",
+      "argv": [
+        "pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "tests/adaptive-task-store.spec.ts"
+      ],
+      "exit_code": 0,
+      "seconds": 3.154,
+      "log_sha256": "d554d900940a1e7b09e75059f3b40aff75dadb0423b7096aeed1a2743a47c115",
+      "summary": [
+        " Test Files  1 passed (1)",
+        "      Tests  11 passed (11)"
+      ]
+    },
+    {
+      "name": "full-check",
+      "argv": [
+        "pnpm",
+        "run",
+        "check"
+      ],
+      "exit_code": 0,
+      "seconds": 52.453,
+      "log_sha256": "8a03b3a502454d28dd347a4173274689e136cd4dd9c04bbbfb1252201284ba0a",
+      "summary": [
+        " Test Files  169 passed (169)",
+        "      Tests  2257 passed | 2 skipped (2259)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "files": [
+    {
+      "path": "runner-result.json",
+      "sha256": "fe976dd7efbdffbed3e682a1093c7c997e2a1114a879439171edc198c3564534",
+      "bytes": 665,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "docker.log",
+      "sha256": "ee153ef65fec79a29870e8b5e5a499ca78f13656d8bed6c8ca4f873f1abc15a8",
+      "bytes": 5027,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "apt-install.log",
+      "sha256": "233bc5518460849c6654f774ab82d990f74afc91ba2285a9e050b74f3ba33cd9",
+      "bytes": 24198,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "apt-update.log",
+      "sha256": "9c9f487a14c14a37ad8d92f353982b1b45453a1ffdead8410b16d0cb053d3aac",
+      "bytes": 522,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "extract-source.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "install.log",
+      "sha256": "ef2c4a4f022a2874451e698f056d4405e650e2962c465786a605c73cc0f6e6b0",
+      "bytes": 129,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "native-daemon.log",
+      "sha256": "e0700236c991f8817d74f8a455c238e960f4ca622fd7abdf1882669cddd7a7ad",
+      "bytes": 51,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "native-package-versions.log",
+      "sha256": "655e8d8fbdf4aa2d574023346fd40e1fbe7912a4e36a579204e92710bda13500",
+      "bytes": 108,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "native-result.json",
+      "sha256": "7824b8e6a5c8f056dbab7ab149c5ffe2867d1efc19bc6aaf44ec1204280055e5",
+      "bytes": 3102,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "native-stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "pack.log",
+      "sha256": "62bcf436373618bfde3fa6f3c7abde816fbb1cf82662eb3d711026f50b9a1c63",
+      "bytes": 23073,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "private-secret-service.log",
+      "sha256": "cd06c618cc9e4fca7ec30edbb15d92a1362863d79fba4a577defcc633f46a3bb",
+      "bytes": 920,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "result.json",
+      "sha256": "ad2fd070a8ca83ad72bb06f4ea5f5045c7ad1d9ff4ea16e45f3a6dfdc8883b70",
+      "bytes": 6248,
+      "byteIdenticalToRaw": true
+    }
+  ],
+  "cleanup": "Native entry-by-entry cleanup did not complete; the entire test-only container and its private filesystem were removed."
+}

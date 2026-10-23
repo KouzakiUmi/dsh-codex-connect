@@ -1,0 +1,17 @@
+{
+  "sourceCommit": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+  "image": "node:24.19.0-bookworm@sha256:4196d66a565c6f195728d9952f161f4adfe2ad753052a08b7ec7f1c5a6bda42b",
+  "containerName": "codex-connect-owned-locked-native-1d8b6dd8b77d",
+  "sourceArchiveSha256": "a17033004a5ba17d7772f9c4066d3eca5bfb4db969d92265f7bf959233f8b2fa",
+  "mounts": [
+    "owned source archive/fixture read-only",
+    "owned evidence output read-write"
+  ],
+  "hostHomeMounted": false,
+  "dockerSocketMounted": false,
+  "privileged": false,
+  "dockerExitCode": 0,
+  "containerAbsent": true,
+  "sourceHeadAfter": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+  "sourceCleanAfter": true
+}

@@ -1,0 +1,258 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+  "platform": "linux",
+  "architecture": "arm64",
+  "node": "v24.19.0",
+  "kernel": "6.10.14-linuxkit",
+  "image": "node:24.19.0-bookworm@sha256:4196d66a565c6f195728d9952f161f4adfe2ad753052a08b7ec7f1c5a6bda42b",
+  "scope": "installed standalone CLI, genuinely locked private Secret Service, no host home/socket/store mount",
+  "steps": [
+    {
+      "name": "extract-source",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 0.012,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "apt-update",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 2.598,
+      "logSha256": "3fdbc5af241e9bee239f183cc2822782ffeef00117485123a24a5e36cbade6e8"
+    },
+    {
+      "name": "apt-install",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 5.504,
+      "logSha256": "464e3cb2bcf3f9542ac674d60a1d7b539bd59349ebba8d21f77e84e0443b3018"
+    },
+    {
+      "name": "native-package-versions",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 0.003,
+      "logSha256": "655e8d8fbdf4aa2d574023346fd40e1fbe7912a4e36a579204e92710bda13500"
+    },
+    {
+      "name": "pack",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 0.247,
+      "logSha256": "62bcf436373618bfde3fa6f3c7abde816fbb1cf82662eb3d711026f50b9a1c63"
+    },
+    {
+      "name": "install",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 9.506,
+      "logSha256": "90245c3a07557b88b023d45318e400822058f03fd1c4d499e092f9708f6d70e5"
+    },
+    {
+      "name": "private-secret-service",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 0.619,
+      "logSha256": "7e86600321c6b778a82ab76d1357be023713d9b8020b933aaca48650a58f7b5b"
+    }
+  ],
+  "passed": true,
+  "nativePackages": [
+    "dbus\t1.14.10-1~deb12u1",
+    "gnome-keyring\t42.1-1+b2",
+    "libglib2.0-bin\t2.74.6-2+deb12u9",
+    "libsecret-1-0:arm64\t0.20.5-3"
+  ],
+  "package": {
+    "filename": "dsh-codex-connect-0.2.0-alpha.9.tgz",
+    "integrity": "sha512-NapbSLBNvyZJzAKQf6G41OI8BQAkpplOVEjKPxLe+Dj78Q1GpPF2vPclzmyzk2H0DjsiNufBgSCMRoo4O/GvaQ==",
+    "sha256": "db797de70efb642369922677a9da29e62e149d45700cc4b324bd56e98d8ca8ac"
+  },
+  "sourceBinSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "installedBinSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "fixtureSha256": "8c26a03052c0489a5a5db1e6ac9119f2ceb75d3437700300c0504f92484c1b79",
+  "native": {
+    "schemaVersion": 1,
+    "sourceCommit": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+    "platform": "linux",
+    "architecture": "arm64",
+    "node": "v24.19.0",
+    "osRelease": "6.10.14-linuxkit",
+    "target": "installed-standalone-cli-with-actually-locked-private-secret-service",
+    "packageVersion": "0.2.0-alpha.9",
+    "binSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+    "keyringVersion": "2.1.0",
+    "syntheticCredentials": true,
+    "nativeBindingUsed": true,
+    "liveProviderCommands": false,
+    "commands": [
+      {
+        "phase": "owned-fixture-setup",
+        "name": "migrate-credentials --confirm-stopped",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 54.332
+      },
+      {
+        "phase": "owned-fixture-setup",
+        "name": "status --json",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 48.865
+      },
+      {
+        "phase": "locked-read",
+        "name": "status --json",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 51.184
+      },
+      {
+        "phase": "locked-migration",
+        "name": "migrate-credentials --confirm-stopped",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 53.162
+      },
+      {
+        "phase": "owned-unlock-and-identity-check",
+        "name": "status --json",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 47.043
+      },
+      {
+        "phase": "unlocked-migration-recovery",
+        "name": "migrate-credentials --confirm-stopped",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 53.88
+      },
+      {
+        "phase": "unlocked-migration-recovery",
+        "name": "status --json",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 46.956
+      },
+      {
+        "phase": "owned-logout",
+        "name": "logout",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 48.125
+      },
+      {
+        "phase": "owned-logout",
+        "name": "status --json",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 40.585
+      },
+      {
+        "phase": "owned-logout",
+        "name": "logout",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 48.362
+      },
+      {
+        "phase": "owned-logout",
+        "name": "status --json",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 42.26
+      }
+    ],
+    "nativeControl": [
+      {
+        "method": "org.freedesktop.Secret.Service.ReadAlias",
+        "response": "(objectpath '/org/freedesktop/secrets/collection/login',)"
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<false>,)"
+      },
+      {
+        "method": "org.freedesktop.Secret.Service.Lock",
+        "response": "([objectpath '/org/freedesktop/secrets/collection/login'], objectpath '/')"
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<true>,)"
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<true>,)"
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<true>,)"
+      },
+      {
+        "method": "existing-owned-control-socket-unlock",
+        "resultCode": 0,
+        "ownerUnchanged": true
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<false>,)"
+      },
+      {
+        "method": "existing-owned-control-socket-unlock",
+        "resultCode": 0,
+        "ownerUnchanged": true
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<false>,)"
+      }
+    ],
+    "steps": [
+      "unlocked-native-precondition-and-owned-existing-key",
+      "native-collection-locked-property-true",
+      "locked-installed-status-refuses-without-file-change",
+      "locked-installed-migration-refuses-without-file-change",
+      "unlock-recovery-preserves-existing-key-and-creates-no-replacement",
+      "explicit-migration-succeeds-after-owned-unlock",
+      "owned-unlocked-logout-deletes-files-and-keys"
+    ],
+    "cleanup": {
+      "ownedEntries": 2,
+      "entriesAbsent": true,
+      "temporaryHomeRemoved": true
+    },
+    "passed": true
+  }
+}

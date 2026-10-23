@@ -1,0 +1,29 @@
+# Public GitHub Actions excerpt; job 117867516852, run 39192296114
+2026-10-19T02:58:19.3201564Z ⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+2026-10-19T02:58:19.3201912Z
+2026-10-19T02:58:19.3204849Z  FAIL  tests/adaptive-task-store.spec.ts > serializes reservations across independent store objects instead of losing parallel updates
+2026-10-19T02:58:19.3211320Z Error: atomic-write: timed out waiting for the writer lock at /tmp/task-store-o87pmD/state/f16d05ec6b29248d2c61adb1e9263f78e4f7bace1b955014a2d17872cfe4064d.json.lock
+2026-10-19T02:58:19.3213656Z  ❯ withFileLock node_modules/.pnpm/@deepseek-ai+dsh-atomic-write@0.1.7-rc.1_@deepseek-ai+cordis@4.0.4/node_modules/@deepseek-ai/dsh-atomic-write/lib/index.js:141:37
+2026-10-19T02:58:19.3214973Z  ❯ tests/adaptive-task-store.spec.ts:44:3
+2026-10-19T02:58:19.3242541Z      42| it('serializes reservations across independent store objects instead o…
+2026-10-19T02:58:19.3243976Z      43|   const f = await setup(); await f.store.update('fixture', document)
+2026-10-19T02:58:19.3245218Z      44|   await Promise.all(Array.from({ length: 12 }, () => new AdaptiveTaskS…
+2026-10-19T02:58:19.3247728Z ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+2026-10-19T02:58:19.3247984Z
+2026-10-19T02:58:19.3248922Z  FAIL  tests/adaptive-task-store.spec.ts > serializes reservations across independent store objects instead of losing parallel updates
+2026-10-19T02:58:19.3250209Z Error: ENOTEMPTY: directory not empty, rmdir '/tmp/task-store-o87pmD/state'
+2026-10-19T02:58:19.3250941Z ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+2026-10-19T02:58:19.3251197Z
+2026-10-19T02:58:19.3251226Z
+2026-10-19T02:58:19.3257404Z  Test Files  1 failed | 150 passed (151)
+2026-10-19T02:58:19.3268991Z       Tests  1 failed | 2038 passed (2039)
+2026-10-19T02:58:19.3269564Z    Start at  02:57:17
+2026-10-19T02:58:19.3270912Z    Duration  61.67s (transform 4.98s, setup 0ms, import 34.26s, tests 108.93s, environment 10.97s)
+2026-10-19T02:58:19.3272974Z
+2026-10-19T02:58:19.3302528Z
+2026-10-19T02:58:19.3325050Z ##[error]Error: atomic-write: timed out waiting for the writer lock at /tmp/task-store-o87pmD/state/f16d05ec6b29248d2c61adb1e9263f78e4f7bace1b955014a2d17872cfe4064d.json.lock
+ ❯ withFileLock node_modules/.pnpm/@deepseek-ai+dsh-atomic-write@0.1.7-rc.1_@deepseek-ai+cordis@4.0.4/node_modules/@deepseek-ai/dsh-atomic-write/lib/index.js:141:37
+ ❯ tests/adaptive-task-store.spec.ts:44:3
+
+
+2026-10-19T02:58:19.3840218Z  ELIFECYCLE  Test failed. See above for more details.

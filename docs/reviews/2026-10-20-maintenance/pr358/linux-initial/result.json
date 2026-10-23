@@ -1,0 +1,190 @@
+{
+  "schemaVersion": 1,
+  "environment": {
+    "node": "v24.19.0",
+    "pnpm": "10.30.3",
+    "platform": "linux",
+    "arch": "arm64",
+    "kernel": "6.10.14-linuxkit",
+    "cpuCount": 10,
+    "availableParallelism": 10,
+    "image": "node:24.19.0-bookworm",
+    "imageDigest": "sha256:4196d66a565c6f195728d9952f161f4adfe2ad753052a08b7ec7f1c5a6bda42b"
+  },
+  "policy": {
+    "focusedRunsPerTree": 1,
+    "fullRunsPerTree": 1,
+    "concurrencyOverrides": [],
+    "timeoutOverrides": [],
+    "productionChanges": false,
+    "rerunUntilGreen": false
+  },
+  "runs": [
+    {
+      "label": "setup-pnpm",
+      "command": [
+        "npm",
+        "install",
+        "--prefix",
+        "/tooling",
+        "pnpm@10.30.3",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "durationSeconds": 10.093,
+      "log": "setup-pnpm.log",
+      "sha256": "5b0b6283b8f92bcfc86e19ec7729c1378fb0a39800c4581e2f059cb404c031b7",
+      "summary": []
+    },
+    {
+      "label": "main-extract",
+      "command": [
+        "tar",
+        "-xf",
+        "/evidence/main.tar",
+        "-C",
+        "/work/main"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "durationSeconds": 0.011,
+      "log": "main-extract.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "summary": []
+    },
+    {
+      "label": "main-install",
+      "command": [
+        "/tooling/node_modules/.bin/pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "durationSeconds": 107.254,
+      "log": "main-install.log",
+      "sha256": "a61fac403157ea2abbba02da156bbf70de806ffca1622de95427afb16ca82830",
+      "summary": []
+    },
+    {
+      "label": "candidate-extract",
+      "command": [
+        "tar",
+        "-xf",
+        "/evidence/candidate.tar",
+        "-C",
+        "/work/candidate"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "durationSeconds": 0.014,
+      "log": "candidate-extract.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "summary": []
+    },
+    {
+      "label": "candidate-install",
+      "command": [
+        "/tooling/node_modules/.bin/pnpm",
+        "install",
+        "--frozen-lockfile",
+        "--ignore-scripts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "durationSeconds": 0.699,
+      "log": "candidate-install.log",
+      "sha256": "a3b84455ca71bb146bee07674ea2dddf21fe14cd17e5a65e3dbdc54f21f35a78",
+      "summary": []
+    },
+    {
+      "label": "main-focused",
+      "command": [
+        "/tooling/node_modules/.bin/pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "tests/adaptive-task-store.spec.ts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "durationSeconds": 2.143,
+      "log": "main-focused.log",
+      "sha256": "ad9369ff8ded51f81e18647f0937b10837cdf7f2738d165267f3d531c9482f61",
+      "summary": [
+        " Test Files  1 passed (1)",
+        "      Tests  11 passed (11)"
+      ]
+    },
+    {
+      "label": "main-full-check",
+      "command": [
+        "/tooling/node_modules/.bin/pnpm",
+        "run",
+        "check"
+      ],
+      "exitCode": 1,
+      "signal": null,
+      "durationSeconds": 0.121,
+      "log": "main-full-check.log",
+      "sha256": "4cd88d86b0e9436e124317940bc23179ca05127151640e0294b376003448f315",
+      "summary": []
+    },
+    {
+      "label": "candidate-focused",
+      "command": [
+        "/tooling/node_modules/.bin/pnpm",
+        "exec",
+        "vitest",
+        "run",
+        "tests/adaptive-task-store.spec.ts"
+      ],
+      "exitCode": 0,
+      "signal": null,
+      "durationSeconds": 2.155,
+      "log": "candidate-focused.log",
+      "sha256": "c3e949e28c0f8a54efba866aca894b7362226f774274971e2a39d0e9a90f5992",
+      "summary": [
+        " Test Files  1 passed (1)",
+        "      Tests  14 passed (14)"
+      ]
+    },
+    {
+      "label": "candidate-full-check",
+      "command": [
+        "/tooling/node_modules/.bin/pnpm",
+        "run",
+        "check"
+      ],
+      "exitCode": 1,
+      "signal": null,
+      "durationSeconds": 0.115,
+      "log": "candidate-full-check.log",
+      "sha256": "69a3af39a0844bcc970aaa90423f353e382900abfce7021c03865339f0209dd5",
+      "summary": []
+    }
+  ],
+  "main": {
+    "commit": "e5579b71339ba932dec7dfba497fc97df8fbf124",
+    "sourceSha256": {
+      "pnpm-lock.yaml": "779c66fcfa98f2897ddc605932d7045ccd56182f5fd5cc79aa8893f6805758c4",
+      "vitest.config.ts": "b66dc45147bf03bf1886e505584b567d90a30d298e29354e80a3abb2ea94213b",
+      "src/adaptive-task-store.ts": "3d5c9ec0b3cdb8e09e2cf76ced7cc1f8efd2182b544fa8ff478d896a944246c6",
+      "tests/adaptive-task-store.spec.ts": "1017d55051d4ff6d5cfac0f7c15fe4955dedc0e94b688be0a317c42c36cf27f6"
+    }
+  },
+  "candidate": {
+    "commit": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+    "sourceSha256": {
+      "pnpm-lock.yaml": "779c66fcfa98f2897ddc605932d7045ccd56182f5fd5cc79aa8893f6805758c4",
+      "vitest.config.ts": "b66dc45147bf03bf1886e505584b567d90a30d298e29354e80a3abb2ea94213b",
+      "src/adaptive-task-store.ts": "3d5c9ec0b3cdb8e09e2cf76ced7cc1f8efd2182b544fa8ff478d896a944246c6",
+      "tests/adaptive-task-store.spec.ts": "4468719e7c35148d56f97585082c051d419700b95b6024df7e9e94119377b031"
+    }
+  },
+  "completed": true
+}

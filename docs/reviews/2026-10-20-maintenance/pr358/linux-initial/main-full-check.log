@@ -1,0 +1,6 @@
+
+> dsh-codex-connect@0.2.0-alpha.9 check /work/main
+> pnpm run check:release-workflow && pnpm run check:canary-workflow && pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build && pnpm run check:env-proxy-import && pnpm run check:isolated-import && pnpm run check:capability-cli && pnpm run check:request-metrics && pnpm --silent run check:compatibility && pnpm run pack:check
+
+sh: 1: pnpm: not found
+ ELIFECYCLE  Command failed.

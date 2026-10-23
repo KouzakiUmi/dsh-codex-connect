@@ -1,0 +1,10 @@
+
+ RUN  v4.1.11 <user-home>/Developer/.webcodex-worktrees/dsh-codex-connect-b742152d
+
+ ✓ tests/adaptive-task-store.spec.ts (11 tests) 1858ms
+   ✓ serializes reservations across independent store objects instead of losing parallel updates  1744ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  16:26:47
+   Duration  1.96s (transform 21ms, setup 0ms, import 30ms, tests 1.86s, environment 0ms)

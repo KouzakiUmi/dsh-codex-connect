@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "intervalDefinition": "Hold: successful lock writeFile completion to lock rm completion. Idle gap: previous rm completion to next successful writeFile completion; includes exclusive-create I/O.",
+  "cases": [
+    {
+      "label": "main-natural",
+      "fulfilled": 12,
+      "lockTimeouts": 0,
+      "sumObservedHoldMs": 132.067,
+      "sumObservedIdleGapMs": 1592.799,
+      "maximumSuccessfulWaitMs": 1717.288,
+      "maximumHoldMs": 14.944,
+      "fileAndDirectorySyncTotalMs": 97.648,
+      "launchSpanMs": 0.854
+    },
+    {
+      "label": "candidate-natural",
+      "fulfilled": 12,
+      "lockTimeouts": 0,
+      "sumObservedHoldMs": 135.934,
+      "sumObservedIdleGapMs": 1593.558,
+      "maximumSuccessfulWaitMs": 1718.863,
+      "maximumHoldMs": 18.025,
+      "fileAndDirectorySyncTotalMs": 97.57,
+      "launchSpanMs": 0.616
+    },
+    {
+      "label": "main-held-500ms",
+      "fulfilled": 9,
+      "lockTimeouts": 3,
+      "sumObservedHoldMs": 607.366,
+      "sumObservedIdleGapMs": 1525.937,
+      "maximumSuccessfulWaitMs": 2118.832,
+      "maximumHoldMs": 514.609,
+      "fileAndDirectorySyncTotalMs": 72.71,
+      "launchSpanMs": 0.606
+    },
+    {
+      "label": "candidate-held-500ms",
+      "fulfilled": 9,
+      "lockTimeouts": 3,
+      "sumObservedHoldMs": 605.075,
+      "sumObservedIdleGapMs": 1525.533,
+      "maximumSuccessfulWaitMs": 2120.217,
+      "maximumHoldMs": 514.061,
+      "fileAndDirectorySyncTotalMs": 66.981,
+      "launchSpanMs": 0.777
+    }
+  ],
+  "limitation": "In-memory instrumentation overhead is not quantified. Controlled delay reproduces the mechanism, not the historical cloud environment."
+}

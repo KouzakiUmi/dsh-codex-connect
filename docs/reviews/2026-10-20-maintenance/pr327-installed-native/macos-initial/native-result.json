@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "platform": "darwin",
+  "architecture": "arm64",
+  "osRelease": "27.2.0",
+  "node": "v22.22.3",
+  "packageVersion": "0.2.0-alpha.9",
+  "binSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "keyringVersion": "2.1.0",
+  "target": "installed-standalone-cli",
+  "syntheticCredentials": true,
+  "nativeBindingUsed": true,
+  "liveProviderCommands": false,
+  "commands": [],
+  "steps": [],
+  "cleanup": {
+    "ownedEntries": 0,
+    "entriesAbsent": true,
+    "temporaryHomeRemoved": true
+  },
+  "failure": {
+    "phase": "owned-native-locators",
+    "errorKind": "Error",
+    "message": "Platform failure: A default keychain could not be found."
+  },
+  "passed": false
+}

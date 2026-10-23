@@ -1,0 +1,202 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+  "platform": "linux",
+  "architecture": "arm64",
+  "node": "v24.19.0",
+  "kernel": "6.10.14-linuxkit",
+  "image": "node:24.19.0-bookworm@sha256:4196d66a565c6f195728d9952f161f4adfe2ad753052a08b7ec7f1c5a6bda42b",
+  "scope": "installed standalone CLI, genuinely locked private Secret Service, no host home/socket/store mount",
+  "steps": [
+    {
+      "name": "extract-source",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 0.019,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "apt-update",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 2.176,
+      "logSha256": "9c9f487a14c14a37ad8d92f353982b1b45453a1ffdead8410b16d0cb053d3aac"
+    },
+    {
+      "name": "apt-install",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 5.707,
+      "logSha256": "233bc5518460849c6654f774ab82d990f74afc91ba2285a9e050b74f3ba33cd9"
+    },
+    {
+      "name": "native-package-versions",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 0.003,
+      "logSha256": "655e8d8fbdf4aa2d574023346fd40e1fbe7912a4e36a579204e92710bda13500"
+    },
+    {
+      "name": "pack",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 0.337,
+      "logSha256": "62bcf436373618bfde3fa6f3c7abde816fbb1cf82662eb3d711026f50b9a1c63"
+    },
+    {
+      "name": "install",
+      "exitCode": 0,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 9.673,
+      "logSha256": "ef2c4a4f022a2874451e698f056d4405e650e2962c465786a605c73cc0f6e6b0"
+    },
+    {
+      "name": "private-secret-service",
+      "exitCode": 1,
+      "signal": null,
+      "error": null,
+      "elapsedSeconds": 0.32,
+      "logSha256": "cd06c618cc9e4fca7ec30edbb15d92a1362863d79fba4a577defcc633f46a3bb"
+    }
+  ],
+  "passed": false,
+  "nativePackages": [
+    "dbus\t1.14.10-1~deb12u1",
+    "gnome-keyring\t42.1-1+b2",
+    "libglib2.0-bin\t2.74.6-2+deb12u9",
+    "libsecret-1-0:arm64\t0.20.5-3"
+  ],
+  "package": {
+    "filename": "dsh-codex-connect-0.2.0-alpha.9.tgz",
+    "integrity": "sha512-NapbSLBNvyZJzAKQf6G41OI8BQAkpplOVEjKPxLe+Dj78Q1GpPF2vPclzmyzk2H0DjsiNufBgSCMRoo4O/GvaQ==",
+    "sha256": "db797de70efb642369922677a9da29e62e149d45700cc4b324bd56e98d8ca8ac"
+  },
+  "sourceBinSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "installedBinSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "fixtureSha256": "f8861c5c0d548e05dcb15e1985841be69dbaf24f470f48647d33429172a09db5",
+  "native": {
+    "schemaVersion": 1,
+    "sourceCommit": "a297fa6808982eed57c219a8a3518bd8c37b6761",
+    "platform": "linux",
+    "architecture": "arm64",
+    "node": "v24.19.0",
+    "osRelease": "6.10.14-linuxkit",
+    "target": "installed-standalone-cli-with-actually-locked-private-secret-service",
+    "packageVersion": "0.2.0-alpha.9",
+    "binSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+    "keyringVersion": "2.1.0",
+    "syntheticCredentials": true,
+    "nativeBindingUsed": true,
+    "liveProviderCommands": false,
+    "commands": [
+      {
+        "phase": "owned-fixture-setup",
+        "name": "migrate-credentials --confirm-stopped",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 57.223
+      },
+      {
+        "phase": "owned-fixture-setup",
+        "name": "status --json",
+        "expectedExit": 0,
+        "actualExit": 0,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 48.424
+      },
+      {
+        "phase": "locked-read",
+        "name": "status --json",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 75.641
+      },
+      {
+        "phase": "locked-migration",
+        "name": "migrate-credentials --confirm-stopped",
+        "expectedExit": 1,
+        "actualExit": 1,
+        "processError": null,
+        "signal": null,
+        "elapsedMs": 60.861
+      }
+    ],
+    "nativeControl": [
+      {
+        "method": "org.freedesktop.Secret.Service.ReadAlias",
+        "response": "(objectpath '/org/freedesktop/secrets/collection/login',)"
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<false>,)"
+      },
+      {
+        "method": "org.freedesktop.Secret.Service.Lock",
+        "response": "([objectpath '/org/freedesktop/secrets/collection/login'], objectpath '/')"
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<true>,)"
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<true>,)"
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<true>,)"
+      },
+      {
+        "method": "owned-daemon-unlock-via-stdin",
+        "exitCode": 0,
+        "error": null
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<true>,)"
+      },
+      {
+        "method": "owned-daemon-unlock-via-stdin",
+        "exitCode": 0,
+        "error": null
+      },
+      {
+        "method": "org.freedesktop.DBus.Properties.Get",
+        "response": "(<true>,)"
+      }
+    ],
+    "steps": [
+      "unlocked-native-precondition-and-owned-existing-key",
+      "native-collection-locked-property-true",
+      "locked-installed-status-refuses-without-file-change",
+      "locked-installed-migration-refuses-without-file-change"
+    ],
+    "cleanup": {
+      "ownedEntries": 2,
+      "entriesAbsent": false,
+      "temporaryHomeRemoved": false,
+      "unlockFailed": true
+    },
+    "failure": {
+      "phase": "owned-unlock-and-identity-check",
+      "name": "AssertionError",
+      "message": "Native collection lock state mismatch\n\ntrue !== false\n"
+    },
+    "passed": false
+  },
+  "failure": {
+    "errorKind": "AssertionError",
+    "message": "The expression evaluated to a falsy value:\n\n  assert.ok(native.status === 0 && report.native.passed)\n"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "baselineSourceCommit": "e5579b71339ba932dec7dfba497fc97df8fbf124",
+  "baselineExecutionCommit": "a019a1078526aad91ce8a65f9cd175da16167273",
+  "candidateCommit": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+  "fixtureSha256": "5aedef6ce1e22f9150d4aa2bda980ef0dc3a19d9996fb361a3ea2e170ae73e7f",
+  "plannedCases": [
+    "main-natural",
+    "candidate-natural",
+    "main-held-500ms",
+    "candidate-held-500ms"
+  ],
+  "scenarioCount": 4,
+  "retries": 0,
+  "sourceHashes": {
+    "src/adaptive-task-store.ts": "3d5c9ec0b3cdb8e09e2cf76ced7cc1f8efd2182b544fa8ff478d896a944246c6",
+    "src/adaptive-task-contract.ts": "033d62cf5a4ff6741132b7abfed7308f8c058a35217a7d970d679bdc507102e5",
+    "pnpm-lock.yaml": "779c66fcfa98f2897ddc605932d7045ccd56182f5fd5cc79aa8893f6805758c4",
+    "vitest.config.ts": "b66dc45147bf03bf1886e505584b567d90a30d298e29354e80a3abb2ea94213b"
+  },
+  "cases": []
+}

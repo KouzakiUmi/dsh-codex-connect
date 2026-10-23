@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "baselineSourceCommit": "e5579b71339ba932dec7dfba497fc97df8fbf124",
+  "baselineExecutionCommit": "a019a1078526aad91ce8a65f9cd175da16167273",
+  "candidateCommit": "eec7c892f5dfba21009bcaa71db8f626cbbfa9df",
+  "fixtureSha256": "5aedef6ce1e22f9150d4aa2bda980ef0dc3a19d9996fb361a3ea2e170ae73e7f",
+  "plannedCases": [
+    "main-natural",
+    "candidate-natural",
+    "main-held-500ms",
+    "candidate-held-500ms"
+  ],
+  "scenarioCount": 4,
+  "retries": 0,
+  "sourceHashes": {
+    "src/adaptive-task-store.ts": "3d5c9ec0b3cdb8e09e2cf76ced7cc1f8efd2182b544fa8ff478d896a944246c6",
+    "src/adaptive-task-contract.ts": "033d62cf5a4ff6741132b7abfed7308f8c058a35217a7d970d679bdc507102e5",
+    "pnpm-lock.yaml": "779c66fcfa98f2897ddc605932d7045ccd56182f5fd5cc79aa8893f6805758c4",
+    "vitest.config.ts": "b66dc45147bf03bf1886e505584b567d90a30d298e29354e80a3abb2ea94213b"
+  },
+  "cases": [
+    {
+      "label": "main-natural",
+      "exitCode": 0,
+      "fulfilled": 12,
+      "rejected": 0,
+      "lockTimeouts": 0,
+      "integrityChecksPassed": true,
+      "cleanup": {
+        "temporaryRootRemoved": true
+      },
+      "resultSha256": "993d3d74e11f2d27957243f063172a61db525d8a8b973119cd3862e2490a1598",
+      "atomicModuleSha256": "eafd9dd0129d925a674530d1d4a22454914ed90449efd1710ee93e5cf4a36a91",
+      "maxHoldMs": 14.944
+    },
+    {
+      "label": "candidate-natural",
+      "exitCode": 0,
+      "fulfilled": 12,
+      "rejected": 0,
+      "lockTimeouts": 0,
+      "integrityChecksPassed": true,
+      "cleanup": {
+        "temporaryRootRemoved": true
+      },
+      "resultSha256": "68dea3fc4f1136f729037d6d57a8d828a087cb0b8dcf43f3acf9cc36cde0bed9",
+      "atomicModuleSha256": "eafd9dd0129d925a674530d1d4a22454914ed90449efd1710ee93e5cf4a36a91",
+      "maxHoldMs": 18.025
+    },
+    {
+      "label": "main-held-500ms",
+      "exitCode": 0,
+      "fulfilled": 9,
+      "rejected": 3,
+      "lockTimeouts": 3,
+      "integrityChecksPassed": true,
+      "cleanup": {
+        "temporaryRootRemoved": true
+      },
+      "resultSha256": "4064fb75ca5b3e6d6c043b568ccd5ddfd1b80cb9f27008ea9f353479b3875de0",
+      "atomicModuleSha256": "eafd9dd0129d925a674530d1d4a22454914ed90449efd1710ee93e5cf4a36a91",
+      "maxHoldMs": 514.609
+    },
+    {
+      "label": "candidate-held-500ms",
+      "exitCode": 0,
+      "fulfilled": 9,
+      "rejected": 3,
+      "lockTimeouts": 3,
+      "integrityChecksPassed": true,
+      "cleanup": {
+        "temporaryRootRemoved": true
+      },
+      "resultSha256": "6454e99b18af65203854ee33c96a30cde801012edc33cdbef637090476dc4118",
+      "atomicModuleSha256": "eafd9dd0129d925a674530d1d4a22454914ed90449efd1710ee93e5cf4a36a91",
+      "maxHoldMs": 514.061
+    }
+  ],
+  "atomicModuleIdentical": true,
+  "sourceRootsStillUnchanged": true,
+  "allDiagnosticsCompleted": true
+}

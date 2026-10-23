@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-10-21T00:17:53.820883+00:00",
+  "checks": {
+    "jsonFiles": 16,
+    "pythonSyntaxFiles": 2,
+    "nodeSyntaxFiles": 5,
+    "relativeMarkdownLinks": 25,
+    "publicationFiles": 53
+  },
+  "writerDiagnostics": {
+    "fixedCases": 4,
+    "resultBasedReruns": 0,
+    "fixtureAndResultHashesVerified": true
+  },
+  "nativeRawEvidence": [
+    {
+      "attempt": "failed-daemon-unlock",
+      "rawFilesVerified": 13,
+      "fixtureMatchesRawInput": true,
+      "sourceArchiveMatches": true
+    },
+    {
+      "attempt": "passed",
+      "rawFilesVerified": 13,
+      "fixtureMatchesRawInput": true,
+      "sourceArchiveMatches": true
+    }
+  ],
+  "nativeOutcomes": {
+    "failedAttemptPreserved": true,
+    "passedAttemptCliCalls": 11,
+    "allExpectedExitsMatched": true
+  },
+  "publication": {
+    "scope": "bounded host-path, token-prefix and private-key-marker checks; not a comprehensive secrets audit",
+    "allCheckedFilesPassed": true,
+    "initialDiagnosticFalsePositive": {
+      "outcome": "stopped before package check or artifact mutation",
+      "cause": "unbounded sk- pattern matched task-activation-ui-retirement.md and task-artifact-read-identity.md in npm package inventories",
+      "correction": "require token-prefix boundary; raw logs unchanged; repository scanners unchanged"
+    }
+  },
+  "whitespaceCheckPassed": true,
+  "packCheck": {
+    "command": [
+      "pnpm",
+      "run",
+      "pack:check"
+    ],
+    "exitCode": 0,
+    "rawOutputSha256": "938a94bd0fa719d5d1fab2d743895ded2113c8e4ef73d605ffa72c123e4ae8e5",
+    "publicOutputSha256": "cf552e209d25b01d3e8326684eb01112fd548883e2d03aacf77e12a7df44123b",
+    "redactions": [
+      "exact evidence worktree path"
+    ]
+  },
+  "archiveCopyCorrection": {
+    "initialIntegrityFailure": "failed-fixture public snapshot was missing its final newline",
+    "correction": "restore the one byte from the executed raw input; full equality now required; no test rerun"
+  },
+  "inventoryNote": "Syntax and link inventory precedes generated verification, packaging log and overall manifest; final publication check includes generated files.",
+  "stagedWhitespaceCheck": {
+    "command": [
+      "git",
+      "diff",
+      "--cached",
+      "--check"
+    ],
+    "initialResult": "one extra blank line at end of revised PLAN.md",
+    "correction": "remove extra final blank line; original executed fixture/log bytes unchanged",
+    "finalExitCode": 0
+  }
+}

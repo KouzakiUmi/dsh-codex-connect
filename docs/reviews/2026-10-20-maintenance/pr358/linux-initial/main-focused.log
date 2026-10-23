@@ -1,0 +1,10 @@
+
+ RUN  v4.1.11 /work/main
+
+ ✓ tests/adaptive-task-store.spec.ts (11 tests) 1850ms
+   ✓ serializes reservations across independent store objects instead of losing parallel updates  1805ms
+
+ Test Files  1 passed (1)
+      Tests  11 passed (11)
+   Start at  08:39:00
+   Duration  1.92s (transform 20ms, setup 0ms, import 27ms, tests 1.85s, environment 0ms)

@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "files": [
+    {
+      "path": "README.md",
+      "bytes": 3897,
+      "sha256": "ce1777cba556fef1b94d768e7b078427e327710fd530fe3a3fcfa54f44e01453"
+    },
+    {
+      "path": "pack-check.log",
+      "bytes": 1959,
+      "sha256": "cf552e209d25b01d3e8326684eb01112fd548883e2d03aacf77e12a7df44123b"
+    },
+    {
+      "path": "pr327-locked-native/PLAN.md",
+      "bytes": 3962,
+      "sha256": "4cf752b051e11fcaa5f84cac47b92da2c37e42f29ae7753b830a659aecfe144a"
+    },
+    {
+      "path": "pr327-locked-native/README.md",
+      "bytes": 7599,
+      "sha256": "a71025ce5351fe310fdc45066f822cacc7f0672d82ff43c786312b0697015e6f"
+    },
+    {
+      "path": "pr327-locked-native/acceptance.mjs",
+      "bytes": 13861,
+      "sha256": "8c26a03052c0489a5a5db1e6ac9119f2ceb75d3437700300c0504f92484c1b79"
+    },
+    {
+      "path": "pr327-locked-native/container.mjs",
+      "bytes": 4660,
+      "sha256": "8e3fff30f8f274898b013ff21a0651f75997dab89ea3613e5408813dfc24744f"
+    },
+    {
+      "path": "pr327-locked-native/control-source-references.json",
+      "bytes": 1373,
+      "sha256": "b4f423fdeece163547a6dd61dee448870b45d1a5a11a710673fb99d52b1e1eef"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/PLAN.md",
+      "bytes": 2606,
+      "sha256": "a6eb49f84e3eb57c086d758f788d0152c8def12c847978441428a56e88fd3b67"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/acceptance.mjs",
+      "bytes": 11325,
+      "sha256": "f8861c5c0d548e05dcb15e1985841be69dbaf24f470f48647d33429172a09db5"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/apt-install.log",
+      "bytes": 24198,
+      "sha256": "233bc5518460849c6654f774ab82d990f74afc91ba2285a9e050b74f3ba33cd9"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/apt-update.log",
+      "bytes": 522,
+      "sha256": "9c9f487a14c14a37ad8d92f353982b1b45453a1ffdead8410b16d0cb053d3aac"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/artifact-manifest.json",
+      "bytes": 2552,
+      "sha256": "b5c41d24eb28f0d23bf7ba59d3e01e5a5de0ec7c7fabbcd5c00f904bd1c02c49"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/docker.log",
+      "bytes": 5027,
+      "sha256": "ee153ef65fec79a29870e8b5e5a499ca78f13656d8bed6c8ca4f873f1abc15a8"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/extract-source.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/install.log",
+      "bytes": 129,
+      "sha256": "ef2c4a4f022a2874451e698f056d4405e650e2962c465786a605c73cc0f6e6b0"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/native-daemon.log",
+      "bytes": 51,
+      "sha256": "e0700236c991f8817d74f8a455c238e960f4ca622fd7abdf1882669cddd7a7ad"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/native-package-versions.log",
+      "bytes": 108,
+      "sha256": "655e8d8fbdf4aa2d574023346fd40e1fbe7912a4e36a579204e92710bda13500"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/native-result.json",
+      "bytes": 3102,
+      "sha256": "7824b8e6a5c8f056dbab7ab149c5ffe2867d1efc19bc6aaf44ec1204280055e5"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/native-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/pack.log",
+      "bytes": 23073,
+      "sha256": "62bcf436373618bfde3fa6f3c7abde816fbb1cf82662eb3d711026f50b9a1c63"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/private-secret-service.log",
+      "bytes": 920,
+      "sha256": "cd06c618cc9e4fca7ec30edbb15d92a1362863d79fba4a577defcc633f46a3bb"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/result.json",
+      "bytes": 6248,
+      "sha256": "ad2fd070a8ca83ad72bb06f4ea5f5045c7ad1d9ff4ea16e45f3a6dfdc8883b70"
+    },
+    {
+      "path": "pr327-locked-native/failed-daemon-unlock/runner-result.json",
+      "bytes": 665,
+      "sha256": "fe976dd7efbdffbed3e682a1093c7c997e2a1114a879439171edc198c3564534"
+    },
+    {
+      "path": "pr327-locked-native/native-session.mjs",
+      "bytes": 1776,
+      "sha256": "7159ecca1428b16718967c291d1f7e0bafe33a6d526802a5937f14bbe61a8a4d"
+    },
+    {
+      "path": "pr327-locked-native/passed/apt-install.log",
+      "bytes": 24198,
+      "sha256": "464e3cb2bcf3f9542ac674d60a1d7b539bd59349ebba8d21f77e84e0443b3018"
+    },
+    {
+      "path": "pr327-locked-native/passed/apt-update.log",
+      "bytes": 522,
+      "sha256": "3fdbc5af241e9bee239f183cc2822782ffeef00117485123a24a5e36cbade6e8"
+    },
+    {
+      "path": "pr327-locked-native/passed/artifact-manifest.json",
+      "bytes": 2416,
+      "sha256": "e678abc0cdf3abe8fa770f0c480290bfd5a0e3d0477d662a2faca9a5c6c01bc6"
+    },
+    {
+      "path": "pr327-locked-native/passed/docker.log",
+      "bytes": 5888,
+      "sha256": "4d08e7a8f106778d7da425829e055341b19495ad82c81c7865cb6ba9d97d632b"
+    },
+    {
+      "path": "pr327-locked-native/passed/extract-source.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "pr327-locked-native/passed/install.log",
+      "bytes": 128,
+      "sha256": "90245c3a07557b88b023d45318e400822058f03fd1c4d499e092f9708f6d70e5"
+    },
+    {
+      "path": "pr327-locked-native/passed/native-daemon.log",
+      "bytes": 51,
+      "sha256": "e0700236c991f8817d74f8a455c238e960f4ca622fd7abdf1882669cddd7a7ad"
+    },
+    {
+      "path": "pr327-locked-native/passed/native-package-versions.log",
+      "bytes": 108,
+      "sha256": "655e8d8fbdf4aa2d574023346fd40e1fbe7912a4e36a579204e92710bda13500"
+    },
+    {
+      "path": "pr327-locked-native/passed/native-result.json",
+      "bytes": 4567,
+      "sha256": "22a706b81cbe43964badb76d6dd38367cdfaf4207400005c30491ab5dedf6655"
+    },
+    {
+      "path": "pr327-locked-native/passed/native-stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "pr327-locked-native/passed/pack.log",
+      "bytes": 23073,
+      "sha256": "62bcf436373618bfde3fa6f3c7abde816fbb1cf82662eb3d711026f50b9a1c63"
+    },
+    {
+      "path": "pr327-locked-native/passed/private-secret-service.log",
+      "bytes": 920,
+      "sha256": "7e86600321c6b778a82ab76d1357be023713d9b8020b933aaca48650a58f7b5b"
+    },
+    {
+      "path": "pr327-locked-native/passed/result.json",
+      "bytes": 7656,
+      "sha256": "d6e2c7e41c7caec9b000dfab5e93354d385a34a40df7d5ee0cac7fc02f2b4c57"
+    },
+    {
+      "path": "pr327-locked-native/passed/runner-result.json",
+      "bytes": 665,
+      "sha256": "23990c17c651a63464d41b728ebafea2025ee8509c141a0def8210b0348d0a24"
+    },
+    {
+      "path": "pr327-locked-native/run-linux.py",
+      "bytes": 3095,
+      "sha256": "762842011f6c3b617a67d3b37aefb09eccaaaa3c33855500355e1cd07b93eba7"
+    },
+    {
+      "path": "verification.json",
+      "bytes": 2462,
+      "sha256": "62c9de4156a2534c92c15d9124acc47a873559cf0a8c406a303b6dc692159eb6"
+    },
+    {
+      "path": "writer-lock/PLAN.md",
+      "bytes": 2501,
+      "sha256": "69601ae9087dd64d9c25787afaa2d9293af67f4bc44dca698a506b42ad6c0064"
+    },
+    {
+      "path": "writer-lock/README.md",
+      "bytes": 6146,
+      "sha256": "4aa8ab530027620144fb14b7aebc634d68a59fedd450b30a40b11b73f460b05a"
+    },
+    {
+      "path": "writer-lock/instrumented-store.mjs",
+      "bytes": 10113,
+      "sha256": "5aedef6ce1e22f9150d4aa2bda980ef0dc3a19d9996fb361a3ea2e170ae73e7f"
+    },
+    {
+      "path": "writer-lock/results/analysis.json",
+      "bytes": 1668,
+      "sha256": "d0c38963ac6e1f9720a92c2c039b9b7f97425fb73ecdfbc6440bf4de546860cc"
+    },
+    {
+      "path": "writer-lock/results/candidate-held-500ms.json",
+      "bytes": 125238,
+      "sha256": "6454e99b18af65203854ee33c96a30cde801012edc33cdbef637090476dc4118"
+    },
+    {
+      "path": "writer-lock/results/candidate-held-500ms.stderr.log",
+      "bytes": 178,
+      "sha256": "74fa48f7d6d2141793db8f03700f503dffffdc028ee1f051357f9e0ac82f4627"
+    },
+    {
+      "path": "writer-lock/results/candidate-natural.json",
+      "bytes": 113233,
+      "sha256": "68dea3fc4f1136f729037d6d57a8d828a087cb0b8dcf43f3acf9cc36cde0bed9"
+    },
+    {
+      "path": "writer-lock/results/candidate-natural.stderr.log",
+      "bytes": 178,
+      "sha256": "ba483e76abfbee694758218c683b9d65f2429523b6b5dca20be39bd97340fcb3"
+    },
+    {
+      "path": "writer-lock/results/declared-plan.json",
+      "bytes": 906,
+      "sha256": "2d44069c042fee39a20ace58af8affd53c5d1955229aefc6159320eb94c86e36"
+    },
+    {
+      "path": "writer-lock/results/main-held-500ms.json",
+      "bytes": 125252,
+      "sha256": "4064fb75ca5b3e6d6c043b568ccd5ddfd1b80cb9f27008ea9f353479b3875de0"
+    },
+    {
+      "path": "writer-lock/results/main-held-500ms.stderr.log",
+      "bytes": 178,
+      "sha256": "85bcaa0672618703f5e1174c03cdfa7ae2f9259e07527cc966d103b025f81a8a"
+    },
+    {
+      "path": "writer-lock/results/main-natural.json",
+      "bytes": 113233,
+      "sha256": "993d3d74e11f2d27957243f063172a61db525d8a8b973119cd3862e2490a1598"
+    },
+    {
+      "path": "writer-lock/results/main-natural.stderr.log",
+      "bytes": 178,
+      "sha256": "300c0516b1c9f24d218be4e65b5d175df8c34aa724e4cf371c2acd1acbf7a3c0"
+    },
+    {
+      "path": "writer-lock/results/summary.json",
+      "bytes": 2821,
+      "sha256": "8dc4442592ad46cddbd71cf24fa65ad19a61ffb2a8dac105991b604067b254ce"
+    },
+    {
+      "path": "writer-lock/run.py",
+      "bytes": 3787,
+      "sha256": "32fdb78639afaad72905a86629ca2e3f1a9a62d8c746bb7f95843cd5d608d10c"
+    }
+  ]
+}

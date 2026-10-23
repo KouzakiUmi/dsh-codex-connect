@@ -1,0 +1,82 @@
+{
+  "files": [
+    {
+      "path": "runner-result.json",
+      "sha256": "23990c17c651a63464d41b728ebafea2025ee8509c141a0def8210b0348d0a24",
+      "bytes": 665,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "docker.log",
+      "sha256": "4d08e7a8f106778d7da425829e055341b19495ad82c81c7865cb6ba9d97d632b",
+      "bytes": 5888,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "apt-install.log",
+      "sha256": "464e3cb2bcf3f9542ac674d60a1d7b539bd59349ebba8d21f77e84e0443b3018",
+      "bytes": 24198,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "apt-update.log",
+      "sha256": "3fdbc5af241e9bee239f183cc2822782ffeef00117485123a24a5e36cbade6e8",
+      "bytes": 522,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "extract-source.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "install.log",
+      "sha256": "90245c3a07557b88b023d45318e400822058f03fd1c4d499e092f9708f6d70e5",
+      "bytes": 128,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "native-daemon.log",
+      "sha256": "e0700236c991f8817d74f8a455c238e960f4ca622fd7abdf1882669cddd7a7ad",
+      "bytes": 51,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "native-package-versions.log",
+      "sha256": "655e8d8fbdf4aa2d574023346fd40e1fbe7912a4e36a579204e92710bda13500",
+      "bytes": 108,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "native-result.json",
+      "sha256": "22a706b81cbe43964badb76d6dd38367cdfaf4207400005c30491ab5dedf6655",
+      "bytes": 4567,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "native-stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "pack.log",
+      "sha256": "62bcf436373618bfde3fa6f3c7abde816fbb1cf82662eb3d711026f50b9a1c63",
+      "bytes": 23073,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "private-secret-service.log",
+      "sha256": "7e86600321c6b778a82ab76d1357be023713d9b8020b933aaca48650a58f7b5b",
+      "bytes": 920,
+      "byteIdenticalToRaw": true
+    },
+    {
+      "path": "result.json",
+      "sha256": "d6e2c7e41c7caec9b000dfab5e93354d385a34a40df7d5ee0cac7fc02f2b4c57",
+      "bytes": 7656,
+      "byteIdenticalToRaw": true
+    }
+  ]
+}

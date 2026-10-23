@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-20",
+  "redactions": [
+    "ANSI color codes",
+    "local user home",
+    "local macOS temporary-root prefix",
+    "trailing line whitespace and extra blank lines at EOF"
+  ],
+  "artifacts": [
+    {
+      "path": "macos-main/result.json",
+      "rawSha256": "eb903e709afc77e84e1e3880b431d46c72c9a423379a6ee03df37274f526446b",
+      "publishedSha256": "f0e56c9c3170ccc8d6017cb2dfe62aff29f9755898dada9051cf215dc3eb8082",
+      "bytes": 1187
+    },
+    {
+      "path": "macos-main/focused.log",
+      "rawSha256": "d554d900940a1e7b09e75059f3b40aff75dadb0423b7096aeed1a2743a47c115",
+      "publishedSha256": "320a08ad0be552e18d99f91e5a8ca78047b3956e96e5ae4ccd2c4e034b0f270c",
+      "bytes": 416
+    },
+    {
+      "path": "macos-main/full-check.log",
+      "rawSha256": "8a03b3a502454d28dd347a4173274689e136cd4dd9c04bbbfb1252201284ba0a",
+      "publishedSha256": "d1c439ccb9f59f31366ec9e4ceecc5ee7e84e531eeee4c074cd2b6824b95bb0e",
+      "bytes": 41674
+    },
+    {
+      "path": "macos-candidate/result.json",
+      "rawSha256": "8d7ee034abd113b5ab4a40c3d6b44e5011050f066a15b6e08e32e3e455b78159",
+      "publishedSha256": "edf81d3f776104492b0f14f83bde9af34cde32f191d5b6d8daeb9646b1c36124",
+      "bytes": 1197
+    },
+    {
+      "path": "macos-candidate/focused.log",
+      "rawSha256": "9c70ebaebde873d0ed3444d7d14bd4c34bbe1a7594b7cc324958d1eacc2aaee0",
+      "publishedSha256": "91d8976b40520e0c1d0f5a5231a895b4e4bd8026e6db4cb48b8c084f950eb00e",
+      "bytes": 416
+    },
+    {
+      "path": "macos-candidate/full-check.log",
+      "rawSha256": "2e3ac5bd67e1765c8398b2939df1b30cf6da48a25a7355680446742e1502e249",
+      "publishedSha256": "09a734670166e106f1f93a4de3aac1eb08c1451e9065d80cdee49b10af81dc9a",
+      "bytes": 43656
+    },
+    {
+      "path": "linux-initial/result.json",
+      "rawSha256": "a45193c27e7c8172ac865cb5e8f772427077b7b9f1a1f264fadfd0e622ccb7a6",
+      "publishedSha256": "5d36ae1c7af2ddbcc306a75419c1f4c60b9350a4ff097f0202db4ffd87432e40",
+      "bytes": 5397
+    },
+    {
+      "path": "linux-initial/main-focused.log",
+      "rawSha256": "ad9369ff8ded51f81e18647f0937b10837cdf7f2738d165267f3d531c9482f61",
+      "publishedSha256": "de01995028f18f075a9d8f8496c459320fc225642d6f847171831c57cca44fa8",
+      "bytes": 358
+    },
+    {
+      "path": "linux-initial/candidate-focused.log",
+      "rawSha256": "c3e949e28c0f8a54efba866aca894b7362226f774274971e2a39d0e9a90f5992",
+      "publishedSha256": "f972690376c2d9076ab768e240867903bedd938888958aaafeafd95681e6ae34",
+      "bytes": 363
+    },
+    {
+      "path": "linux-initial/main-full-check.log",
+      "rawSha256": "4cd88d86b0e9436e124317940bc23179ca05127151640e0294b376003448f315",
+      "publishedSha256": "4cd88d86b0e9436e124317940bc23179ca05127151640e0294b376003448f315",
+      "bytes": 451
+    },
+    {
+      "path": "linux-initial/candidate-full-check.log",
+      "rawSha256": "69a3af39a0844bcc970aaa90423f353e382900abfce7021c03865339f0209dd5",
+      "publishedSha256": "69a3af39a0844bcc970aaa90423f353e382900abfce7021c03865339f0209dd5",
+      "bytes": 456
+    },
+    {
+      "path": "linux-path-corrected/result.json",
+      "rawSha256": "93b079dd1b91a4ecce391d0cf415c31b707881690a474b8183f260c9b8b0266f",
+      "publishedSha256": "807a47d2ab7db6d47188e42eaf2358a5733e9c50da62ead9ce8f1928eb8222c0",
+      "bytes": 4719
+    },
+    {
+      "path": "linux-path-corrected/main-full-check.log",
+      "rawSha256": "dc994b451ac4c0a1c35ea3e657a91573cf15f16a6178dc8247445a3cc65c820e",
+      "publishedSha256": "9a0f948d9385d401bc11637fa4844ca480d6a65a0575f3fee87ccaef89c646be",
+      "bytes": 34265
+    },
+    {
+      "path": "linux-path-corrected/candidate-full-check.log",
+      "rawSha256": "83b1d57502ef94868729e5bb044d27e144c84ea63de12721ba7ace809768918d",
+      "publishedSha256": "d3d53f59e68b3c420fa341a598b9153dec6c148ea7cc9ec7706ecaea82270d61",
+      "bytes": 34446
+    },
+    {
+      "path": "linux-path-corrected/run-pair.mjs",
+      "rawSha256": "cf6234f81d25131c1682a837ffde386b2ebb0dba96fe7c8e71d8cfec7e9a2860",
+      "publishedSha256": "cf6234f81d25131c1682a837ffde386b2ebb0dba96fe7c8e71d8cfec7e9a2860",
+      "bytes": 3075
+    }
+  ]
+}

@@ -1,0 +1,5605 @@
+{
+  "schemaVersion": 1,
+  "label": "candidate-natural",
+  "scope": "instrumented store diagnostic; not the Vitest/full-suite workload",
+  "sourceStoreSha256": "3d5c9ec0b3cdb8e09e2cf76ced7cc1f8efd2182b544fa8ff478d896a944246c6",
+  "atomicModuleSha256": "eafd9dd0129d925a674530d1d4a22454914ed90449efd1710ee93e5cf4a36a91",
+  "atomicPackageVersion": "0.1.7-rc.1",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "node": "v22.22.3",
+  "osRelease": "27.2.0",
+  "availableParallelism": 10,
+  "logicalCpus": 10,
+  "loadAverageBefore": [
+    4.39306640625,
+    3.7490234375,
+    2.9560546875
+  ],
+  "uvThreadpoolSize": "runtime-default",
+  "execArgv": [
+    "--experimental-transform-types"
+  ],
+  "startedAt": "2026-10-21T00:02:47.798Z",
+  "writerCount": 12,
+  "productionWaitMs": 2000,
+  "initialRetryMs": 20,
+  "maximumRetryMs": 200,
+  "injectedFirstHolderDelayMs": 0,
+  "instrumentation": "AsyncLocalStorage, fs/FileHandle wrappers and timer event recording; in-memory only until completion",
+  "instrumentationOverhead": "not independently quantified; same wrapper and fixture on both paired source roots",
+  "clockMocked": false,
+  "lockOptionsOverridden": false,
+  "cleanup": {
+    "temporaryRootRemoved": true
+  },
+  "filesystemType": 26,
+  "launchSpanMs": 0.616,
+  "outcomes": [
+    {
+      "id": 0,
+      "status": "fulfilled",
+      "reserved": 1
+    },
+    {
+      "id": 1,
+      "status": "fulfilled",
+      "reserved": 2
+    },
+    {
+      "id": 2,
+      "status": "fulfilled",
+      "reserved": 12
+    },
+    {
+      "id": 3,
+      "status": "fulfilled",
+      "reserved": 4
+    },
+    {
+      "id": 4,
+      "status": "fulfilled",
+      "reserved": 3
+    },
+    {
+      "id": 5,
+      "status": "fulfilled",
+      "reserved": 10
+    },
+    {
+      "id": 6,
+      "status": "fulfilled",
+      "reserved": 6
+    },
+    {
+      "id": 7,
+      "status": "fulfilled",
+      "reserved": 9
+    },
+    {
+      "id": 8,
+      "status": "fulfilled",
+      "reserved": 7
+    },
+    {
+      "id": 9,
+      "status": "fulfilled",
+      "reserved": 5
+    },
+    {
+      "id": 10,
+      "status": "fulfilled",
+      "reserved": 8
+    },
+    {
+      "id": 11,
+      "status": "fulfilled",
+      "reserved": 11
+    }
+  ],
+  "fulfilled": 12,
+  "rejected": 0,
+  "lockTimeouts": 0,
+  "persistedReservations": 12,
+  "lockAbsentAfterDrain": true,
+  "heldBy": null,
+  "writers": [
+    {
+      "id": 0,
+      "attempts": 1,
+      "attemptStartMs": [
+        47.676
+      ],
+      "acquiredAtMs": 48.506,
+      "releasedAtMs": 57.444,
+      "observedHoldMs": 8.938,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 3.681
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 3.796
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 1,
+      "attempts": 2,
+      "attemptStartMs": [
+        47.699,
+        68.559
+      ],
+      "acquiredAtMs": 68.95,
+      "releasedAtMs": 76.505,
+      "observedHoldMs": 7.555,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 3.737
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 2.915
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 2,
+      "attempts": 12,
+      "attemptStartMs": [
+        47.781,
+        68.595,
+        109.262,
+        190.682,
+        352.36,
+        553.822,
+        755.417,
+        956.96,
+        1159.041,
+        1362.207,
+        1564.304,
+        1765.594
+      ],
+      "acquiredAtMs": 1766.644,
+      "releasedAtMs": 1777.998,
+      "observedHoldMs": 11.354,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 4.625
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 3.839
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 3,
+      "attempts": 4,
+      "attemptStartMs": [
+        47.716,
+        68.575,
+        109.251,
+        190.632
+      ],
+      "acquiredAtMs": 191.427,
+      "releasedAtMs": 200.833,
+      "observedHoldMs": 9.406,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 3.97
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 3.097
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 4,
+      "attempts": 3,
+      "attemptStartMs": [
+        47.73,
+        68.585,
+        109.234
+      ],
+      "acquiredAtMs": 110.027,
+      "releasedAtMs": 118.52,
+      "observedHoldMs": 8.493,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 3.351
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 3.878
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 5,
+      "attempts": 10,
+      "attemptStartMs": [
+        47.854,
+        68.612,
+        109.338,
+        190.7,
+        352.28,
+        553.785,
+        755.356,
+        956.823,
+        1159.012,
+        1362.057
+      ],
+      "acquiredAtMs": 1363.531,
+      "releasedAtMs": 1375.989,
+      "observedHoldMs": 12.458,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 5.169
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 3.72
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 6,
+      "attempts": 6,
+      "attemptStartMs": [
+        47.978,
+        68.74,
+        109.391,
+        190.817,
+        352.33,
+        553.748
+      ],
+      "acquiredAtMs": 554.772,
+      "releasedAtMs": 566.999,
+      "observedHoldMs": 12.227,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 4.308
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 4.761
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 7,
+      "attempts": 9,
+      "attemptStartMs": [
+        47.834,
+        68.604,
+        109.273,
+        190.755,
+        352.299,
+        553.728,
+        755.373,
+        956.771,
+        1158.866
+      ],
+      "acquiredAtMs": 1160.754,
+      "releasedAtMs": 1178.779,
+      "observedHoldMs": 18.025,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 7.512
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 2.598
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 8,
+      "attempts": 7,
+      "attemptStartMs": [
+        47.871,
+        68.623,
+        109.348,
+        190.716,
+        352.064,
+        553.572,
+        755.229
+      ],
+      "acquiredAtMs": 756.065,
+      "releasedAtMs": 765.295,
+      "observedHoldMs": 9.23,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 3.252
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 3.588
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 9,
+      "attempts": 5,
+      "attemptStartMs": [
+        47.935,
+        68.632,
+        109.356,
+        190.731,
+        352.179
+      ],
+      "acquiredAtMs": 353.733,
+      "releasedAtMs": 365.311,
+      "observedHoldMs": 11.578,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 4.198
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 4.408
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 10,
+      "attempts": 8,
+      "attemptStartMs": [
+        47.952,
+        68.642,
+        109.365,
+        190.743,
+        352.256,
+        553.694,
+        755.334,
+        956.57
+      ],
+      "acquiredAtMs": 958.938,
+      "releasedAtMs": 972.61,
+      "observedHoldMs": 13.672,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 3.795
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 4.601
+        }
+      ],
+      "status": "fulfilled"
+    },
+    {
+      "id": 11,
+      "attempts": 11,
+      "attemptStartMs": [
+        47.964,
+        68.693,
+        109.375,
+        190.795,
+        352.314,
+        553.766,
+        755.391,
+        956.881,
+        1159.188,
+        1362.558,
+        1564.621
+      ],
+      "acquiredAtMs": 1565.268,
+      "releasedAtMs": 1578.266,
+      "observedHoldMs": 12.998,
+      "syncs": [
+        {
+          "resource": "state-file",
+          "durationMs": 4.251
+        },
+        {
+          "resource": "state-directory",
+          "durationMs": 4.52
+        }
+      ],
+      "status": "fulfilled"
+    }
+  ],
+  "idleGaps": [
+    {
+      "previous": 0,
+      "next": 1,
+      "betweenReleaseCompletionAndNextAcquireMs": 11.506
+    },
+    {
+      "previous": 1,
+      "next": 4,
+      "betweenReleaseCompletionAndNextAcquireMs": 33.522
+    },
+    {
+      "previous": 4,
+      "next": 3,
+      "betweenReleaseCompletionAndNextAcquireMs": 72.907
+    },
+    {
+      "previous": 3,
+      "next": 9,
+      "betweenReleaseCompletionAndNextAcquireMs": 152.9
+    },
+    {
+      "previous": 9,
+      "next": 6,
+      "betweenReleaseCompletionAndNextAcquireMs": 189.461
+    },
+    {
+      "previous": 6,
+      "next": 8,
+      "betweenReleaseCompletionAndNextAcquireMs": 189.066
+    },
+    {
+      "previous": 8,
+      "next": 10,
+      "betweenReleaseCompletionAndNextAcquireMs": 193.643
+    },
+    {
+      "previous": 10,
+      "next": 7,
+      "betweenReleaseCompletionAndNextAcquireMs": 188.144
+    },
+    {
+      "previous": 7,
+      "next": 5,
+      "betweenReleaseCompletionAndNextAcquireMs": 184.752
+    },
+    {
+      "previous": 5,
+      "next": 11,
+      "betweenReleaseCompletionAndNextAcquireMs": 189.279
+    },
+    {
+      "previous": 11,
+      "next": 2,
+      "betweenReleaseCompletionAndNextAcquireMs": 188.378
+    }
+  ],
+  "integrityChecksPassed": true,
+  "events": [
+    {
+      "sequence": 0,
+      "id": 0,
+      "event": "update-start",
+      "atMs": 46.923
+    },
+    {
+      "sequence": 1,
+      "id": 1,
+      "event": "update-start",
+      "atMs": 47.07
+    },
+    {
+      "sequence": 2,
+      "id": 2,
+      "event": "update-start",
+      "atMs": 47.094
+    },
+    {
+      "sequence": 3,
+      "id": 3,
+      "event": "update-start",
+      "atMs": 47.186
+    },
+    {
+      "sequence": 4,
+      "id": 4,
+      "event": "update-start",
+      "atMs": 47.21
+    },
+    {
+      "sequence": 5,
+      "id": 5,
+      "event": "update-start",
+      "atMs": 47.229
+    },
+    {
+      "sequence": 6,
+      "id": 6,
+      "event": "update-start",
+      "atMs": 47.243
+    },
+    {
+      "sequence": 7,
+      "id": 7,
+      "event": "update-start",
+      "atMs": 47.257
+    },
+    {
+      "sequence": 8,
+      "id": 8,
+      "event": "update-start",
+      "atMs": 47.269
+    },
+    {
+      "sequence": 9,
+      "id": 9,
+      "event": "update-start",
+      "atMs": 47.34
+    },
+    {
+      "sequence": 10,
+      "id": 10,
+      "event": "update-start",
+      "atMs": 47.355
+    },
+    {
+      "sequence": 11,
+      "id": 11,
+      "event": "update-start",
+      "atMs": 47.367
+    },
+    {
+      "sequence": 12,
+      "id": 0,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 46.963,
+      "endMs": 47.431,
+      "durationMs": 0.469,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 13,
+      "id": 1,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.081,
+      "endMs": 47.465,
+      "durationMs": 0.384,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 14,
+      "id": 3,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.203,
+      "endMs": 47.493,
+      "durationMs": 0.291,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 15,
+      "id": 4,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.219,
+      "endMs": 47.542,
+      "durationMs": 0.323,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 16,
+      "id": 2,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.14,
+      "endMs": 47.555,
+      "durationMs": 0.416,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 17,
+      "id": 7,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.263,
+      "endMs": 47.566,
+      "durationMs": 0.303,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 18,
+      "id": 5,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.237,
+      "endMs": 47.576,
+      "durationMs": 0.339,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 19,
+      "id": 8,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.275,
+      "endMs": 47.585,
+      "durationMs": 0.31,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 20,
+      "id": 9,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.347,
+      "endMs": 47.594,
+      "durationMs": 0.247,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 21,
+      "id": 10,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.361,
+      "endMs": 47.603,
+      "durationMs": 0.242,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 22,
+      "id": 11,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.371,
+      "endMs": 47.614,
+      "durationMs": 0.243,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 23,
+      "id": 6,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 47.251,
+      "endMs": 47.622,
+      "durationMs": 0.371,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 24,
+      "id": 0,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.445,
+      "endMs": 47.67,
+      "durationMs": 0.225,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 25,
+      "id": 1,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.472,
+      "endMs": 47.695,
+      "durationMs": 0.222,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 26,
+      "id": 3,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.496,
+      "endMs": 47.712,
+      "durationMs": 0.216,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 27,
+      "id": 4,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.545,
+      "endMs": 47.727,
+      "durationMs": 0.183,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 28,
+      "id": 2,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.558,
+      "endMs": 47.773,
+      "durationMs": 0.215,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 29,
+      "id": 7,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.568,
+      "endMs": 47.831,
+      "durationMs": 0.264,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 30,
+      "id": 5,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.578,
+      "endMs": 47.851,
+      "durationMs": 0.274,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 31,
+      "id": 8,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.587,
+      "endMs": 47.867,
+      "durationMs": 0.281,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 32,
+      "id": 9,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.596,
+      "endMs": 47.93,
+      "durationMs": 0.334,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 33,
+      "id": 10,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.605,
+      "endMs": 47.947,
+      "durationMs": 0.343,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 34,
+      "id": 11,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.616,
+      "endMs": 47.961,
+      "durationMs": 0.346,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 35,
+      "id": 6,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 47.657,
+      "endMs": 47.976,
+      "durationMs": 0.32,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 36,
+      "id": 1,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.699,
+      "endMs": 48.039,
+      "durationMs": 0.341,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 37,
+      "id": 1,
+      "event": "timer-scheduled",
+      "atMs": 48.08,
+      "delayMs": 20
+    },
+    {
+      "sequence": 38,
+      "id": 3,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.716,
+      "endMs": 48.136,
+      "durationMs": 0.421,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 39,
+      "id": 3,
+      "event": "timer-scheduled",
+      "atMs": 48.141,
+      "delayMs": 20
+    },
+    {
+      "sequence": 40,
+      "id": 4,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.73,
+      "endMs": 48.212,
+      "durationMs": 0.482,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 41,
+      "id": 4,
+      "event": "timer-scheduled",
+      "atMs": 48.216,
+      "delayMs": 20
+    },
+    {
+      "sequence": 42,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.781,
+      "endMs": 48.229,
+      "durationMs": 0.449,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 43,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 48.233,
+      "delayMs": 20
+    },
+    {
+      "sequence": 44,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.834,
+      "endMs": 48.243,
+      "durationMs": 0.409,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 45,
+      "id": 7,
+      "event": "timer-scheduled",
+      "atMs": 48.247,
+      "delayMs": 20
+    },
+    {
+      "sequence": 46,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.854,
+      "endMs": 48.288,
+      "durationMs": 0.434,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 47,
+      "id": 5,
+      "event": "timer-scheduled",
+      "atMs": 48.292,
+      "delayMs": 20
+    },
+    {
+      "sequence": 48,
+      "id": 8,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.871,
+      "endMs": 48.307,
+      "durationMs": 0.436,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 49,
+      "id": 8,
+      "event": "timer-scheduled",
+      "atMs": 48.31,
+      "delayMs": 20
+    },
+    {
+      "sequence": 50,
+      "id": 9,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.935,
+      "endMs": 48.35,
+      "durationMs": 0.416,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 51,
+      "id": 9,
+      "event": "timer-scheduled",
+      "atMs": 48.354,
+      "delayMs": 20
+    },
+    {
+      "sequence": 52,
+      "id": 10,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.952,
+      "endMs": 48.367,
+      "durationMs": 0.415,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 53,
+      "id": 10,
+      "event": "timer-scheduled",
+      "atMs": 48.37,
+      "delayMs": 20
+    },
+    {
+      "sequence": 54,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.964,
+      "endMs": 48.418,
+      "durationMs": 0.454,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 55,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 48.423,
+      "delayMs": 20
+    },
+    {
+      "sequence": 56,
+      "id": 6,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.978,
+      "endMs": 48.441,
+      "durationMs": 0.463,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 57,
+      "id": 6,
+      "event": "timer-scheduled",
+      "atMs": 48.445,
+      "delayMs": 20
+    },
+    {
+      "sequence": 58,
+      "id": 0,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 47.676,
+      "endMs": 48.506,
+      "durationMs": 0.83,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 59,
+      "id": 0,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 48.513,
+      "endMs": 48.548,
+      "durationMs": 0.035,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 60,
+      "id": 0,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 48.56,
+      "endMs": 48.776,
+      "durationMs": 0.216,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 61,
+      "id": 0,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 48.797,
+      "endMs": 48.846,
+      "durationMs": 0.049,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 62,
+      "id": 0,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 48.853,
+      "endMs": 48.894,
+      "durationMs": 0.041,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 63,
+      "id": 0,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 48.909,
+      "endMs": 48.931,
+      "durationMs": 0.022,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 64,
+      "id": 0,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 48.939,
+      "endMs": 49.042,
+      "durationMs": 0.103,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 65,
+      "id": 0,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 49.045,
+      "endMs": 49.067,
+      "durationMs": 0.022,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 66,
+      "id": 0,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 49.07,
+      "endMs": 49.092,
+      "durationMs": 0.022,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 67,
+      "id": 0,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 49.1,
+      "endMs": 49.148,
+      "durationMs": 0.048,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 68,
+      "id": 0,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 49.15,
+      "endMs": 49.165,
+      "durationMs": 0.016,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 69,
+      "id": 0,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 49.169,
+      "endMs": 49.188,
+      "durationMs": 0.02,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 70,
+      "id": 0,
+      "event": "mutation-entered",
+      "atMs": 49.256
+    },
+    {
+      "sequence": 71,
+      "id": 0,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 49.275,
+      "endMs": 49.302,
+      "durationMs": 0.027,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 72,
+      "id": 0,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 49.325,
+      "endMs": 49.482,
+      "durationMs": 0.158,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 73,
+      "id": 0,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 49.485,
+      "endMs": 49.618,
+      "durationMs": 0.134,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 74,
+      "id": 0,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 49.624,
+      "endMs": 49.664,
+      "durationMs": 0.041,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 75,
+      "id": 0,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 49.67,
+      "endMs": 53.351,
+      "durationMs": 3.681,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 76,
+      "id": 0,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 53.357,
+      "endMs": 53.4,
+      "durationMs": 0.044,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 77,
+      "id": 0,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 53.403,
+      "endMs": 53.436,
+      "durationMs": 0.034,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 78,
+      "id": 0,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 53.479,
+      "endMs": 57.274,
+      "durationMs": 3.796,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 79,
+      "id": 0,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 57.28,
+      "endMs": 57.323,
+      "durationMs": 0.043,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 80,
+      "id": 0,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 57.338,
+      "endMs": 57.444,
+      "durationMs": 0.107,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 81,
+      "id": 0,
+      "event": "update-fulfilled",
+      "atMs": 57.448,
+      "reserved": 1
+    },
+    {
+      "sequence": 82,
+      "id": 1,
+      "event": "timer-fired",
+      "atMs": 68.548,
+      "delayMs": 20,
+      "actualDelayMs": 20.466
+    },
+    {
+      "sequence": 83,
+      "id": 3,
+      "event": "timer-fired",
+      "atMs": 68.572,
+      "delayMs": 20,
+      "actualDelayMs": 20.431
+    },
+    {
+      "sequence": 84,
+      "id": 4,
+      "event": "timer-fired",
+      "atMs": 68.583,
+      "delayMs": 20,
+      "actualDelayMs": 20.367
+    },
+    {
+      "sequence": 85,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 68.593,
+      "delayMs": 20,
+      "actualDelayMs": 20.359
+    },
+    {
+      "sequence": 86,
+      "id": 7,
+      "event": "timer-fired",
+      "atMs": 68.602,
+      "delayMs": 20,
+      "actualDelayMs": 20.355
+    },
+    {
+      "sequence": 87,
+      "id": 5,
+      "event": "timer-fired",
+      "atMs": 68.61,
+      "delayMs": 20,
+      "actualDelayMs": 20.318
+    },
+    {
+      "sequence": 88,
+      "id": 8,
+      "event": "timer-fired",
+      "atMs": 68.62,
+      "delayMs": 20,
+      "actualDelayMs": 20.31
+    },
+    {
+      "sequence": 89,
+      "id": 9,
+      "event": "timer-fired",
+      "atMs": 68.63,
+      "delayMs": 20,
+      "actualDelayMs": 20.275
+    },
+    {
+      "sequence": 90,
+      "id": 10,
+      "event": "timer-fired",
+      "atMs": 68.639,
+      "delayMs": 20,
+      "actualDelayMs": 20.268
+    },
+    {
+      "sequence": 91,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 68.649,
+      "delayMs": 20,
+      "actualDelayMs": 20.226
+    },
+    {
+      "sequence": 92,
+      "id": 6,
+      "event": "timer-fired",
+      "atMs": 68.701,
+      "delayMs": 20,
+      "actualDelayMs": 20.256
+    },
+    {
+      "sequence": 93,
+      "id": 4,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.585,
+      "endMs": 68.764,
+      "durationMs": 0.178,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 94,
+      "id": 4,
+      "event": "timer-scheduled",
+      "atMs": 68.77,
+      "delayMs": 40
+    },
+    {
+      "sequence": 95,
+      "id": 3,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.575,
+      "endMs": 68.79,
+      "durationMs": 0.215,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 96,
+      "id": 3,
+      "event": "timer-scheduled",
+      "atMs": 68.794,
+      "delayMs": 40
+    },
+    {
+      "sequence": 97,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.595,
+      "endMs": 68.803,
+      "durationMs": 0.209,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 98,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 68.807,
+      "delayMs": 40
+    },
+    {
+      "sequence": 99,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.604,
+      "endMs": 68.816,
+      "durationMs": 0.212,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 100,
+      "id": 7,
+      "event": "timer-scheduled",
+      "atMs": 68.822,
+      "delayMs": 40
+    },
+    {
+      "sequence": 101,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.612,
+      "endMs": 68.83,
+      "durationMs": 0.218,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 102,
+      "id": 5,
+      "event": "timer-scheduled",
+      "atMs": 68.833,
+      "delayMs": 40
+    },
+    {
+      "sequence": 103,
+      "id": 8,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.623,
+      "endMs": 68.854,
+      "durationMs": 0.232,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 104,
+      "id": 8,
+      "event": "timer-scheduled",
+      "atMs": 68.858,
+      "delayMs": 40
+    },
+    {
+      "sequence": 105,
+      "id": 9,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.632,
+      "endMs": 68.866,
+      "durationMs": 0.235,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 106,
+      "id": 9,
+      "event": "timer-scheduled",
+      "atMs": 68.87,
+      "delayMs": 40
+    },
+    {
+      "sequence": 107,
+      "id": 10,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.642,
+      "endMs": 68.878,
+      "durationMs": 0.237,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 108,
+      "id": 10,
+      "event": "timer-scheduled",
+      "atMs": 68.882,
+      "delayMs": 40
+    },
+    {
+      "sequence": 109,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.693,
+      "endMs": 68.89,
+      "durationMs": 0.198,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 110,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 68.895,
+      "delayMs": 40
+    },
+    {
+      "sequence": 111,
+      "id": 6,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.74,
+      "endMs": 68.904,
+      "durationMs": 0.163,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 112,
+      "id": 6,
+      "event": "timer-scheduled",
+      "atMs": 68.907,
+      "delayMs": 40
+    },
+    {
+      "sequence": 113,
+      "id": 1,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 68.559,
+      "endMs": 68.95,
+      "durationMs": 0.391,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 114,
+      "id": 1,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 68.962,
+      "endMs": 68.983,
+      "durationMs": 0.022,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 115,
+      "id": 1,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 68.988,
+      "endMs": 69.006,
+      "durationMs": 0.019,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 116,
+      "id": 1,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 69.011,
+      "endMs": 69.044,
+      "durationMs": 0.034,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 117,
+      "id": 1,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 69.051,
+      "endMs": 69.097,
+      "durationMs": 0.045,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 118,
+      "id": 1,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 69.101,
+      "endMs": 69.115,
+      "durationMs": 0.014,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 119,
+      "id": 1,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 69.12,
+      "endMs": 69.143,
+      "durationMs": 0.023,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 120,
+      "id": 1,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 69.146,
+      "endMs": 69.163,
+      "durationMs": 0.017,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 121,
+      "id": 1,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 69.164,
+      "endMs": 69.177,
+      "durationMs": 0.013,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 122,
+      "id": 1,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 69.183,
+      "endMs": 69.204,
+      "durationMs": 0.021,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 123,
+      "id": 1,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 69.206,
+      "endMs": 69.219,
+      "durationMs": 0.013,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 124,
+      "id": 1,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 69.222,
+      "endMs": 69.234,
+      "durationMs": 0.012,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 125,
+      "id": 1,
+      "event": "mutation-entered",
+      "atMs": 69.263
+    },
+    {
+      "sequence": 126,
+      "id": 1,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 69.282,
+      "endMs": 69.307,
+      "durationMs": 0.024,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 127,
+      "id": 1,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 69.319,
+      "endMs": 69.446,
+      "durationMs": 0.127,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 128,
+      "id": 1,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 69.448,
+      "endMs": 69.551,
+      "durationMs": 0.104,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 129,
+      "id": 1,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 69.555,
+      "endMs": 69.585,
+      "durationMs": 0.03,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 130,
+      "id": 1,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 69.588,
+      "endMs": 73.324,
+      "durationMs": 3.737,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 131,
+      "id": 1,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 73.33,
+      "endMs": 73.376,
+      "durationMs": 0.047,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 132,
+      "id": 1,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 73.379,
+      "endMs": 73.41,
+      "durationMs": 0.031,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 133,
+      "id": 1,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 73.414,
+      "endMs": 76.328,
+      "durationMs": 2.915,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 134,
+      "id": 1,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 76.332,
+      "endMs": 76.375,
+      "durationMs": 0.043,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 135,
+      "id": 1,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 76.395,
+      "endMs": 76.505,
+      "durationMs": 0.111,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 136,
+      "id": 1,
+      "event": "update-fulfilled",
+      "atMs": 76.508,
+      "reserved": 2
+    },
+    {
+      "sequence": 137,
+      "id": 4,
+      "event": "timer-fired",
+      "atMs": 109.215,
+      "delayMs": 40,
+      "actualDelayMs": 40.443
+    },
+    {
+      "sequence": 138,
+      "id": 3,
+      "event": "timer-fired",
+      "atMs": 109.247,
+      "delayMs": 40,
+      "actualDelayMs": 40.453
+    },
+    {
+      "sequence": 139,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 109.26,
+      "delayMs": 40,
+      "actualDelayMs": 40.452
+    },
+    {
+      "sequence": 140,
+      "id": 7,
+      "event": "timer-fired",
+      "atMs": 109.271,
+      "delayMs": 40,
+      "actualDelayMs": 40.451
+    },
+    {
+      "sequence": 141,
+      "id": 5,
+      "event": "timer-fired",
+      "atMs": 109.281,
+      "delayMs": 40,
+      "actualDelayMs": 40.448
+    },
+    {
+      "sequence": 142,
+      "id": 8,
+      "event": "timer-fired",
+      "atMs": 109.346,
+      "delayMs": 40,
+      "actualDelayMs": 40.488
+    },
+    {
+      "sequence": 143,
+      "id": 9,
+      "event": "timer-fired",
+      "atMs": 109.355,
+      "delayMs": 40,
+      "actualDelayMs": 40.485
+    },
+    {
+      "sequence": 144,
+      "id": 10,
+      "event": "timer-fired",
+      "atMs": 109.364,
+      "delayMs": 40,
+      "actualDelayMs": 40.482
+    },
+    {
+      "sequence": 145,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 109.372,
+      "delayMs": 40,
+      "actualDelayMs": 40.477
+    },
+    {
+      "sequence": 146,
+      "id": 6,
+      "event": "timer-fired",
+      "atMs": 109.382,
+      "delayMs": 40,
+      "actualDelayMs": 40.475
+    },
+    {
+      "sequence": 147,
+      "id": 3,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.251,
+      "endMs": 109.425,
+      "durationMs": 0.174,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 148,
+      "id": 3,
+      "event": "timer-scheduled",
+      "atMs": 109.432,
+      "delayMs": 80
+    },
+    {
+      "sequence": 149,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.262,
+      "endMs": 109.455,
+      "durationMs": 0.193,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 150,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 109.459,
+      "delayMs": 80
+    },
+    {
+      "sequence": 151,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.338,
+      "endMs": 109.49,
+      "durationMs": 0.152,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 152,
+      "id": 5,
+      "event": "timer-scheduled",
+      "atMs": 109.495,
+      "delayMs": 80
+    },
+    {
+      "sequence": 153,
+      "id": 8,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.348,
+      "endMs": 109.506,
+      "durationMs": 0.158,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 154,
+      "id": 8,
+      "event": "timer-scheduled",
+      "atMs": 109.574,
+      "delayMs": 80
+    },
+    {
+      "sequence": 155,
+      "id": 9,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.356,
+      "endMs": 109.593,
+      "durationMs": 0.236,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 156,
+      "id": 9,
+      "event": "timer-scheduled",
+      "atMs": 109.598,
+      "delayMs": 80
+    },
+    {
+      "sequence": 157,
+      "id": 10,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.365,
+      "endMs": 109.609,
+      "durationMs": 0.244,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 158,
+      "id": 10,
+      "event": "timer-scheduled",
+      "atMs": 109.614,
+      "delayMs": 80
+    },
+    {
+      "sequence": 159,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.273,
+      "endMs": 109.624,
+      "durationMs": 0.351,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 160,
+      "id": 7,
+      "event": "timer-scheduled",
+      "atMs": 109.635,
+      "delayMs": 80
+    },
+    {
+      "sequence": 161,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.375,
+      "endMs": 109.645,
+      "durationMs": 0.271,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 162,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 109.65,
+      "delayMs": 80
+    },
+    {
+      "sequence": 163,
+      "id": 6,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.391,
+      "endMs": 109.959,
+      "durationMs": 0.568,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 164,
+      "id": 6,
+      "event": "timer-scheduled",
+      "atMs": 109.967,
+      "delayMs": 80
+    },
+    {
+      "sequence": 165,
+      "id": 4,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 109.234,
+      "endMs": 110.027,
+      "durationMs": 0.793,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 166,
+      "id": 4,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 110.043,
+      "endMs": 110.069,
+      "durationMs": 0.027,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 167,
+      "id": 4,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 110.075,
+      "endMs": 110.102,
+      "durationMs": 0.027,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 168,
+      "id": 4,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 110.108,
+      "endMs": 110.154,
+      "durationMs": 0.047,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 169,
+      "id": 4,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 110.159,
+      "endMs": 110.183,
+      "durationMs": 0.024,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 170,
+      "id": 4,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 110.188,
+      "endMs": 110.22,
+      "durationMs": 0.032,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 171,
+      "id": 4,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 110.228,
+      "endMs": 110.252,
+      "durationMs": 0.024,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 172,
+      "id": 4,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 110.257,
+      "endMs": 110.277,
+      "durationMs": 0.02,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 173,
+      "id": 4,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 110.279,
+      "endMs": 110.293,
+      "durationMs": 0.014,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 174,
+      "id": 4,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 110.299,
+      "endMs": 110.32,
+      "durationMs": 0.021,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 175,
+      "id": 4,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 110.324,
+      "endMs": 110.348,
+      "durationMs": 0.024,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 176,
+      "id": 4,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 110.352,
+      "endMs": 110.369,
+      "durationMs": 0.017,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 177,
+      "id": 4,
+      "event": "mutation-entered",
+      "atMs": 110.519
+    },
+    {
+      "sequence": 178,
+      "id": 4,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 110.55,
+      "endMs": 110.58,
+      "durationMs": 0.03,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 179,
+      "id": 4,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 110.605,
+      "endMs": 110.773,
+      "durationMs": 0.168,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 180,
+      "id": 4,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 110.776,
+      "endMs": 110.929,
+      "durationMs": 0.153,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 181,
+      "id": 4,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 110.934,
+      "endMs": 110.982,
+      "durationMs": 0.048,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 182,
+      "id": 4,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 110.987,
+      "endMs": 114.338,
+      "durationMs": 3.351,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 183,
+      "id": 4,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 114.343,
+      "endMs": 114.384,
+      "durationMs": 0.041,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 184,
+      "id": 4,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 114.387,
+      "endMs": 114.423,
+      "durationMs": 0.036,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 185,
+      "id": 4,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 114.427,
+      "endMs": 118.305,
+      "durationMs": 3.878,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 186,
+      "id": 4,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 118.311,
+      "endMs": 118.335,
+      "durationMs": 0.025,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 187,
+      "id": 4,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 118.356,
+      "endMs": 118.52,
+      "durationMs": 0.164,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 188,
+      "id": 4,
+      "event": "update-fulfilled",
+      "atMs": 118.524,
+      "reserved": 3
+    },
+    {
+      "sequence": 189,
+      "id": 3,
+      "event": "timer-fired",
+      "atMs": 190.609,
+      "delayMs": 80,
+      "actualDelayMs": 81.167
+    },
+    {
+      "sequence": 190,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 190.679,
+      "delayMs": 80,
+      "actualDelayMs": 81.218
+    },
+    {
+      "sequence": 191,
+      "id": 5,
+      "event": "timer-fired",
+      "atMs": 190.697,
+      "delayMs": 80,
+      "actualDelayMs": 81.202
+    },
+    {
+      "sequence": 192,
+      "id": 8,
+      "event": "timer-fired",
+      "atMs": 190.713,
+      "delayMs": 80,
+      "actualDelayMs": 81.138
+    },
+    {
+      "sequence": 193,
+      "id": 9,
+      "event": "timer-fired",
+      "atMs": 190.728,
+      "delayMs": 80,
+      "actualDelayMs": 81.129
+    },
+    {
+      "sequence": 194,
+      "id": 10,
+      "event": "timer-fired",
+      "atMs": 190.74,
+      "delayMs": 80,
+      "actualDelayMs": 81.126
+    },
+    {
+      "sequence": 195,
+      "id": 7,
+      "event": "timer-fired",
+      "atMs": 190.752,
+      "delayMs": 80,
+      "actualDelayMs": 81.117
+    },
+    {
+      "sequence": 196,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 190.793,
+      "delayMs": 80,
+      "actualDelayMs": 81.142
+    },
+    {
+      "sequence": 197,
+      "id": 6,
+      "event": "timer-fired",
+      "atMs": 190.805,
+      "delayMs": 80,
+      "actualDelayMs": 80.838
+    },
+    {
+      "sequence": 198,
+      "id": 8,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 190.716,
+      "endMs": 190.873,
+      "durationMs": 0.157,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 199,
+      "id": 8,
+      "event": "timer-scheduled",
+      "atMs": 190.886,
+      "delayMs": 160
+    },
+    {
+      "sequence": 200,
+      "id": 9,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 190.731,
+      "endMs": 190.924,
+      "durationMs": 0.194,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 201,
+      "id": 9,
+      "event": "timer-scheduled",
+      "atMs": 190.933,
+      "delayMs": 160
+    },
+    {
+      "sequence": 202,
+      "id": 10,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 190.743,
+      "endMs": 190.955,
+      "durationMs": 0.212,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 203,
+      "id": 10,
+      "event": "timer-scheduled",
+      "atMs": 190.963,
+      "delayMs": 160
+    },
+    {
+      "sequence": 204,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 190.7,
+      "endMs": 190.983,
+      "durationMs": 0.283,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 205,
+      "id": 5,
+      "event": "timer-scheduled",
+      "atMs": 190.991,
+      "delayMs": 160
+    },
+    {
+      "sequence": 206,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 190.755,
+      "endMs": 191.007,
+      "durationMs": 0.253,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 207,
+      "id": 7,
+      "event": "timer-scheduled",
+      "atMs": 191.015,
+      "delayMs": 160
+    },
+    {
+      "sequence": 208,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 190.795,
+      "endMs": 191.031,
+      "durationMs": 0.236,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 209,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 191.039,
+      "delayMs": 160
+    },
+    {
+      "sequence": 210,
+      "id": 6,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 190.817,
+      "endMs": 191.055,
+      "durationMs": 0.238,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 211,
+      "id": 6,
+      "event": "timer-scheduled",
+      "atMs": 191.062,
+      "delayMs": 160
+    },
+    {
+      "sequence": 212,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 190.682,
+      "endMs": 191.077,
+      "durationMs": 0.395,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 213,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 191.084,
+      "delayMs": 160
+    },
+    {
+      "sequence": 214,
+      "id": 3,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 190.632,
+      "endMs": 191.427,
+      "durationMs": 0.796,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 215,
+      "id": 3,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 191.474,
+      "endMs": 191.528,
+      "durationMs": 0.055,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 216,
+      "id": 3,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 191.542,
+      "endMs": 191.577,
+      "durationMs": 0.035,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 217,
+      "id": 3,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 191.587,
+      "endMs": 191.668,
+      "durationMs": 0.082,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 218,
+      "id": 3,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 191.679,
+      "endMs": 191.722,
+      "durationMs": 0.043,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 219,
+      "id": 3,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 191.73,
+      "endMs": 191.793,
+      "durationMs": 0.064,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 220,
+      "id": 3,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 191.806,
+      "endMs": 191.847,
+      "durationMs": 0.042,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 221,
+      "id": 3,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 191.851,
+      "endMs": 191.896,
+      "durationMs": 0.046,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 222,
+      "id": 3,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 191.904,
+      "endMs": 191.942,
+      "durationMs": 0.039,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 223,
+      "id": 3,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 191.952,
+      "endMs": 191.987,
+      "durationMs": 0.035,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 224,
+      "id": 3,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 191.993,
+      "endMs": 192.048,
+      "durationMs": 0.057,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 225,
+      "id": 3,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 192.063,
+      "endMs": 192.123,
+      "durationMs": 0.06,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 226,
+      "id": 3,
+      "event": "mutation-entered",
+      "atMs": 192.249
+    },
+    {
+      "sequence": 227,
+      "id": 3,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 192.299,
+      "endMs": 192.355,
+      "durationMs": 0.056,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 228,
+      "id": 3,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 192.42,
+      "endMs": 192.783,
+      "durationMs": 0.363,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 229,
+      "id": 3,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 192.789,
+      "endMs": 193.081,
+      "durationMs": 0.293,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 230,
+      "id": 3,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 193.091,
+      "endMs": 193.161,
+      "durationMs": 0.07,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 231,
+      "id": 3,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 193.168,
+      "endMs": 197.137,
+      "durationMs": 3.97,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 232,
+      "id": 3,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 197.143,
+      "endMs": 197.181,
+      "durationMs": 0.039,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 233,
+      "id": 3,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 197.188,
+      "endMs": 197.249,
+      "durationMs": 0.061,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 234,
+      "id": 3,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 197.256,
+      "endMs": 200.352,
+      "durationMs": 3.097,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 235,
+      "id": 3,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 200.356,
+      "endMs": 200.395,
+      "durationMs": 0.039,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 236,
+      "id": 3,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 200.571,
+      "endMs": 200.833,
+      "durationMs": 0.263,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 237,
+      "id": 3,
+      "event": "update-fulfilled",
+      "atMs": 200.842,
+      "reserved": 4
+    },
+    {
+      "sequence": 238,
+      "id": 8,
+      "event": "timer-fired",
+      "atMs": 352.004,
+      "delayMs": 160,
+      "actualDelayMs": 161.099
+    },
+    {
+      "sequence": 239,
+      "id": 9,
+      "event": "timer-fired",
+      "atMs": 352.174,
+      "delayMs": 160,
+      "actualDelayMs": 161.24
+    },
+    {
+      "sequence": 240,
+      "id": 10,
+      "event": "timer-fired",
+      "atMs": 352.251,
+      "delayMs": 160,
+      "actualDelayMs": 161.287
+    },
+    {
+      "sequence": 241,
+      "id": 5,
+      "event": "timer-fired",
+      "atMs": 352.275,
+      "delayMs": 160,
+      "actualDelayMs": 161.284
+    },
+    {
+      "sequence": 242,
+      "id": 7,
+      "event": "timer-fired",
+      "atMs": 352.295,
+      "delayMs": 160,
+      "actualDelayMs": 161.279
+    },
+    {
+      "sequence": 243,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 352.31,
+      "delayMs": 160,
+      "actualDelayMs": 161.271
+    },
+    {
+      "sequence": 244,
+      "id": 6,
+      "event": "timer-fired",
+      "atMs": 352.326,
+      "delayMs": 160,
+      "actualDelayMs": 161.263
+    },
+    {
+      "sequence": 245,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 352.341,
+      "delayMs": 160,
+      "actualDelayMs": 161.256
+    },
+    {
+      "sequence": 246,
+      "id": 8,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 352.064,
+      "endMs": 352.61,
+      "durationMs": 0.549,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 247,
+      "id": 8,
+      "event": "timer-scheduled",
+      "atMs": 352.656,
+      "delayMs": 200
+    },
+    {
+      "sequence": 248,
+      "id": 10,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 352.256,
+      "endMs": 352.786,
+      "durationMs": 0.531,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 249,
+      "id": 10,
+      "event": "timer-scheduled",
+      "atMs": 352.809,
+      "delayMs": 200
+    },
+    {
+      "sequence": 250,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 352.299,
+      "endMs": 352.876,
+      "durationMs": 0.579,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 251,
+      "id": 7,
+      "event": "timer-scheduled",
+      "atMs": 352.897,
+      "delayMs": 200
+    },
+    {
+      "sequence": 252,
+      "id": 6,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 352.33,
+      "endMs": 352.955,
+      "durationMs": 0.626,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 253,
+      "id": 6,
+      "event": "timer-scheduled",
+      "atMs": 352.975,
+      "delayMs": 200
+    },
+    {
+      "sequence": 254,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 352.314,
+      "endMs": 353.031,
+      "durationMs": 0.718,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 255,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 353.051,
+      "delayMs": 200
+    },
+    {
+      "sequence": 256,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 352.28,
+      "endMs": 353.108,
+      "durationMs": 0.829,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 257,
+      "id": 5,
+      "event": "timer-scheduled",
+      "atMs": 353.128,
+      "delayMs": 200
+    },
+    {
+      "sequence": 258,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 352.36,
+      "endMs": 353.187,
+      "durationMs": 0.828,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 259,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 353.207,
+      "delayMs": 200
+    },
+    {
+      "sequence": 260,
+      "id": 9,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 352.179,
+      "endMs": 353.733,
+      "durationMs": 1.556,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 261,
+      "id": 9,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 353.818,
+      "endMs": 353.891,
+      "durationMs": 0.073,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 262,
+      "id": 9,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 353.92,
+      "endMs": 354.009,
+      "durationMs": 0.09,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 263,
+      "id": 9,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 354.029,
+      "endMs": 354.138,
+      "durationMs": 0.11,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 264,
+      "id": 9,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 354.167,
+      "endMs": 354.213,
+      "durationMs": 0.047,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 265,
+      "id": 9,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 354.221,
+      "endMs": 354.255,
+      "durationMs": 0.034,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 266,
+      "id": 9,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 354.276,
+      "endMs": 354.493,
+      "durationMs": 0.217,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 267,
+      "id": 9,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 354.498,
+      "endMs": 354.54,
+      "durationMs": 0.043,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 268,
+      "id": 9,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 354.547,
+      "endMs": 354.579,
+      "durationMs": 0.032,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 269,
+      "id": 9,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 354.598,
+      "endMs": 354.623,
+      "durationMs": 0.026,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 270,
+      "id": 9,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 354.629,
+      "endMs": 354.663,
+      "durationMs": 0.034,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 271,
+      "id": 9,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 354.67,
+      "endMs": 354.702,
+      "durationMs": 0.032,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 272,
+      "id": 9,
+      "event": "mutation-entered",
+      "atMs": 354.806
+    },
+    {
+      "sequence": 273,
+      "id": 9,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 354.849,
+      "endMs": 354.902,
+      "durationMs": 0.053,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 274,
+      "id": 9,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 354.96,
+      "endMs": 355.259,
+      "durationMs": 0.299,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 275,
+      "id": 9,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 355.265,
+      "endMs": 355.566,
+      "durationMs": 0.301,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 276,
+      "id": 9,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 355.58,
+      "endMs": 355.732,
+      "durationMs": 0.153,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 277,
+      "id": 9,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 355.741,
+      "endMs": 359.938,
+      "durationMs": 4.198,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 278,
+      "id": 9,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 359.963,
+      "endMs": 360.036,
+      "durationMs": 0.073,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 279,
+      "id": 9,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 360.057,
+      "endMs": 360.236,
+      "durationMs": 0.18,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 280,
+      "id": 9,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 360.25,
+      "endMs": 364.657,
+      "durationMs": 4.408,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 281,
+      "id": 9,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 364.674,
+      "endMs": 364.735,
+      "durationMs": 0.061,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 282,
+      "id": 9,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 364.866,
+      "endMs": 365.311,
+      "durationMs": 0.445,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 283,
+      "id": 9,
+      "event": "update-fulfilled",
+      "atMs": 365.336,
+      "reserved": 5
+    },
+    {
+      "sequence": 284,
+      "id": 8,
+      "event": "timer-fired",
+      "atMs": 553.513,
+      "delayMs": 200,
+      "actualDelayMs": 200.842
+    },
+    {
+      "sequence": 285,
+      "id": 10,
+      "event": "timer-fired",
+      "atMs": 553.687,
+      "delayMs": 200,
+      "actualDelayMs": 200.876
+    },
+    {
+      "sequence": 286,
+      "id": 7,
+      "event": "timer-fired",
+      "atMs": 553.723,
+      "delayMs": 200,
+      "actualDelayMs": 200.825
+    },
+    {
+      "sequence": 287,
+      "id": 6,
+      "event": "timer-fired",
+      "atMs": 553.744,
+      "delayMs": 200,
+      "actualDelayMs": 200.768
+    },
+    {
+      "sequence": 288,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 553.763,
+      "delayMs": 200,
+      "actualDelayMs": 200.711
+    },
+    {
+      "sequence": 289,
+      "id": 5,
+      "event": "timer-fired",
+      "atMs": 553.781,
+      "delayMs": 200,
+      "actualDelayMs": 200.653
+    },
+    {
+      "sequence": 290,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 553.795,
+      "delayMs": 200,
+      "actualDelayMs": 200.587
+    },
+    {
+      "sequence": 291,
+      "id": 8,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 553.572,
+      "endMs": 554.053,
+      "durationMs": 0.482,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 292,
+      "id": 8,
+      "event": "timer-scheduled",
+      "atMs": 554.074,
+      "delayMs": 200
+    },
+    {
+      "sequence": 293,
+      "id": 10,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 553.694,
+      "endMs": 554.145,
+      "durationMs": 0.451,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 294,
+      "id": 10,
+      "event": "timer-scheduled",
+      "atMs": 554.151,
+      "delayMs": 200
+    },
+    {
+      "sequence": 295,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 553.785,
+      "endMs": 554.175,
+      "durationMs": 0.39,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 296,
+      "id": 5,
+      "event": "timer-scheduled",
+      "atMs": 554.181,
+      "delayMs": 200
+    },
+    {
+      "sequence": 297,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 553.728,
+      "endMs": 554.2,
+      "durationMs": 0.472,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 298,
+      "id": 7,
+      "event": "timer-scheduled",
+      "atMs": 554.21,
+      "delayMs": 200
+    },
+    {
+      "sequence": 299,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 553.766,
+      "endMs": 554.228,
+      "durationMs": 0.462,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 300,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 554.234,
+      "delayMs": 200
+    },
+    {
+      "sequence": 301,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 553.822,
+      "endMs": 554.255,
+      "durationMs": 0.434,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 302,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 554.261,
+      "delayMs": 200
+    },
+    {
+      "sequence": 303,
+      "id": 6,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 553.748,
+      "endMs": 554.772,
+      "durationMs": 1.025,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 304,
+      "id": 6,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 554.85,
+      "endMs": 554.917,
+      "durationMs": 0.067,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 305,
+      "id": 6,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 554.93,
+      "endMs": 554.963,
+      "durationMs": 0.033,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 306,
+      "id": 6,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 554.977,
+      "endMs": 555.091,
+      "durationMs": 0.115,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 307,
+      "id": 6,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 555.113,
+      "endMs": 555.158,
+      "durationMs": 0.045,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 308,
+      "id": 6,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 555.166,
+      "endMs": 555.197,
+      "durationMs": 0.031,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 309,
+      "id": 6,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 555.221,
+      "endMs": 555.261,
+      "durationMs": 0.04,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 310,
+      "id": 6,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 555.265,
+      "endMs": 555.286,
+      "durationMs": 0.021,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 311,
+      "id": 6,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 555.294,
+      "endMs": 555.324,
+      "durationMs": 0.031,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 312,
+      "id": 6,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 555.342,
+      "endMs": 555.368,
+      "durationMs": 0.026,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 313,
+      "id": 6,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 555.373,
+      "endMs": 555.403,
+      "durationMs": 0.03,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 314,
+      "id": 6,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 555.41,
+      "endMs": 555.437,
+      "durationMs": 0.028,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 315,
+      "id": 6,
+      "event": "mutation-entered",
+      "atMs": 555.534
+    },
+    {
+      "sequence": 316,
+      "id": 6,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 555.58,
+      "endMs": 555.631,
+      "durationMs": 0.051,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 317,
+      "id": 6,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 555.693,
+      "endMs": 556.024,
+      "durationMs": 0.331,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 318,
+      "id": 6,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 556.029,
+      "endMs": 556.323,
+      "durationMs": 0.294,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 319,
+      "id": 6,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 556.333,
+      "endMs": 556.403,
+      "durationMs": 0.071,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 320,
+      "id": 6,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 556.423,
+      "endMs": 560.729,
+      "durationMs": 4.308,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 321,
+      "id": 6,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 560.752,
+      "endMs": 560.854,
+      "durationMs": 0.104,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 322,
+      "id": 6,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 560.877,
+      "endMs": 561.116,
+      "durationMs": 0.24,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 323,
+      "id": 6,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 561.142,
+      "endMs": 565.901,
+      "durationMs": 4.761,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 324,
+      "id": 6,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 565.929,
+      "endMs": 566.016,
+      "durationMs": 0.088,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 325,
+      "id": 6,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 566.158,
+      "endMs": 566.999,
+      "durationMs": 0.843,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 326,
+      "id": 6,
+      "event": "update-fulfilled",
+      "atMs": 567.029,
+      "reserved": 6
+    },
+    {
+      "sequence": 327,
+      "id": 8,
+      "event": "timer-fired",
+      "atMs": 755.178,
+      "delayMs": 200,
+      "actualDelayMs": 201.088
+    },
+    {
+      "sequence": 328,
+      "id": 10,
+      "event": "timer-fired",
+      "atMs": 755.328,
+      "delayMs": 200,
+      "actualDelayMs": 201.174
+    },
+    {
+      "sequence": 329,
+      "id": 5,
+      "event": "timer-fired",
+      "atMs": 755.353,
+      "delayMs": 200,
+      "actualDelayMs": 201.171
+    },
+    {
+      "sequence": 330,
+      "id": 7,
+      "event": "timer-fired",
+      "atMs": 755.369,
+      "delayMs": 200,
+      "actualDelayMs": 201.159
+    },
+    {
+      "sequence": 331,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 755.387,
+      "delayMs": 200,
+      "actualDelayMs": 201.152
+    },
+    {
+      "sequence": 332,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 755.4,
+      "delayMs": 200,
+      "actualDelayMs": 201.138
+    },
+    {
+      "sequence": 333,
+      "id": 10,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 755.334,
+      "endMs": 755.566,
+      "durationMs": 0.233,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 334,
+      "id": 10,
+      "event": "timer-scheduled",
+      "atMs": 755.586,
+      "delayMs": 200
+    },
+    {
+      "sequence": 335,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 755.373,
+      "endMs": 755.642,
+      "durationMs": 0.27,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 336,
+      "id": 7,
+      "event": "timer-scheduled",
+      "atMs": 755.649,
+      "delayMs": 200
+    },
+    {
+      "sequence": 337,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 755.356,
+      "endMs": 755.701,
+      "durationMs": 0.346,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 338,
+      "id": 5,
+      "event": "timer-scheduled",
+      "atMs": 755.713,
+      "delayMs": 200
+    },
+    {
+      "sequence": 339,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 755.391,
+      "endMs": 755.747,
+      "durationMs": 0.357,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 340,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 755.755,
+      "delayMs": 200
+    },
+    {
+      "sequence": 341,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 755.417,
+      "endMs": 755.794,
+      "durationMs": 0.377,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 342,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 755.801,
+      "delayMs": 200
+    },
+    {
+      "sequence": 343,
+      "id": 8,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 755.229,
+      "endMs": 756.065,
+      "durationMs": 0.836,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 344,
+      "id": 8,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 756.12,
+      "endMs": 756.169,
+      "durationMs": 0.05,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 345,
+      "id": 8,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 756.182,
+      "endMs": 756.213,
+      "durationMs": 0.032,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 346,
+      "id": 8,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 756.223,
+      "endMs": 756.315,
+      "durationMs": 0.093,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 347,
+      "id": 8,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 756.332,
+      "endMs": 756.373,
+      "durationMs": 0.042,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 348,
+      "id": 8,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 756.38,
+      "endMs": 756.41,
+      "durationMs": 0.03,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 349,
+      "id": 8,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 756.431,
+      "endMs": 756.468,
+      "durationMs": 0.037,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 350,
+      "id": 8,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 756.473,
+      "endMs": 756.5,
+      "durationMs": 0.028,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 351,
+      "id": 8,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 756.505,
+      "endMs": 756.532,
+      "durationMs": 0.027,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 352,
+      "id": 8,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 756.547,
+      "endMs": 756.578,
+      "durationMs": 0.031,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 353,
+      "id": 8,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 756.582,
+      "endMs": 756.613,
+      "durationMs": 0.031,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 354,
+      "id": 8,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 756.629,
+      "endMs": 756.662,
+      "durationMs": 0.034,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 355,
+      "id": 8,
+      "event": "mutation-entered",
+      "atMs": 756.746
+    },
+    {
+      "sequence": 356,
+      "id": 8,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 756.783,
+      "endMs": 756.831,
+      "durationMs": 0.048,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 357,
+      "id": 8,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 756.987,
+      "endMs": 757.308,
+      "durationMs": 0.321,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 358,
+      "id": 8,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 757.316,
+      "endMs": 757.556,
+      "durationMs": 0.241,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 359,
+      "id": 8,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 757.571,
+      "endMs": 757.647,
+      "durationMs": 0.076,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 360,
+      "id": 8,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 757.655,
+      "endMs": 760.907,
+      "durationMs": 3.252,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 361,
+      "id": 8,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 760.925,
+      "endMs": 760.977,
+      "durationMs": 0.053,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 362,
+      "id": 8,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 760.994,
+      "endMs": 761.177,
+      "durationMs": 0.184,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 363,
+      "id": 8,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 761.196,
+      "endMs": 764.783,
+      "durationMs": 3.588,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 364,
+      "id": 8,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 764.8,
+      "endMs": 764.84,
+      "durationMs": 0.047,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 365,
+      "id": 8,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 764.914,
+      "endMs": 765.295,
+      "durationMs": 0.381,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 366,
+      "id": 8,
+      "event": "update-fulfilled",
+      "atMs": 765.309,
+      "reserved": 7
+    },
+    {
+      "sequence": 367,
+      "id": 10,
+      "event": "timer-fired",
+      "atMs": 956.494,
+      "delayMs": 200,
+      "actualDelayMs": 200.88
+    },
+    {
+      "sequence": 368,
+      "id": 7,
+      "event": "timer-fired",
+      "atMs": 956.75,
+      "delayMs": 200,
+      "actualDelayMs": 201.077
+    },
+    {
+      "sequence": 369,
+      "id": 5,
+      "event": "timer-fired",
+      "atMs": 956.813,
+      "delayMs": 200,
+      "actualDelayMs": 201.098
+    },
+    {
+      "sequence": 370,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 956.856,
+      "delayMs": 200,
+      "actualDelayMs": 201.099
+    },
+    {
+      "sequence": 371,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 956.928,
+      "delayMs": 200,
+      "actualDelayMs": 201.125
+    },
+    {
+      "sequence": 372,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 956.771,
+      "endMs": 957.864,
+      "durationMs": 1.095,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 373,
+      "id": 7,
+      "event": "timer-scheduled",
+      "atMs": 957.905,
+      "delayMs": 200
+    },
+    {
+      "sequence": 374,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 956.823,
+      "endMs": 958.026,
+      "durationMs": 1.205,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 375,
+      "id": 5,
+      "event": "timer-scheduled",
+      "atMs": 958.046,
+      "delayMs": 200
+    },
+    {
+      "sequence": 376,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 956.96,
+      "endMs": 958.1,
+      "durationMs": 1.141,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 377,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 958.118,
+      "delayMs": 200
+    },
+    {
+      "sequence": 378,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 956.881,
+      "endMs": 958.172,
+      "durationMs": 1.291,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 379,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 958.218,
+      "delayMs": 200
+    },
+    {
+      "sequence": 380,
+      "id": 10,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 956.57,
+      "endMs": 958.938,
+      "durationMs": 2.371,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 381,
+      "id": 10,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 959.078,
+      "endMs": 959.211,
+      "durationMs": 0.135,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 382,
+      "id": 10,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 959.243,
+      "endMs": 959.357,
+      "durationMs": 0.116,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 383,
+      "id": 10,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 959.381,
+      "endMs": 959.586,
+      "durationMs": 0.206,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 384,
+      "id": 10,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 959.621,
+      "endMs": 959.695,
+      "durationMs": 0.076,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 385,
+      "id": 10,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 959.725,
+      "endMs": 959.803,
+      "durationMs": 0.079,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 386,
+      "id": 10,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 959.835,
+      "endMs": 959.939,
+      "durationMs": 0.105,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 387,
+      "id": 10,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 959.959,
+      "endMs": 960.015,
+      "durationMs": 0.057,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 388,
+      "id": 10,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 960.032,
+      "endMs": 960.1,
+      "durationMs": 0.069,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 389,
+      "id": 10,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 960.182,
+      "endMs": 960.252,
+      "durationMs": 0.071,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 390,
+      "id": 10,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 960.269,
+      "endMs": 960.347,
+      "durationMs": 0.079,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 391,
+      "id": 10,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 960.36,
+      "endMs": 960.414,
+      "durationMs": 0.055,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 392,
+      "id": 10,
+      "event": "mutation-entered",
+      "atMs": 960.93
+    },
+    {
+      "sequence": 393,
+      "id": 10,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 961.006,
+      "endMs": 961.11,
+      "durationMs": 0.106,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 394,
+      "id": 10,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 961.207,
+      "endMs": 961.856,
+      "durationMs": 0.651,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 395,
+      "id": 10,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 961.869,
+      "endMs": 962.453,
+      "durationMs": 0.585,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 396,
+      "id": 10,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 962.475,
+      "endMs": 962.646,
+      "durationMs": 0.173,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 397,
+      "id": 10,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 962.668,
+      "endMs": 966.462,
+      "durationMs": 3.795,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 398,
+      "id": 10,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 966.491,
+      "endMs": 966.565,
+      "durationMs": 0.075,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 399,
+      "id": 10,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 966.59,
+      "endMs": 966.837,
+      "durationMs": 0.248,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 400,
+      "id": 10,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 966.858,
+      "endMs": 971.457,
+      "durationMs": 4.601,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 401,
+      "id": 10,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 971.476,
+      "endMs": 971.536,
+      "durationMs": 0.06,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 402,
+      "id": 10,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 971.854,
+      "endMs": 972.61,
+      "durationMs": 0.758,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 403,
+      "id": 10,
+      "event": "update-fulfilled",
+      "atMs": 972.633,
+      "reserved": 8
+    },
+    {
+      "sequence": 404,
+      "id": 7,
+      "event": "timer-fired",
+      "atMs": 1158.802,
+      "delayMs": 200,
+      "actualDelayMs": 200.878
+    },
+    {
+      "sequence": 405,
+      "id": 5,
+      "event": "timer-fired",
+      "atMs": 1159.001,
+      "delayMs": 200,
+      "actualDelayMs": 200.953
+    },
+    {
+      "sequence": 406,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 1159.036,
+      "delayMs": 200,
+      "actualDelayMs": 200.918
+    },
+    {
+      "sequence": 407,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 1159.057,
+      "delayMs": 200,
+      "actualDelayMs": 200.838
+    },
+    {
+      "sequence": 408,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1159.012,
+      "endMs": 1160.077,
+      "durationMs": 1.066,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 409,
+      "id": 5,
+      "event": "timer-scheduled",
+      "atMs": 1160.106,
+      "delayMs": 200
+    },
+    {
+      "sequence": 410,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1159.041,
+      "endMs": 1160.217,
+      "durationMs": 1.177,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 411,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 1160.225,
+      "delayMs": 200
+    },
+    {
+      "sequence": 412,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1159.188,
+      "endMs": 1160.254,
+      "durationMs": 1.066,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 413,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 1160.26,
+      "delayMs": 200
+    },
+    {
+      "sequence": 414,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1158.866,
+      "endMs": 1160.754,
+      "durationMs": 1.889,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 415,
+      "id": 7,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 1160.868,
+      "endMs": 1161.081,
+      "durationMs": 0.214,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 416,
+      "id": 7,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1161.099,
+      "endMs": 1161.148,
+      "durationMs": 0.05,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 417,
+      "id": 7,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 1161.169,
+      "endMs": 1161.299,
+      "durationMs": 0.131,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 418,
+      "id": 7,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 1161.318,
+      "endMs": 1161.359,
+      "durationMs": 0.042,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 419,
+      "id": 7,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1161.366,
+      "endMs": 1161.395,
+      "durationMs": 0.03,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 420,
+      "id": 7,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 1161.424,
+      "endMs": 1161.496,
+      "durationMs": 0.073,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 421,
+      "id": 7,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 1161.501,
+      "endMs": 1161.577,
+      "durationMs": 0.076,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 422,
+      "id": 7,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 1161.582,
+      "endMs": 1161.614,
+      "durationMs": 0.033,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 423,
+      "id": 7,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 1161.638,
+      "endMs": 1161.674,
+      "durationMs": 0.037,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 424,
+      "id": 7,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 1161.681,
+      "endMs": 1161.715,
+      "durationMs": 0.035,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 425,
+      "id": 7,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1161.725,
+      "endMs": 1161.758,
+      "durationMs": 0.034,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 426,
+      "id": 7,
+      "event": "mutation-entered",
+      "atMs": 1161.866
+    },
+    {
+      "sequence": 427,
+      "id": 7,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 1161.978,
+      "endMs": 1162.031,
+      "durationMs": 0.053,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 428,
+      "id": 7,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 1162.097,
+      "endMs": 1162.479,
+      "durationMs": 0.383,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 429,
+      "id": 7,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 1162.487,
+      "endMs": 1162.838,
+      "durationMs": 0.352,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 430,
+      "id": 7,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 1162.861,
+      "endMs": 1166.479,
+      "durationMs": 3.619,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 431,
+      "id": 7,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 1166.515,
+      "endMs": 1174.026,
+      "durationMs": 7.512,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 432,
+      "id": 7,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 1174.07,
+      "endMs": 1174.196,
+      "durationMs": 0.126,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 433,
+      "id": 7,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 1174.218,
+      "endMs": 1175.209,
+      "durationMs": 0.992,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 434,
+      "id": 7,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 1175.24,
+      "endMs": 1177.838,
+      "durationMs": 2.598,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 435,
+      "id": 7,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 1177.86,
+      "endMs": 1177.969,
+      "durationMs": 0.109,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 436,
+      "id": 7,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 1178.17,
+      "endMs": 1178.779,
+      "durationMs": 0.61,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 437,
+      "id": 7,
+      "event": "update-fulfilled",
+      "atMs": 1178.807,
+      "reserved": 9
+    },
+    {
+      "sequence": 438,
+      "id": 5,
+      "event": "timer-fired",
+      "atMs": 1361.974,
+      "delayMs": 200,
+      "actualDelayMs": 201.844
+    },
+    {
+      "sequence": 439,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 1362.196,
+      "delayMs": 200,
+      "actualDelayMs": 201.967
+    },
+    {
+      "sequence": 440,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 1362.239,
+      "delayMs": 200,
+      "actualDelayMs": 201.977
+    },
+    {
+      "sequence": 441,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1362.207,
+      "endMs": 1362.832,
+      "durationMs": 0.628,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 442,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 1362.873,
+      "delayMs": 200
+    },
+    {
+      "sequence": 443,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1362.558,
+      "endMs": 1363.025,
+      "durationMs": 0.468,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 444,
+      "id": 11,
+      "event": "timer-scheduled",
+      "atMs": 1363.045,
+      "delayMs": 200
+    },
+    {
+      "sequence": 445,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1362.057,
+      "endMs": 1363.531,
+      "durationMs": 1.474,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 446,
+      "id": 5,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 1363.68,
+      "endMs": 1363.758,
+      "durationMs": 0.079,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 447,
+      "id": 5,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1363.781,
+      "endMs": 1363.835,
+      "durationMs": 0.055,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 448,
+      "id": 5,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 1363.852,
+      "endMs": 1364.008,
+      "durationMs": 0.157,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 449,
+      "id": 5,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 1364.026,
+      "endMs": 1364.067,
+      "durationMs": 0.042,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 450,
+      "id": 5,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1364.074,
+      "endMs": 1364.103,
+      "durationMs": 0.029,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 451,
+      "id": 5,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 1364.115,
+      "endMs": 1364.154,
+      "durationMs": 0.039,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 452,
+      "id": 5,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 1364.156,
+      "endMs": 1364.181,
+      "durationMs": 0.025,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 453,
+      "id": 5,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 1364.186,
+      "endMs": 1364.209,
+      "durationMs": 0.024,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 454,
+      "id": 5,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 1364.23,
+      "endMs": 1364.258,
+      "durationMs": 0.029,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 455,
+      "id": 5,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 1364.263,
+      "endMs": 1364.289,
+      "durationMs": 0.026,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 456,
+      "id": 5,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1364.294,
+      "endMs": 1364.322,
+      "durationMs": 0.028,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 457,
+      "id": 5,
+      "event": "mutation-entered",
+      "atMs": 1364.42
+    },
+    {
+      "sequence": 458,
+      "id": 5,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 1364.47,
+      "endMs": 1364.523,
+      "durationMs": 0.053,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 459,
+      "id": 5,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 1364.582,
+      "endMs": 1365.257,
+      "durationMs": 0.677,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 460,
+      "id": 5,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 1365.274,
+      "endMs": 1366.097,
+      "durationMs": 0.825,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 461,
+      "id": 5,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 1366.123,
+      "endMs": 1366.315,
+      "durationMs": 0.194,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 462,
+      "id": 5,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 1366.337,
+      "endMs": 1371.505,
+      "durationMs": 5.169,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 463,
+      "id": 5,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 1371.516,
+      "endMs": 1371.582,
+      "durationMs": 0.067,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 464,
+      "id": 5,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 1371.591,
+      "endMs": 1371.746,
+      "durationMs": 0.155,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 465,
+      "id": 5,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 1371.757,
+      "endMs": 1375.476,
+      "durationMs": 3.72,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 466,
+      "id": 5,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 1375.488,
+      "endMs": 1375.536,
+      "durationMs": 0.048,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 467,
+      "id": 5,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 1375.621,
+      "endMs": 1375.989,
+      "durationMs": 0.369,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 468,
+      "id": 5,
+      "event": "update-fulfilled",
+      "atMs": 1376.014,
+      "reserved": 10
+    },
+    {
+      "sequence": 469,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 1564.192,
+      "delayMs": 200,
+      "actualDelayMs": 201.294
+    },
+    {
+      "sequence": 470,
+      "id": 11,
+      "event": "timer-fired",
+      "atMs": 1564.566,
+      "delayMs": 200,
+      "actualDelayMs": 201.517
+    },
+    {
+      "sequence": 471,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1564.304,
+      "endMs": 1564.885,
+      "durationMs": 0.582,
+      "outcome": "EEXIST"
+    },
+    {
+      "sequence": 472,
+      "id": 2,
+      "event": "timer-scheduled",
+      "atMs": 1564.902,
+      "delayMs": 200
+    },
+    {
+      "sequence": 473,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1564.621,
+      "endMs": 1565.268,
+      "durationMs": 0.648,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 474,
+      "id": 11,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 1565.34,
+      "endMs": 1565.399,
+      "durationMs": 0.06,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 475,
+      "id": 11,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1565.411,
+      "endMs": 1565.447,
+      "durationMs": 0.036,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 476,
+      "id": 11,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 1565.46,
+      "endMs": 1565.571,
+      "durationMs": 0.112,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 477,
+      "id": 11,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 1565.59,
+      "endMs": 1565.635,
+      "durationMs": 0.046,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 478,
+      "id": 11,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1565.641,
+      "endMs": 1565.679,
+      "durationMs": 0.038,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 479,
+      "id": 11,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 1565.694,
+      "endMs": 1565.737,
+      "durationMs": 0.044,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 480,
+      "id": 11,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 1565.741,
+      "endMs": 1565.771,
+      "durationMs": 0.031,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 481,
+      "id": 11,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 1565.775,
+      "endMs": 1565.806,
+      "durationMs": 0.032,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 482,
+      "id": 11,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 1565.823,
+      "endMs": 1565.853,
+      "durationMs": 0.03,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 483,
+      "id": 11,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 1565.857,
+      "endMs": 1565.889,
+      "durationMs": 0.033,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 484,
+      "id": 11,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1565.895,
+      "endMs": 1565.926,
+      "durationMs": 0.032,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 485,
+      "id": 11,
+      "event": "mutation-entered",
+      "atMs": 1566.015
+    },
+    {
+      "sequence": 486,
+      "id": 11,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 1566.078,
+      "endMs": 1566.18,
+      "durationMs": 0.104,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 487,
+      "id": 11,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 1566.266,
+      "endMs": 1566.91,
+      "durationMs": 0.647,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 488,
+      "id": 11,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 1566.933,
+      "endMs": 1567.798,
+      "durationMs": 0.868,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 489,
+      "id": 11,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 1567.828,
+      "endMs": 1568.035,
+      "durationMs": 0.209,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 490,
+      "id": 11,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 1568.056,
+      "endMs": 1572.305,
+      "durationMs": 4.251,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 491,
+      "id": 11,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 1572.328,
+      "endMs": 1572.416,
+      "durationMs": 0.089,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 492,
+      "id": 11,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 1572.434,
+      "endMs": 1572.697,
+      "durationMs": 0.264,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 493,
+      "id": 11,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 1572.719,
+      "endMs": 1577.236,
+      "durationMs": 4.52,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 494,
+      "id": 11,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 1577.27,
+      "endMs": 1577.371,
+      "durationMs": 0.103,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 495,
+      "id": 11,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 1577.498,
+      "endMs": 1578.266,
+      "durationMs": 0.77,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 496,
+      "id": 11,
+      "event": "update-fulfilled",
+      "atMs": 1578.31,
+      "reserved": 11
+    },
+    {
+      "sequence": 497,
+      "id": 2,
+      "event": "timer-fired",
+      "atMs": 1765.498,
+      "delayMs": 200,
+      "actualDelayMs": 200.572
+    },
+    {
+      "sequence": 498,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "lock",
+      "startMs": 1765.594,
+      "endMs": 1766.644,
+      "durationMs": 1.052,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 499,
+      "id": 2,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 1766.731,
+      "endMs": 1766.852,
+      "durationMs": 0.122,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 500,
+      "id": 2,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1766.871,
+      "endMs": 1766.934,
+      "durationMs": 0.064,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 501,
+      "id": 2,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 1766.949,
+      "endMs": 1767.176,
+      "durationMs": 0.228,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 502,
+      "id": 2,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 1767.215,
+      "endMs": 1767.28,
+      "durationMs": 0.066,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 503,
+      "id": 2,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1767.291,
+      "endMs": 1767.326,
+      "durationMs": 0.036,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 504,
+      "id": 2,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 1767.34,
+      "endMs": 1767.391,
+      "durationMs": 0.052,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 505,
+      "id": 2,
+      "event": "io",
+      "op": "handle.read",
+      "resource": "state-file",
+      "startMs": 1767.395,
+      "endMs": 1767.43,
+      "durationMs": 0.036,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 506,
+      "id": 2,
+      "event": "io",
+      "op": "handle.stat",
+      "resource": "state-file",
+      "startMs": 1767.435,
+      "endMs": 1767.463,
+      "durationMs": 0.029,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 507,
+      "id": 2,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 1767.477,
+      "endMs": 1767.499,
+      "durationMs": 0.022,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 508,
+      "id": 2,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-directory",
+      "startMs": 1767.502,
+      "endMs": 1767.53,
+      "durationMs": 0.029,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 509,
+      "id": 2,
+      "event": "io",
+      "op": "lstat",
+      "resource": "state-file",
+      "startMs": 1767.535,
+      "endMs": 1767.568,
+      "durationMs": 0.033,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 510,
+      "id": 2,
+      "event": "mutation-entered",
+      "atMs": 1767.639
+    },
+    {
+      "sequence": 511,
+      "id": 2,
+      "event": "io",
+      "op": "mkdir",
+      "resource": "state-directory",
+      "startMs": 1767.691,
+      "endMs": 1767.745,
+      "durationMs": 0.055,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 512,
+      "id": 2,
+      "event": "io",
+      "op": "writeFile",
+      "resource": "atomic-temp",
+      "startMs": 1767.801,
+      "endMs": 1768.161,
+      "durationMs": 0.362,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 513,
+      "id": 2,
+      "event": "io",
+      "op": "rename",
+      "resource": "atomic-temp",
+      "startMs": 1768.177,
+      "endMs": 1768.482,
+      "durationMs": 0.305,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 514,
+      "id": 2,
+      "event": "io",
+      "op": "open",
+      "resource": "state-file",
+      "startMs": 1768.489,
+      "endMs": 1768.556,
+      "durationMs": 0.068,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 515,
+      "id": 2,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-file",
+      "startMs": 1768.564,
+      "endMs": 1773.189,
+      "durationMs": 4.625,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 516,
+      "id": 2,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-file",
+      "startMs": 1773.199,
+      "endMs": 1773.233,
+      "durationMs": 0.035,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 517,
+      "id": 2,
+      "event": "io",
+      "op": "open",
+      "resource": "state-directory",
+      "startMs": 1773.24,
+      "endMs": 1773.367,
+      "durationMs": 0.128,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 518,
+      "id": 2,
+      "event": "io",
+      "op": "handle.sync",
+      "resource": "state-directory",
+      "startMs": 1773.383,
+      "endMs": 1777.221,
+      "durationMs": 3.839,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 519,
+      "id": 2,
+      "event": "io",
+      "op": "handle.close",
+      "resource": "state-directory",
+      "startMs": 1777.244,
+      "endMs": 1777.318,
+      "durationMs": 0.075,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 520,
+      "id": 2,
+      "event": "io",
+      "op": "rm",
+      "resource": "lock",
+      "startMs": 1777.425,
+      "endMs": 1777.998,
+      "durationMs": 0.574,
+      "outcome": "ok"
+    },
+    {
+      "sequence": 521,
+      "id": 2,
+      "event": "update-fulfilled",
+      "atMs": 1778.034,
+      "reserved": 12
+    }
+  ],
+  "loadAverageAfter": [
+    4.361328125,
+    3.7529296875,
+    2.9619140625
+  ],
+  "finishedAt": "2026-10-21T00:02:49.583Z",
+  "elapsedMs": 1786.087
+}

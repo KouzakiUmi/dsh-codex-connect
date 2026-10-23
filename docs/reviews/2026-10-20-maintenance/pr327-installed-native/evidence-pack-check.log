@@ -1,0 +1,34 @@
+
+> dsh-codex-connect@0.2.0-alpha.9 pack:check <EVIDENCE_WORKTREE>
+> node scripts/check-pack-command.test.mjs && node scripts/check-pack-inventory.test.mjs && node scripts/check-pack.mjs
+
+ok - real pack spawn resolves linux command
+ok - real pack spawn resolves win32 command
+ok 1 - clean nine-file inventory permits non-lib package files
+ok 2 - changed hashes and hash lengths do not change the contract
+ok 3 - all nine Finder-style copies are reported
+ok 4 - extra stale hash chunk is rejected: lib/models-Ab12_-xy.js
+ok 5 - missing chunk family is rejected: lib/models-Ab12_-xy.js
+ok 6 - extra stale hash chunk is rejected: lib/openai-codex-responses-CD34-uvw.js
+ok 7 - missing chunk family is rejected: lib/openai-codex-responses-CD34-uvw.js
+ok 8 - extra stale hash chunk is rejected: lib/undici-runtime-Ef56_abc.js
+ok 9 - missing chunk family is rejected: lib/undici-runtime-Ef56_abc.js
+ok 10 - missing stable entry is rejected: lib/bin.js
+ok 11 - missing stable entry is rejected: lib/client.js
+ok 12 - missing stable entry is rejected: lib/index.js
+ok 13 - missing stable entry is rejected: lib/index.d.ts
+ok 14 - missing stable entry is rejected: lib/invariant.js
+ok 15 - missing stable entry is rejected: lib/invariant.d.ts
+ok 16 - unexpected artifact is rejected: lib/nested/index.js
+ok 17 - unexpected artifact is rejected: lib/nested/models-abc.js
+ok 18 - unexpected artifact is rejected: lib/index.old.js
+ok 19 - unexpected artifact is rejected: lib/legacy.js
+ok 20 - unexpected artifact is rejected: lib/new-legitimate-family-abc.js
+ok 21 - unexpected artifact is rejected: lib/models-abc.js.map
+ok 22 - unexpected artifact is rejected: lib/models-.js
+ok 23 - unexpected artifact is rejected: lib
+ok 24 - duplicate stable manifest entry is rejected
+ok 25 - duplicate chunk manifest entry is rejected
+ok 26 - empty lib inventory is rejected
+passed 26 pack inventory fixture tests
+validated 238 packed files (1733671 bytes, 4055228 unpacked bytes)

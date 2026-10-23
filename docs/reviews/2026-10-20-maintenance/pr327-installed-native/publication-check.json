@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-10-20T14:19:13.074698+00:00",
+  "manifestFilesVerified": 38,
+  "jsonFilesParsed": 12,
+  "syntaxFiles": [
+    "acceptance.mjs",
+    "run-macos.py",
+    "native-session.mjs",
+    "container.mjs",
+    "run-linux.py",
+    "macos-fixture-mismatch/acceptance.mjs",
+    "macos-initial/acceptance.mjs",
+    "macos-initial/run-macos.py"
+  ],
+  "recordedNativeOutcomesVerified": 4,
+  "passingCliInvocationsPerPlatform": 17,
+  "publicationPatternScanPassed": true,
+  "packCheckExitCode": 0,
+  "temporaryPackCacheRemoved": true,
+  "fullRuntimeSuiteRepeated": false
+}

@@ -1,0 +1,4 @@
+dbus	1.14.10-1~deb12u1
+gnome-keyring	42.1-1+b2
+libglib2.0-bin	2.74.6-2+deb12u9
+libsecret-1-0:arm64	0.20.5-3

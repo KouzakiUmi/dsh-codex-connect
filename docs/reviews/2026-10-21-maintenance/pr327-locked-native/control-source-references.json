@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "repository": "GNOME/gnome-keyring",
+  "ref": "42.1",
+  "tagObject": "b4599ef1109c4fce4c486fbf77b92ead36955a50",
+  "files": [
+    {
+      "path": "daemon/control/gkd-control-client.c",
+      "gitBlob": "ecfdc5ca4b2f2368c54f5bc733c2dccd73742850",
+      "url": "https://github.com/GNOME/gnome-keyring/blob/42.1/daemon/control/gkd-control-client.c"
+    },
+    {
+      "path": "daemon/control/gkd-control-codes.h",
+      "gitBlob": "e4ff7ff4b53e2aec65f50d2766fb40706b68b486",
+      "url": "https://github.com/GNOME/gnome-keyring/blob/42.1/daemon/control/gkd-control-codes.h"
+    },
+    {
+      "path": "daemon/gkd-main.c",
+      "gitBlob": "33a38e21ef717d2f15c6b8c4969a7778dd9568dd",
+      "url": "https://github.com/GNOME/gnome-keyring/blob/42.1/daemon/gkd-main.c"
+    },
+    {
+      "path": "egg/egg-buffer.c",
+      "gitBlob": "f20588ffdaca639bf572475925d404801fa16787",
+      "url": "https://github.com/GNOME/gnome-keyring/blob/42.1/egg/egg-buffer.c"
+    },
+    {
+      "path": "egg/egg-unix-credentials.c",
+      "gitBlob": "6366d2991aab85c145407a5c3f0bab08a837f9d1",
+      "url": "https://github.com/GNOME/gnome-keyring/blob/42.1/egg/egg-unix-credentials.c"
+    }
+  ],
+  "use": "Reviewed native existing-daemon UNLOCK framing, Linux peer-credential handshake and the distinct --unlock startup route. No external helper program was installed."
+}

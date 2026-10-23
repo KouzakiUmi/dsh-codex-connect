@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "platform": "darwin",
+  "architecture": "arm64",
+  "osRelease": "27.2.0",
+  "node": "v22.22.3",
+  "packageVersion": "0.2.0-alpha.9",
+  "binSha256": "9fc1012c6b6282b1657a68c157bbd6f915fb887f718a9bfd1323b1441932213d",
+  "keyringVersion": "2.1.0",
+  "target": "installed-standalone-cli",
+  "syntheticCredentials": true,
+  "nativeBindingUsed": true,
+  "liveProviderCommands": false,
+  "commands": [
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "migrate-credentials",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "migrate-credentials --confirm-stopped",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "migrate-credentials",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "migrate-credentials --confirm-stopped",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "logout",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "logout",
+      "expectedExit": 0,
+      "actualExit": 0,
+      "signal": null,
+      "processError": null
+    },
+    {
+      "name": "status --json",
+      "expectedExit": 1,
+      "actualExit": 1,
+      "signal": null,
+      "processError": null
+    }
+  ],
+  "steps": [
+    "empty-installed-status-does-not-create-key",
+    "installed-cli-refuses-implicit-or-unconfirmed-migration",
+    "installed-cli-migrates-fake-primary-and-backup-to-owner-only-envelopes",
+    "native-independent-random-keys-and-fresh-cli-process-readback",
+    "installed-cli-rejects-tampered-envelope-without-changing-key",
+    "installed-cli-missing-key-fails-closed-without-replacement",
+    "installed-cli-unavailable-keychain-profile-fails-closed",
+    "installed-cli-logout-removes-only-owned-files-and-native-keys"
+  ],
+  "cleanup": {
+    "ownedEntries": 2,
+    "entriesAbsent": true,
+    "temporaryHomeRemoved": true
+  },
+  "passed": true
+}

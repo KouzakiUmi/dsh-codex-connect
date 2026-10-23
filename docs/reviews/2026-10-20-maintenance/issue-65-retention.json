@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-20",
+  "sourceCommit": "e5579b71339ba932dec7dfba497fc97df8fbf124",
+  "node": "v22.22.3",
+  "sourceSha256": "985ded1899a6e23bf85dab46bd00353554956271321b7a6a689ddd88573f2fa2",
+  "retentionCeilingSerializedUtf8Bytes": 64000,
+  "oversizedItemSerializedUtf8Bytes": 65059,
+  "normalRetainedItems": 1,
+  "oversizedRetainedItems": 0,
+  "mixedRetainsNormalOnly": true,
+  "modelCalls": 0,
+  "credentialAccess": false,
+  "semanticRecallTested": false,
+  "scope": "Pure plugin retention projection only; no checkpoint creation, Host scheduler, provider semantics or live recall acceptance."
+}
